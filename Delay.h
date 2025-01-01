@@ -2,6 +2,7 @@
 
 #include "Signal.h"
 #include <cassert>
+#include <type_traits>
 
 namespace dsp
 {
@@ -30,7 +31,7 @@ template <int N, int BuffSize> class Context
     Context(Signal<N> *buffer) : buffer_(buffer) {}
 
     const Signal<N> &read(int i) const { return buffer_[(id_ + i) & Mask]; }
-    void write(int i, Signal<N> &x) { buffer_[(id_ + i) & Mask] = x; }
+    void write(int i, const Signal<N> &x) { buffer_[(id_ + i) & Mask] = x; }
     void next() { id_ -= 1; }
 
   private:
@@ -38,22 +39,25 @@ template <int N, int BuffSize> class Context
     Signal<N> *buffer_;
 };
 
-template <int N, int Length> class DelayLine
+template <int N, int Length, class V = void> class DelayLine
 {
   public:
     DelayLine() : offset_(bufferOffset.add(Length)) {}
 
-    template <int BufferSize> void write(Context<N, BufferSize> c, Signal<N> x)
+    template <int BufferSize>
+    void write(Context<N, BufferSize> c, const Signal<N> &x)
     {
         c.write(offset_, x);
     }
 
-    template <int BufferSize> Signal<N> read(Context<N, BufferSize> c, int id)
+    template <int BufferSize>
+    const Signal<N> &read(Context<N, BufferSize> c, int id) const
     {
         return c.read(offset_ + id);
     }
 
-    template <int BufferSize> Signal<N> tail(Context<N, BufferSize> c)
+    template <int BufferSize>
+    const Signal<N> &tail(Context<N, BufferSize> c) const
     {
         return read(c, Length);
     }
@@ -62,35 +66,50 @@ template <int N, int Length> class DelayLine
     const int offset_;
 };
 
-template <int N> class DelayLine<N, 1>
+constexpr auto maxCopyDelay = 4;
+template <int N, int Length>
+class DelayLine<N, Length, std::enable_if_t<Length <= maxCopyDelay>>
 {
   public:
-    template <int BufferSize> void write(Context<N, BufferSize> c, Signal<N> x)
+    template <int BufferSize>
+    void write(Context<N, BufferSize> c, const Signal<N> &x)
     {
-        mem_ = x;
+        for (int j = 0; j < Length; ++j) mem_[j + 1] = mem_[j];
+        mem_[0] = x;
     }
 
-    template <int BufferSize> Signal<N> read(Context<N, BufferSize> c, int i)
+    template <int BufferSize>
+    const Signal<N> &read(Context<N, BufferSize> c, int i) const
     {
-        return mem_;
+        return mem_[i - 1];
     }
 
-    template <int BufferSize> Signal<N> tail(Context<N, BufferSize> c)
+    template <int BufferSize>
+    const Signal<N> &tail(Context<N, BufferSize> c) const
     {
-        return mem_;
+        return mem_[Length - 1];
     }
 
   private:
-    Signal<4> mem_;
+    Signal<N> mem_[Length];
 };
 
-template <int N, int L = 1> struct TapFix {
-
-    template <int BufferSize, int Ld>
-    Signal<N> read(Context<N, BufferSize> c, DelayLine<N, Ld> &d)
+template <int N> struct TapTail {
+    template <int BufferSize, int L>
+    const Signal<N> &read(Context<N, BufferSize> c, DelayLine<N, L> &d) const
     {
-        static_assert(L <= Ld, "tap delay length is bigger than delay line");
         return d.tail(c);
+    }
+};
+
+template <int N, int D = 1> struct TapFix {
+
+    template <int BufferSize, int L>
+    const Signal<N> &read(Context<N, BufferSize> c,
+                          const DelayLine<N, L> &d) const
+    {
+        static_assert(D <= L, "tap delay length is bigger than delay line");
+        return d.read(c, D);
     }
 };
 template <int N> class TapNoInterp
@@ -99,7 +118,7 @@ template <int N> class TapNoInterp
     void setDelay(int i, int _id) { id_[i] = _id; }
 
     template <int BufferSize, int L>
-    Signal<N> read(Context<N, BufferSize> c, DelayLine<N, L> &d)
+    Signal<N> read(Context<N, BufferSize> c, DelayLine<N, L> &d) const
     {
         Signal<N> x;
         for (int i = 0; i < N; i++) {
@@ -125,7 +144,7 @@ template <int N> class TapLin : public TapNoInterp<N>
     };
 
     template <int BufferSize, int L>
-    Signal<N> read(Context<N, BufferSize> c, DelayLine<N, L> &d)
+    Signal<N> read(Context<N, BufferSize> c, DelayLine<N, L> &d) const
     {
         Signal<N> x0;
         Signal<N> x1;
@@ -150,38 +169,4 @@ template <int N> class TapLin : public TapNoInterp<N>
 template <int N> class TapCub : public TapLin<N>
 {
 };
-
-/*
-template <int N> class TapAllPass : public TapNoInterp<N>
-{
-  public:
-    template <int _N, int L> friend class TapLine;
-
-    static constexpr auto minfdelay = 0.1f;
-    void set(int i, float _d)
-    {
-        auto _id  = static_cast<int>(_d - minfdelay);
-        float _fd = _d - static_cast<float>(_id);
-        a[i]      = (1 - _fd) / (1 + _fd);
-        TapNoInterp<N>::set(i, _id);
-    };
-
-    void set(Signal<N> _d)
-    {
-        for (int i = 0; i < N; ++i) {
-            set(i, _d[i]);
-        }
-    }
-
-  private:
-    Signal<N> a;
-    Signal<N> s;
-};
-
-template <template <int N> class D, int L> struct DelayType {
-    template <int N> using Type  = D<N>;
-    static constexpr auto Length = L;
-};
-*/
-
 } // namespace dsp

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Delay.h"
 #include "Signal.h"
 #include <cassert>
 #include <cmath>
-
 
 namespace dsp
 {
@@ -14,34 +14,64 @@ template <int N> class FilterSoS
     template <int Ns, int NSoS> friend class Filter;
     /* second order section */
   public:
-    enum class SosPos
-    {
+    using DelayLineType = DelayLine<N, 2>;
+    enum class SosPos {
         First,
         Rest,
     };
 
-    template <SosPos Pos = SosPos::First> void process(Signal<N> &__restrict x);
+    template <int BufferSize, SosPos Pos = SosPos::First>
+    void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
+                 DelayLineType &delayline) const
+    {
+        auto s1 = TapFix<N, 1>().read(c, delayline);
+        auto s2 = TapFix<N, 2>().read(c, delayline);
+        decltype(s1) s0;
+
+/* use direct form II */
+#pragma omp simd
+        for (int i = 0; i < N; ++i) {
+            float a1 = a[1][i];
+            float a2 = a[2][i];
+            float b0 = b[0][i];
+            float b1 = b[1][i];
+            float b2 = b[2][i];
+
+            s0[i] = x[i] - a1 * s1[i] - a2 * s2[i];
+
+            if (Pos == SosPos::First)
+                x[i] = b0 * s0[i] + b1 * s1[i] + b2 * s2[i];
+            else
+                x[i] = s0[i] + b1 * s1[i] + b2 * s2[i];
+        }
+        delayline.write(c, s0);
+    }
 
   private:
     Signal<N> b[3];
     Signal<N> a[3];
-    Signal<N> s[2];
 };
 
 template <int N, int NSoS> class Filter
 {
   public:
+    using DelayLineType =
+        std::array<typename FilterSoS<N>::DelayLineType, NSoS>;
+
     template <bool NFreq = true>
     static Filter sosanalog(float ba[NSoS][2][3], Signal<NFreq ? N : 1> freq,
                             float samplerate);
     template <bool NFreq = true>
-    static Filter butterworthLP(Signal<NFreq ? N : 1>freq, float samplerate);
+    static Filter butterworthLP(Signal<NFreq ? N : 1> freq, float samplerate);
 
-    void process(Signal<N> &__restrict x)
+    template <int BufferSize>
+    void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
+                 DelayLineType &delayline) const
     {
-        sos[0].template process(x);
+        sos[0].process(c, x, delayline[0]);
         for (int j = 1; j < NSoS; ++j) {
-            sos[j].template process<FilterSoS<N>::SosPos::Rest>(x);
+            sos[j].template process<BufferSize, FilterSoS<N>::SosPos::Rest>(
+                c, x, delayline[j]);
         }
     }
 
@@ -64,7 +94,7 @@ Filter<N, NSoS> Filter<N, NSoS>::sosanalog(float ba[NSoS][2][3],
      */
 
     constexpr auto NCoef = NFreq ? N : 1;
-    using Coef = Signal<NCoef>;
+    using Coef           = Signal<NCoef>;
 
     Filter<N, NSoS> filter;
     for (int j = 0; j < NSoS; ++j) {
@@ -146,18 +176,16 @@ Filter<N, NSoS> Filter<N, NSoS>::sosanalog(float ba[NSoS][2][3],
 
 template <int N, int NSoS>
 template <bool NFreq>
-Filter<N, NSoS> Filter<N, NSoS>::butterworthLP(
-                                           Signal<NFreq ? N : 1> freq,
-                                           float samplerate)
+Filter<N, NSoS> Filter<N, NSoS>::butterworthLP(Signal<NFreq ? N : 1> freq,
+                                               float samplerate)
 {
     constexpr auto NCoef = NFreq ? N : 1;
-    using Coef = Signal<NCoef>;
+    using Coef           = Signal<NCoef>;
 
     Filter<N, NSoS> filter;
-    auto& sos = filter.sos[0];
+    auto &sos = filter.sos[0];
 
-    for(int i = 0; i < NCoef; ++i)
-    {
+    for (int i = 0; i < NCoef; ++i) {
         float c   = tanf(M_PIf * freq[i] / samplerate);
         float csq = c * c;
         float d   = 1.f / (1.f + sqrtf(2.f) * c + csq);
@@ -178,13 +206,13 @@ Filter<N, NSoS> Filter<N, NSoS>::butterworthLP(
     }
 
     if (!NFreq) {
-    /* copy all coefs */
-        float b0  = sos.b[0][0];
-        float b1  = sos.b[1][0];
-        float b2  = sos.b[2][0];
-        float a0  = sos.a[0][0];
-        float a1  = sos.a[1][0];
-        float a2  = sos.a[2][0];
+        /* copy all coefs */
+        float b0 = sos.b[0][0];
+        float b1 = sos.b[1][0];
+        float b2 = sos.b[2][0];
+        float a0 = sos.a[0][0];
+        float a1 = sos.a[1][0];
+        float a2 = sos.a[2][0];
         for (int i = 0; i < N; ++i) {
             sos.b[0][i] = b0;
             sos.b[1][i] = b1;
@@ -196,33 +224,6 @@ Filter<N, NSoS> Filter<N, NSoS>::butterworthLP(
     }
     return filter;
 }
-
-template <int N>
-template <typename FilterSoS<N>::SosPos Pos>
-void FilterSoS<N>::process(Signal<N> &__restrict x)
-{
-/* use direct form II */
-#pragma omp simd
-    for (int i = 0; i < N; ++i) {
-        float a1 = a[1][i];
-        float a2 = a[2][i];
-        float b0 = b[0][i];
-        float b1 = b[1][i];
-        float b2 = b[2][i];
-
-        float s1 = s[0][i];
-        float s2 = s[1][i];
-        float s0 = x[i] - a1 * s1 - a2 * s2;
-
-        if (Pos == SosPos::First) x[i] = b0 * s0 + b1 * s1 + b2 * s2;
-        else
-            x[i] = s0 + b1 * s1 + b2 * s2;
-
-        s[1][i] = s[0][i];
-        s[0][i] = s0;
-    }
-}
-
 //        /*
 // #ifdef FILTER_VECSIZE
 //
@@ -351,4 +352,4 @@ void FilterSoS<N>::process(Signal<N> &__restrict x)
 // }
 // #endif
 //*/
-}
+} // namespace dsp

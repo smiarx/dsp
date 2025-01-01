@@ -11,14 +11,14 @@ template <class... T> class List
 
 template <int N, class Tap> class TapAllPass;
 
-template <int N, class Tap = TapFix<N>> class AllPass
+template <int N, class Tap = TapTail<N>> class AllPass
 {
     friend TapAllPass<N, Tap>;
 
   public:
     template <int BufferSize, class D, class... Ds>
     void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
-                 D &delayline, Ds &...ds)
+                 D &delayline, Ds &...ds) const
     {
         Signal<N> s0;
         Signal<N> sN = tap_.read(c, delayline, ds...);
@@ -59,7 +59,7 @@ template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
     }
 
     template <int BufferSize, class D, class... Ds>
-    Signal<N> read(Context<N, BufferSize> c, D &d, Ds &...ds)
+    Signal<N> read(Context<N, BufferSize> c, D &d, Ds &...ds) const
     {
         auto x = TapNoInterp<N>::read(c, d);
         allpass_.process(c, x, ds...);
