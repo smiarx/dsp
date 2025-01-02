@@ -11,8 +11,9 @@ template <int N, int NSoS> class Filter;
 
 template <int N> class FilterSoS
 {
-    template <int Ns, int NSoS> friend class Filter;
     /* second order section */
+    template <int Ns, int NSoS> friend class Filter;
+
   public:
     using DelayLineType = DelayLine<N, 2>;
     enum class SosPos {
@@ -20,10 +21,11 @@ template <int N> class FilterSoS
         Rest,
     };
 
-    template <int BufferSize, SosPos Pos = SosPos::First>
-    void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
-                 DelayLineType &delayline) const
+    template <class Ctxt, SosPos Pos = SosPos::First>
+    void process(Ctxt c, DelayLineType &delayline) const
     {
+        auto &x = c.getIn();
+
         /* read delayline */
         auto s1 = TapFix<N, 1>().read(c, delayline);
         auto s2 = TapFix<N, 2>().read(c, delayline);
@@ -59,22 +61,17 @@ template <int N, int NSoS = 1> class Filter
         std::array<typename FilterSoS<N>::DelayLineType, NSoS>;
 
     template <int NFreq>
-    void sosanalog(float ba[NSoS][2][3], Signal<NFreq> freq, float samplerate);
-    template <int NFreq>
-    void butterworthLP(Signal<NFreq> freq, float samplerate);
+    void sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq);
+    template <int NFreq> void butterworthLP(Signal<NFreq> freq);
 
-    template <int BufferSize>
-    void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
-                 DelayLineType &delayline) const
+    template <class Ctxt> void process(Ctxt c, DelayLineType &delayline) const
     {
-        sos[0].process(c, x, delayline[0]);
+        sos[0].process(c, delayline[0]);
         for (int j = 1; j < NSoS; ++j) {
-            sos[j].template process<BufferSize, FilterSoS<N>::SosPos::Rest>(
-                c, x, delayline[j]);
+            sos[j].template process<Ctxt, FilterSoS<N>::SosPos::Rest>(
+                c, delayline[j]);
         }
     }
-
-    template <int NFreq> void foo(const Signal<NFreq> &freq, float samplerate);
 
   private:
     FilterSoS<N> sos[NSoS];
@@ -82,8 +79,7 @@ template <int N, int NSoS = 1> class Filter
 
 template <int N, int NSoS>
 template <int NFreq>
-void Filter<N, NSoS>::sosanalog(float ba[NSoS][2][3], Signal<NFreq> freq,
-                                float samplerate)
+void Filter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq)
 {
     /* filter params */
     /* we define a filter designed with analog coefficients
@@ -102,9 +98,8 @@ void Filter<N, NSoS>::sosanalog(float ba[NSoS][2][3], Signal<NFreq> freq,
         Signal<NFreq> c;
         Signal<NFreq> csq;
         for (int i = 0; i < NFreq; ++i) {
-            float w1 = 2.f * M_PIf * freq[i];
-            c[i]     = 1 / tanf(w1 * 0.5f / samplerate);
-            csq[i]   = c[i] * c[i];
+            c[i]   = 1 / tanf(M_PIf * 0.5f * freq[i]);
+            csq[i] = c[i] * c[i];
         }
 
         for (int j = 0; j < NSoS; ++j) {
@@ -170,7 +165,7 @@ void Filter<N, NSoS>::sosanalog(float ba[NSoS][2][3], Signal<NFreq> freq,
 
 template <int N, int NSoS>
 template <int NFreq>
-void Filter<N, NSoS>::butterworthLP(Signal<NFreq> freq, float samplerate)
+void Filter<N, NSoS>::butterworthLP(Signal<NFreq> freq)
 {
     static_assert(NSoS == 1);
     static_assert(NFreq == N || NFreq == 1,
@@ -179,7 +174,7 @@ void Filter<N, NSoS>::butterworthLP(Signal<NFreq> freq, float samplerate)
     auto &sos0 = sos[0];
 
     for (int i = 0; i < NFreq; ++i) {
-        float c   = tanf(M_PIf * freq[i] / samplerate);
+        float c   = tanf(M_PIf * 0.5f * freq[i]);
         float csq = c * c;
         float d   = 1.f / (1.f + sqrtf(2.f) * c + csq);
 

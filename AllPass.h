@@ -16,13 +16,13 @@ template <int N, class Tap = TapTail<N>> class AllPass
     friend TapAllPass<N, Tap>;
 
   public:
-    template<int... Ds>
+    template <int... Ds>
     using DelayLineType = typename Tap::template DelayLineType<Ds...>;
 
-    template <int BufferSize, class D>
-    void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
-                 D& delayline) const
+    template <class Ctxt, class D> void process(Ctxt c, D &delayline) const
     {
+        auto &x = c.getIn();
+
         Signal<N> s0;
         Signal<N> sN = tap_.read(c, delayline);
         for (int i = 0; i < N; ++i) {
@@ -45,7 +45,7 @@ template <int N, class Tap = TapTail<N>> class AllPass
 template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
 {
   public:
-    template<int D, int... Ds>
+    template <int D, int... Ds>
     class DelayLineType : public TapNoInterp<N>::template DelayLineType<D>
     {
         friend TapAllPass;
@@ -69,11 +69,12 @@ template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
         }
     }
 
-    template <int BufferSize, int... Ds>
-    Signal<N> read(Context<N, BufferSize> c, DelayLineType<Ds...> &delayline) const
+    template <class Ctxt, int... Ds>
+    Signal<N> read(Ctxt c, DelayLineType<Ds...> &delayline) const
     {
         auto x = TapNoInterp<N>::read(c, delayline);
-        allpass_.process(c, x, delayline.inner_);
+        c.setIn(&x);
+        allpass_.process(c, delayline.inner_);
         return x;
     }
 
