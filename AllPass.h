@@ -13,6 +13,14 @@ template <int N, class Tap> class TapAllPass;
 
 template <int N, class Tap = TapTail<N>> class AllPass
 {
+    /* Implement a Allpass filter with coeff a
+     * template:
+     *      N: vector size
+     *      Tap: a Tap class for the recursive delayline
+     *
+     *  Allpass process needs a DelayLineType delayline to process
+     *  internal state
+     */
     friend TapAllPass<N, Tap>;
 
   public:

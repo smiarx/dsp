@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Context.h"
 #include "Filter.h"
 #include "Signal.h"
 
@@ -13,11 +14,8 @@ constexpr float decimateFilterBA[][2][3] = {
     {{0., 0., 1.}, {1., 0.09853145, 0.80566858}},
     {{0., 0., 1.}, {1., 0.03395162, 0.98730422}}};
 
-template <int N, int BufferSize>
-class DownSampleContext : public Context<N, BufferSize>
+template <class Ctxt> class DownSampleContext : public Ctxt
 {
-    using Ctxt = Context<N, BufferSize>;
-
   public:
     DownSampleContext(Ctxt c, int decimate, int decimateId) :
         Ctxt(c), decimate_(decimate)
@@ -27,11 +25,7 @@ class DownSampleContext : public Context<N, BufferSize>
 
     int getIncr() const { return decimate_; }
 
-    void next(int incr = 1)
-    {
-        Ctxt::nextBufId(incr);
-        Ctxt::nextIn(incr * decimate_);
-    }
+    void next(int incr = 1) { Ctxt::nextIn(incr * decimate_); }
 
   private:
     int decimate_;

@@ -38,13 +38,13 @@ template <int N, int Length, class V = void> class DelayLine
     /* write value inside delay line */
     template <class Ctxt> void write(Ctxt c, const Signal<N> &x)
     {
-        c.write(offset_, x);
+        c.getBuffer().write(offset_, x);
     }
 
     /* read value at delay id */
     template <class Ctxt> const Signal<N> &read(Ctxt c, int id) const
     {
-        return c.read(offset_ + id);
+        return c.getBuffer().read(offset_ + id);
     }
 
     /* read value at tail */

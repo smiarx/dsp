@@ -1,54 +1,70 @@
 #pragma once
 
-#include "Signal.h"
+#include <array>
+#include <cassert>
 
 namespace dsp
 {
-template <int N, int BufferSize> class Context
+template <typename In> class Context
 {
   public:
-    static constexpr auto Mask = BufferSize - 1;
+    Context(In *in) : in_(in) {}
 
-    Context(Signal<N> *in, Signal<N> *buffer) : in_(in), buffer_(buffer) {}
+    In &__restrict getIn() { return *in_; }
 
-    const Signal<N> &read(int i) const { return buffer_[(bufId_ + i) & Mask]; }
-    void write(int i, const Signal<N> &x) { buffer_[(bufId_ + i) & Mask] = x; }
+    void next(int incr = 1) { nextIn(incr); }
 
-    Signal<N> &__restrict getIn() { return *in_; }
-
-    void next(int incr = 1)
-    {
-        nextBufId(incr);
-        nextIn(incr);
-    }
     void nextBlock() { next(blockSize_); }
 
-    void setIn(Signal<N> *in) { in_ = in; }
+    void setIn(In *in) { in_ = in; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
     int getBlockSize() const { return blockSize_; }
-
     constexpr int getIncr() const { return 1; }
 
   protected:
-    void nextBufId(int incr) { bufId_ = (bufId_ - incr) & Mask; }
     void nextIn(int incr) { in_ += incr; }
+    void nextBufId(int incr) {}
 
   private:
-    int bufId_{0};
-    Signal<N> *buffer_;
-
     int blockSize_;
-    Signal<N> *in_;
+    In *in_;
 };
 
-template <class Ctxt, typename P> void _processBlock(Ctxt c, P process)
+template <class Ctxt, class... Ctxts>
+void _ctxtInfos(int &blockSize, int &incr, Ctxt c, Ctxts... cs)
 {
-    for (int n = 0; n < c.getBlockSize(); n += c.getIncr()) {
-        process(c);
-        c.next();
+    blockSize = c.getBlockSize();
+    incr      = c.getIncr();
+    /* check if blockSize and incr are the same */
+    (
+        [&] {
+            auto _blockSize = cs.getBlockSize();
+            assert(blockSize == _blockSize);
+        }(),
+        ...);
+    (
+        [&] {
+            auto _incr = cs.getIncr();
+            assert(incr == _incr);
+        }(),
+        ...);
+}
+template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
+{
+    int blockSize, incr;
+    _ctxtInfos(blockSize, incr, cs...);
+    for (int n = 0; n < blockSize; n += incr) {
+        process(cs...);
+        (
+            [&] {
+                cs.next();
+            }(),
+            ...);
     }
 }
 
 // macro to easily redefine
-#define processBlock(c, capt, func) _processBlock(c, capt(decltype(c) c) func)
+#define processBlock(c, capt, func) _processBlock(capt(decltype(c) c) func, c)
+#define processBlock2(c1, c2, capt, func) \
+    _processBlock(capt(decltype(c1) c1, decltype(c2) c2) func, c1, c2)
 } // namespace dsp
