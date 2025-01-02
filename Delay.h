@@ -41,21 +41,30 @@ template <int N, int BuffSize> class Context
 
 template <int N, int Length, class V = void> class DelayLine
 {
+    /*
+     * Implement a delay line
+     * templates:
+     *      N: vector size
+     *      Length: maximum length of the delay line
+     */
   public:
     DelayLine() : offset_(bufferOffset.add(Length)) {}
 
+    /* write value inside delay line */
     template <int BufferSize>
     void write(Context<N, BufferSize> c, const Signal<N> &x)
     {
         c.write(offset_, x);
     }
 
+    /* read value at delay id */
     template <int BufferSize>
     const Signal<N> &read(Context<N, BufferSize> c, int id) const
     {
         return c.read(offset_ + id);
     }
 
+    /* read value at tail */
     template <int BufferSize>
     const Signal<N> &tail(Context<N, BufferSize> c) const
     {
@@ -70,11 +79,12 @@ constexpr auto maxCopyDelay = 4;
 template <int N, int Length>
 class DelayLine<N, Length, std::enable_if_t<Length <= maxCopyDelay>>
 {
+    /* if Length is <= 4 we implement the delayline with a copy system instead of a ringbuffer */
   public:
     template <int BufferSize>
     void write(Context<N, BufferSize> c, const Signal<N> &x)
     {
-        for (int j = 0; j < Length; ++j) mem_[j + 1] = mem_[j];
+        for (int j = 0; j < Length-1; ++j) mem_[j + 1] = mem_[j];
         mem_[0] = x;
     }
 
@@ -94,7 +104,16 @@ class DelayLine<N, Length, std::enable_if_t<Length <= maxCopyDelay>>
     Signal<N> mem_[Length];
 };
 
+/*
+ * Taps: different classes that can read into a delay line with different position and interpolation
+ * In each class DelayLineType<L> define the type of the base DelayLine that can be read by the tap
+ */
+
 template <int N> struct TapTail {
+    /* Tap that reads a the end of a delayline */
+    template<int L>
+    using DelayLineType = DelayLine<N,L>;
+
     template <int BufferSize, int L>
     const Signal<N> &read(Context<N, BufferSize> c, DelayLine<N, L> &d) const
     {
@@ -103,6 +122,9 @@ template <int N> struct TapTail {
 };
 
 template <int N, int D = 1> struct TapFix {
+    /* Tap that reads at a fix point (delay D) in the delay line */
+    template<int...>
+    using DelayLineType = DelayLine<N,D>;
 
     template <int BufferSize, int L>
     const Signal<N> &read(Context<N, BufferSize> c,
@@ -114,8 +136,13 @@ template <int N, int D = 1> struct TapFix {
 };
 template <int N> class TapNoInterp
 {
+    /* Tap that can read at any point in de delay line, without interpolation */
   public:
-    void setDelay(int i, int _id) { id_[i] = _id; }
+    template<int...D>
+    using DelayLineType = DelayLine<N,D...>;
+
+    void setDelay(int i, int id) { id_[i] = id; }
+    void setDelay(iSignal<N> id) { id_ = id; }
 
     template <int BufferSize, int L>
     Signal<N> read(Context<N, BufferSize> c, DelayLine<N, L> &d) const
@@ -134,7 +161,11 @@ template <int N> class TapNoInterp
 
 template <int N> class TapLin : public TapNoInterp<N>
 {
+    /* Tap that can read at any point in de delay line, with linear interpolation */
   public:
+    template<int D>
+    using DelayLineType = DelayLine<N,D>;
+
     void setDelay(int i, float d)
     {
         auto id  = static_cast<int>(d);
@@ -164,9 +195,5 @@ template <int N> class TapLin : public TapNoInterp<N>
 
   protected:
     Signal<N> fd_;
-};
-
-template <int N> class TapCub : public TapLin<N>
-{
 };
 } // namespace dsp

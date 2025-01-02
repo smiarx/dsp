@@ -16,12 +16,15 @@ template <int N, class Tap = TapTail<N>> class AllPass
     friend TapAllPass<N, Tap>;
 
   public:
-    template <int BufferSize, class D, class... Ds>
+    template<int... Ds>
+    using DelayLineType = typename Tap::template DelayLineType<Ds...>;
+
+    template <int BufferSize, class D>
     void process(Context<N, BufferSize> c, Signal<N> &__restrict x,
-                 D &delayline, Ds &...ds) const
+                 D& delayline) const
     {
         Signal<N> s0;
-        Signal<N> sN = tap_.read(c, delayline, ds...);
+        Signal<N> sN = tap_.read(c, delayline);
         for (int i = 0; i < N; ++i) {
             s0[i] = x[i] - a_[i] * sN[i];
             x[i]  = a_[i] * s0[i] + sN[i];
@@ -32,6 +35,7 @@ template <int N, class Tap = TapTail<N>> class AllPass
     void setCoeff(Signal<N> a) { a_ = a; }
 
     void setDelay(Signal<N> d) { tap_.setDelay(d); }
+    void setDelay(iSignal<N> d) { tap_.setDelay(d); }
 
   private:
     Signal<N> a_;
@@ -41,6 +45,13 @@ template <int N, class Tap = TapTail<N>> class AllPass
 template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
 {
   public:
+    template<int D, int... Ds>
+    class DelayLineType : public TapNoInterp<N>::template DelayLineType<D>
+    {
+        friend TapAllPass;
+        typename Tap::template DelayLineType<Ds...> inner_;
+    };
+
     static constexpr auto minfdelay = 0.1f;
 
     void setDelay(int i, float d)
@@ -58,11 +69,11 @@ template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
         }
     }
 
-    template <int BufferSize, class D, class... Ds>
-    Signal<N> read(Context<N, BufferSize> c, D &d, Ds &...ds) const
+    template <int BufferSize, int... Ds>
+    Signal<N> read(Context<N, BufferSize> c, DelayLineType<Ds...> &delayline) const
     {
-        auto x = TapNoInterp<N>::read(c, d);
-        allpass_.process(c, x, ds...);
+        auto x = TapNoInterp<N>::read(c, delayline);
+        allpass_.process(c, x, delayline.inner_);
         return x;
     }
 
