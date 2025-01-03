@@ -25,7 +25,11 @@ template <class Ctxt> class DownSampleContext : public Ctxt
 
     int getIncr() const { return decimate_; }
 
-    void next(int incr = 1) { Ctxt::nextIn(incr * decimate_); }
+    void next(int incr = 1)
+    {
+        Ctxt::next(incr);
+        Ctxt::nextIn(incr * (decimate_ - 1));
+    }
 
   private:
     int decimate_;
@@ -72,7 +76,7 @@ template <int N> class DownSampler
     int decimate_{1};
     int decimateId_{0};
     Filter<N, sizeof(decimateFilterBA) / sizeof(decimateFilterBA[0])> lpFilter;
-    typename decltype(lpFilter)::DelayLineType decimateFilterDL;
+    typename decltype(lpFilter)::DL decimateFilterDL;
 };
 
 } // namespace dsp
