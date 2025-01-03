@@ -11,7 +11,7 @@ template <class... T> class List
 
 template <int N, class Tap> class TapAllPass;
 
-template <int N, class Tap = TapTail<N>> class AllPass
+template <int N, class Tap = TapTail> class AllPass
 {
     /* Implement a Allpass filter with coeff a
      * template:
@@ -24,10 +24,7 @@ template <int N, class Tap = TapTail<N>> class AllPass
     friend TapAllPass<N, Tap>;
 
   public:
-    template <int... Ds>
-    using DelayLineType = typename Tap::template DelayLineType<Ds...>;
-
-    template <class Ctxt, class D> void process(Ctxt c, D &delayline) const
+    template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
         auto &x = c.getIn();
 
@@ -41,7 +38,6 @@ template <int N, class Tap = TapTail<N>> class AllPass
     }
 
     void setCoeff(Signal<N> a) { a_ = a; }
-
     void setDelay(Signal<N> d) { tap_.setDelay(d); }
     void setDelay(iSignal<N> d) { tap_.setDelay(d); }
 
@@ -50,16 +46,9 @@ template <int N, class Tap = TapTail<N>> class AllPass
     Tap tap_;
 };
 
-template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
+template <int N, class Tap = TapFix<>> class TapAllPass : public TapNoInterp<N>
 {
   public:
-    template <int D, int... Ds>
-    class DelayLineType : public TapNoInterp<N>::template DelayLineType<D>
-    {
-        friend TapAllPass;
-        typename Tap::template DelayLineType<Ds...> inner_;
-    };
-
     static constexpr auto minfdelay = 0.1f;
 
     void setDelay(int i, float d)
@@ -77,8 +66,8 @@ template <int N, class Tap = TapFix<N>> class TapAllPass : public TapNoInterp<N>
         }
     }
 
-    template <class Ctxt, int... Ds>
-    Signal<N> read(Ctxt c, DelayLineType<Ds...> &delayline) const
+    template <class Ctxt, class DL, class DLi>
+    Signal<N> read(Ctxt c, NestedDelayLine<DL, DLi> &delayline) const
     {
         auto x = TapNoInterp<N>::read(c, delayline);
         c.setIn(&x);

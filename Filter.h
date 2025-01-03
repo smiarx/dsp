@@ -15,20 +15,20 @@ template <int N> class FilterSoS
     template <int Ns, int NSoS> friend class Filter;
 
   public:
-    using DelayLineType = DelayLine<N, 2>;
+    using DL = CopyDelayLine<N, 2>;
     enum class SosPos {
         First,
         Rest,
     };
 
     template <class Ctxt, SosPos Pos = SosPos::First>
-    void process(Ctxt c, DelayLineType &delayline) const
+    void process(Ctxt c, DL &delayline) const
     {
         auto &x = c.getIn();
 
         /* read delayline */
-        auto s1 = TapFix<N, 1>().read(c, delayline);
-        auto s2 = TapFix<N, 2>().read(c, delayline);
+        auto s1 = TapFix<1>().read(c, delayline);
+        auto s2 = TapFix<2>().read(c, delayline);
         decltype(s1) s0;
 
         /* use direct form II */
@@ -57,14 +57,13 @@ template <int N> class FilterSoS
 template <int N, int NSoS = 1> class Filter
 {
   public:
-    using DelayLineType =
-        std::array<typename FilterSoS<N>::DelayLineType, NSoS>;
+    using DL = std::array<typename FilterSoS<N>::DL, NSoS>;
 
     template <int NFreq>
     void sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq);
     template <int NFreq> void butterworthLP(Signal<NFreq> freq);
 
-    template <class Ctxt> void process(Ctxt c, DelayLineType &delayline) const
+    template <class Ctxt> void process(Ctxt c, DL &delayline) const
     {
         sos[0].process(c, delayline[0]);
         for (int j = 1; j < NSoS; ++j) {

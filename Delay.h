@@ -24,46 +24,57 @@ class BufferOffset
 
 static BufferOffset bufferOffset;
 
-template <int N, int Length, class V = void> class DelayLine
+template <int L = 0> class DelayLine;
+
+template <> class DelayLine<0>
 {
+  public:
+    static constexpr unsigned int Length = -1;
     /*
      * Implement a delay line
      * templates:
      *      N: vector size
      *      Length: maximum length of the delay line
      */
-  public:
-    DelayLine() : offset_(bufferOffset.add(Length)) {}
+    DelayLine(int length) : offset_(bufferOffset.add(length)) {}
 
     /* write value inside delay line */
-    template <class Ctxt> void write(Ctxt c, const Signal<N> &x)
+    template <class Ctxt, class In> void write(Ctxt c, const In &x)
     {
         c.getBuffer().write(offset_, x);
     }
 
     /* read value at delay id */
-    template <class Ctxt> const Signal<N> &read(Ctxt c, int id) const
+    template <class Ctxt> const auto &read(Ctxt c, int id) const
     {
         return c.getBuffer().read(offset_ + id);
-    }
-
-    /* read value at tail */
-    template <class Ctxt> const Signal<N> &tail(Ctxt c) const
-    {
-        return read(c, Length);
     }
 
   private:
     const int offset_;
 };
 
-constexpr auto maxCopyDelay = 4;
-template <int N, int Length>
-class DelayLine<N, Length, std::enable_if_t<Length <= maxCopyDelay>>
+/* delayline with compile time length */
+template <int L> class DelayLine : public DelayLine<0>
 {
-    /* if Length is <= 4 we implement the delayline with a copy system instead
-     * of a ringbuffer */
   public:
+    static constexpr auto Length = L;
+
+    DelayLine() : DelayLine<0>(Length) {}
+
+    /* read value at tail */
+    template <class Ctxt> const auto &tail(Ctxt c) const
+    {
+        return read(c, Length);
+    }
+};
+
+template <int N, int L = 1> class CopyDelayLine
+{
+    /* */
+  public:
+    static constexpr auto Length = L;
+
     template <class Ctxt> void write(Ctxt c, const Signal<N> &x)
     {
         for (int j = 0; j < Length - 1; ++j) mem_[j + 1] = mem_[j];
@@ -84,50 +95,55 @@ class DelayLine<N, Length, std::enable_if_t<Length <= maxCopyDelay>>
     Signal<N> mem_[Length] = {0};
 };
 
+template <class DL, class DLi> class NestedDelayLine : public DL
+{
+  public:
+    NestedDelayLine() = default;
+    NestedDelayLine(DL &&dl, DLi &&dli) : DL(dl), inner_(dli) {}
+    DLi inner_;
+};
+
 /*
  * Taps: different classes that can read into a delay line with different
  * position and interpolation In each class DelayLineType<L> define the type of
  * the base DelayLine that can be read by the tap
  */
 
-template <int N> struct TapTail {
-    /* Tap that reads a the end of a delayline */
-    template <int L> using DelayLineType = DelayLine<N, L>;
+struct TapTail {
+    /* Tap that reads at the end of a delayline */
 
-    template <class Ctxt, int L>
-    const Signal<N> &read(Ctxt c, DelayLine<N, L> &d) const
+    template <class Ctxt, class DL>
+    const auto &read(Ctxt c, const DL &delayline) const
     {
-        return d.tail(c);
+        return delayline.tail(c);
     }
 };
 
-template <int N, int D = 1> struct TapFix {
+template <int D = 1> struct TapFix {
     /* Tap that reads at a fix point (delay D) in the delay line */
-    template <int...> using DelayLineType = DelayLine<N, D>;
 
-    template <class Ctxt, int L>
-    const Signal<N> &read(Ctxt c, const DelayLine<N, L> &d) const
+    template <class Ctxt, class DL>
+    const auto &read(Ctxt c, const DL &delayline) const
     {
-        static_assert(D <= L, "tap delay length is bigger than delay line");
-        return d.read(c, D);
+        static_assert(D <= DL::Length,
+                      "tap delay length is bigger than delay line");
+        return delayline.read(c, D);
     }
 };
 template <int N> class TapNoInterp
 {
     /* Tap that can read at any point in de delay line, without interpolation */
   public:
-    template <int... D> using DelayLineType = DelayLine<N, D...>;
-
     void setDelay(int i, int id) { id_[i] = id; }
     void setDelay(iSignal<N> id) { id_ = id; }
 
-    template <class Ctxt, int L>
-    Signal<N> read(Ctxt c, DelayLine<N, L> &d) const
+    template <class Ctxt, class DL>
+    Signal<N> read(Ctxt c, const DL &delayline) const
     {
         Signal<N> x;
         for (int i = 0; i < N; i++) {
-            assert(id_[i] <= L);
-            x[i] = d.read(c, id_[i])[i];
+            assert(id_[i] <= DL::Length);
+            x[i] = delayline.read(c, id_[i])[i];
         }
         return x;
     }
@@ -141,8 +157,6 @@ template <int N> class TapLin : public TapNoInterp<N>
     /* Tap that can read at any point in de delay line, with linear
      * interpolation */
   public:
-    template <int D> using DelayLineType = DelayLine<N, D>;
-
     void setDelay(int i, float d)
     {
         auto id  = static_cast<int>(d);
@@ -151,8 +165,7 @@ template <int N> class TapLin : public TapNoInterp<N>
         setDelay(id);
     };
 
-    template <class Ctxt, int L>
-    Signal<N> read(Ctxt c, DelayLine<N, L> &d) const
+    template <class Ctxt, class DL> Signal<N> read(Ctxt c, DL &delayline) const
     {
         Signal<N> x0;
         Signal<N> x1;
@@ -160,9 +173,9 @@ template <int N> class TapLin : public TapNoInterp<N>
         auto id = TapNoInterp<N>::id_;
 
         for (int i = 0; i < N; ++i) {
-            assert(id[i] < L);
-            x0[i] = d.read(c, id[i])[i];
-            x1[i] = d.read(c, id[i] + 1)[i];
+            assert(id[i] < DL::Length);
+            x0[i] = delayline.read(c, id[i])[i];
+            x1[i] = delayline.read(c, id[i] + 1)[i];
         }
         for (int i = 0; i < N; ++i) {
             x0[i] += fd_[i] * (x1[i] - x0[i]);
