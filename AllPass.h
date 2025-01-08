@@ -24,6 +24,8 @@ template <int N, class Tap = TapTail> class AllPass
     friend TapAllPass<N, Tap>;
 
   public:
+    constexpr AllPass(const Signal<N>& a) : a_(a) {}
+
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
         auto &x = c.getIn();
@@ -66,12 +68,12 @@ template <int N, class Tap = TapFix<>> class TapAllPass : public TapNoInterp<N>
         }
     }
 
-    template <class Ctxt, class DL, class DLi>
-    Signal<N> read(Ctxt c, NestedDelayLine<DL, DLi> &delayline) const
+    template <class Ctxt, class DL>
+    Signal<N> read(Ctxt c, DL &delayline) const
     {
         auto x = TapNoInterp<N>::read(c, delayline);
         c.setIn(&x);
-        allpass_.process(c, delayline.inner_);
+        allpass_.process(c, delayline.getInner());
         return x;
     }
 

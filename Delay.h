@@ -24,22 +24,28 @@ class BufferOffset
 
 static BufferOffset bufferOffset;
 
-template <int L = 0> class DelayLine;
+template <int L = 0, int Off = 0> class DelayLine;
 
-template <> class DelayLine<0>
+template <> class DelayLine<>
 {
   public:
-    static constexpr unsigned int Length = -1;
     /*
      * Implement a delay line
      * templates:
      *      N: vector size
      *      Length: maximum length of the delay line
      */
+
+    static constexpr int Length = 10000000;
+    static constexpr int NextOffset = 0;
+
+    template<int>
+    using WithOffset = DelayLine;
+
     DelayLine(int length) : offset_(bufferOffset.add(length)) {}
 
     /* write value inside delay line */
-    template <class Ctxt, class In> void write(Ctxt c, const In &x)
+    template <class Ctxt, class In> void write(Ctxt c, const In &x) const
     {
         c.getBuffer().write(offset_, x);
     }
@@ -50,17 +56,39 @@ template <> class DelayLine<0>
         return c.getBuffer().read(offset_ + id);
     }
 
+    template <class Ctxt, int Size> auto readContiguous(Ctxt c, int id) const
+    {
+        return c.getBuffer().template readContiguous<Size>(offset_ + id);
+    }
+
   private:
     const int offset_;
 };
 
 /* delayline with compile time length */
-template <int L> class DelayLine : public DelayLine<0>
+template <int L, int Off> class DelayLine
 {
   public:
     static constexpr auto Length = L;
+    static constexpr auto Offset = Off;
+    static constexpr auto NextOffset = Offset+Length;
 
-    DelayLine() : DelayLine<0>(Length) {}
+    template<int O>
+    using WithOffset = DelayLine<L,O>;
+
+    constexpr DelayLine() {}
+
+    /* write value inside delay line */
+    template <class Ctxt, class In> void write(Ctxt c, const In &x) const
+    {
+        c.getBuffer().write(Offset, x);
+    }
+
+    /* read value at delay id */
+    template <class Ctxt> const auto &read(Ctxt c, int id) const
+    {
+        return c.getBuffer().read(Offset + id);
+    }
 
     /* read value at tail */
     template <class Ctxt> const auto &tail(Ctxt c) const
@@ -69,21 +97,32 @@ template <int L> class DelayLine : public DelayLine<0>
     }
 };
 
-template <int N, int L = 1> class CopyDelayLine
+template <int N, int L = 1, int Off=0> class CopyDelayLine
 {
     /* */
   public:
     static constexpr auto Length = L;
+    static constexpr auto Offset = Off;
+    static constexpr auto NextOffset = Offset;
+
+    template<int O>
+    using WithOffset = CopyDelayLine<N,L,O>;
 
     template <class Ctxt> void write(Ctxt c, const Signal<N> &x)
     {
-        for (int j = 0; j < Length - 1; ++j) mem_[j + 1] = mem_[j];
+        for (int j = Length-1; j > 0; --j) mem_[j] = mem_[j-1];
         mem_[0] = x;
     }
 
     template <class Ctxt> const Signal<N> &read(Ctxt c, int i) const
     {
         return mem_[i - 1];
+    }
+
+    template <class Ctxt, int Size> auto readContiguous(Ctxt c, int i) const
+    {
+        std::array<Signal<N>, Size> val = mem_+i;
+        return val;
     }
 
     template <class Ctxt> const Signal<N> &tail(Ctxt c) const
@@ -95,13 +134,50 @@ template <int N, int L = 1> class CopyDelayLine
     Signal<N> mem_[Length] = {0};
 };
 
-template <class DL, class DLi> class NestedDelayLine : public DL
+template <class DL, class DLi, int Off = 0> class NestedDelayLine : public DL::template WithOffset<Off>
 {
+    using Outer = typename DL::template WithOffset<Off>;
+    using Inner = typename DLi::template WithOffset<Outer::NextOffset>;
   public:
+
+    static constexpr auto Length = Outer::Length+Inner::Length;
+    static constexpr auto Offset = Off;
+    static constexpr auto NextOffset = Inner::NextOffset;
+
+    template<int O>
+    using WithOffset = NestedDelayLine<DL,DLi,O>;
+
     NestedDelayLine() = default;
-    NestedDelayLine(DL &&dl, DLi &&dli) : DL(dl), inner_(dli) {}
-    DLi inner_;
+    NestedDelayLine(Outer &&dl, Inner &&dli) : Outer(dl), inner_(dli) {}
+
+    Inner& getInner() { return inner_;}
+
+  private:
+    Inner inner_;
 };
+
+template <class DL, int Nm, int Off = 0> class ArrayDelayLine :
+    protected std::array<typename DL::template WithOffset<Off>, Nm>
+{
+    using Base = typename DL::template WithOffset<Off>;
+public:
+    static constexpr auto Length = DL::Length*Nm;
+    static constexpr auto Offset = Off;
+    static constexpr auto OneOffset = (Base::NextOffset-Offset);
+    static constexpr auto NextOffset = OneOffset*Nm;
+
+    template<int O>
+    using WithOffset = ArrayDelayLine<DL,Nm,O>;
+
+    template <class Ctxt>
+    auto& get(Ctxt& c, int i)
+    {
+        c.nextBufId(OneOffset*i);
+        return (*this)[i];
+    }
+};
+
+#define nextTo(delayline) decltype(delayline)::NextOffset
 
 /*
  * Taps: different classes that can read into a delay line with different
@@ -119,7 +195,27 @@ struct TapTail {
     }
 };
 
-template <int D = 1> struct TapFix {
+/* help function */
+template <class Ctxt, class DL, class T>
+void _fixread(Ctxt c, const DL &delayline, T& x, int i) {}
+template <class Ctxt, class DL, class T, int D, int...Ds>
+void _fixread(Ctxt c, const DL &delayline, T& x, int i)
+{
+    static_assert(D <= DL::Length,
+                  "tap delay length is bigger than delay line");
+    x[i] = delayline.read(c, D)[i];
+    _fixread<Ctxt, DL, T, Ds...>(c, delayline, x, ++i);
+}
+template <int D=1, int...Ds> struct TapFix : public TapFix<Ds...>{
+    template <class Ctxt, class DL>
+    auto read(Ctxt c, const DL &delayline) const
+    {
+        std::remove_const_t<std::remove_reference_t<decltype(delayline.read(c,0))>> x = {0};
+        _fixread<Ctxt, DL, decltype(x), D, Ds...>(c, delayline, x, 0);
+        return x;
+    }
+};
+template <int D> struct TapFix<D> {
     /* Tap that reads at a fix point (delay D) in the delay line */
 
     template <class Ctxt, class DL>

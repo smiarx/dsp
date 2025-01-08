@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cassert>
 
 namespace dsp
@@ -8,7 +7,15 @@ namespace dsp
 template <typename In> class Context
 {
   public:
-    Context(In *in) : in_(in) {}
+    Context(Context &) = default;
+    Context(In *in, int blockSize, int step = 1) :
+        blockSize_(blockSize), step_(step), in_(in)
+    {
+    }
+    Context(Context &ctxt, int step = 1) :
+        Context(ctxt), blockSize_(blockSize_ / step), step_(step)
+    {
+    }
 
     In &__restrict getIn() { return *in_; }
 
@@ -17,16 +24,15 @@ template <typename In> class Context
     void nextBlock() { next(blockSize_); }
 
     void setIn(In *in) { in_ = in; }
-    void setBlockSize(int blockSize) { blockSize_ = blockSize; }
     int getBlockSize() const { return blockSize_; }
-    constexpr int getIncr() const { return 1; }
+    int getStep() const { return step_; }
 
   protected:
     void nextIn(int incr) { in_ += incr; }
-    void nextBufId(int incr) {}
 
   private:
-    int blockSize_;
+    const int blockSize_;
+    const int step_{1};
     In *in_;
 };
 
@@ -64,7 +70,8 @@ template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
 }
 
 // macro to easily redefine
-#define processBlock(c, capt, func) _processBlock(capt(decltype(c) c) func, c)
-#define processBlock2(c1, c2, capt, func) \
-    _processBlock(capt(decltype(c1) c1, decltype(c2) c2) func, c1, c2)
+#define COMMA                 ,
+#define processBlock(c, func) _processBlock([&](decltype(c) c) func, c)
+#define processBlock2(c1, c2, func) \
+    _processBlock([&](decltype(c1) c1, decltype(c2) c2) func, c1, c2)
 } // namespace dsp

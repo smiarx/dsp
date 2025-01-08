@@ -7,78 +7,83 @@
 
 namespace dsp
 {
-template <int N, int NSoS> class Filter;
 
-template <int N> class FilterSoS
+template <int N, int NSoS = 1> class IIRFilter
 {
-    /* second order section */
-    template <int Ns, int NSoS> friend class Filter;
+    class SoS
+    {
+        /* second order section */
+        friend class IIRFilter;
 
-  public:
-    using DL = CopyDelayLine<N, 2>;
-    enum class SosPos {
-        First,
-        Rest,
+      public:
+        constexpr SoS() = default;
+        using DL = CopyDelayLine<N, 2>;
+        enum class SosPos {
+            First,
+            Rest,
+        };
+
+        template <class Ctxt, SosPos Pos = SosPos::First>
+        void process(Ctxt c, DL &delayline) const
+        {
+            auto &x = c.getIn();
+
+            /* read delayline */
+            auto s1 = TapFix<1>().read(c, delayline);
+            auto s2 = TapFix<2>().read(c, delayline);
+            decltype(s1) s0;
+
+            /* use direct form II */
+            for (int i = 0; i < N; ++i) {
+                float a1 = a[1][i];
+                float a2 = a[2][i];
+                float b0 = b[0][i];
+                float b1 = b[1][i];
+                float b2 = b[2][i];
+
+                s0[i] = x[i] - a1 * s1[i] - a2 * s2[i];
+
+                if (Pos == SosPos::First)
+                    x[i] = b0 * s0[i] + b1 * s1[i] + b2 * s2[i];
+                else
+                    x[i] = s0[i] + b1 * s1[i] + b2 * s2[i];
+            }
+            delayline.write(c, s0);
+        }
+
+      private:
+        Signal<N> b[3] = {0};
+        Signal<N> a[3] = {0};
     };
 
-    template <class Ctxt, SosPos Pos = SosPos::First>
-    void process(Ctxt c, DL &delayline) const
-    {
-        auto &x = c.getIn();
-
-        /* read delayline */
-        auto s1 = TapFix<1>().read(c, delayline);
-        auto s2 = TapFix<2>().read(c, delayline);
-        decltype(s1) s0;
-
-        /* use direct form II */
-        for (int i = 0; i < N; ++i) {
-            float a1 = a[1][i];
-            float a2 = a[2][i];
-            float b0 = b[0][i];
-            float b1 = b[1][i];
-            float b2 = b[2][i];
-
-            s0[i] = x[i] - a1 * s1[i] - a2 * s2[i];
-
-            if (Pos == SosPos::First)
-                x[i] = b0 * s0[i] + b1 * s1[i] + b2 * s2[i];
-            else
-                x[i] = s0[i] + b1 * s1[i] + b2 * s2[i];
-        }
-        delayline.write(c, s0);
-    }
-
-  private:
-    Signal<N> b[3];
-    Signal<N> a[3];
-};
-
-template <int N, int NSoS = 1> class Filter
-{
   public:
-    using DL = std::array<typename FilterSoS<N>::DL, NSoS>;
+    using DL = std::array<typename SoS::DL, NSoS>;
+
+    constexpr IIRFilter() = default;
+    constexpr IIRFilter(IIRFilter&) = default;
+    template<int NFreq>
+    static IIRFilter newButterworthLP(Signal<NFreq> freq) { IIRFilter f; f.butterworthLP(freq); return f;}
 
     template <int NFreq>
     void sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq);
-    template <int NFreq> void butterworthLP(Signal<NFreq> freq);
+    template <int NFreq> constexpr void butterworthLP(Signal<NFreq> freq);
 
     template <class Ctxt> void process(Ctxt c, DL &delayline) const
     {
         sos[0].process(c, delayline[0]);
         for (int j = 1; j < NSoS; ++j) {
-            sos[j].template process<Ctxt, FilterSoS<N>::SosPos::Rest>(
+            sos[j].template process<Ctxt, SoS::SosPos::Rest>(
                 c, delayline[j]);
         }
     }
 
   private:
-    FilterSoS<N> sos[NSoS];
+    SoS sos[NSoS];
 };
 
 template <int N, int NSoS>
 template <int NFreq>
-void Filter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq)
+void IIRFilter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq)
 {
     /* filter params */
     /* we define a filter designed with analog coefficients
@@ -164,7 +169,7 @@ void Filter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<NFreq> freq)
 
 template <int N, int NSoS>
 template <int NFreq>
-void Filter<N, NSoS>::butterworthLP(Signal<NFreq> freq)
+constexpr void IIRFilter<N, NSoS>::butterworthLP(Signal<NFreq> freq)
 {
     static_assert(NSoS == 1);
     static_assert(NFreq == N || NFreq == 1,

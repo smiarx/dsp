@@ -75,7 +75,7 @@ template <int N> class DownSampler
   private:
     int decimate_{1};
     int decimateId_{0};
-    Filter<N, sizeof(decimateFilterBA) / sizeof(decimateFilterBA[0])> lpFilter;
+    IIRFilter<N, sizeof(decimateFilterBA) / sizeof(decimateFilterBA[0])> lpFilter;
     typename decltype(lpFilter)::DL decimateFilterDL;
 };
 
