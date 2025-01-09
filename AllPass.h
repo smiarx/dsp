@@ -24,17 +24,19 @@ template <int N, class Tap = TapTail> class AllPass
     friend TapAllPass<N, Tap>;
 
   public:
-    constexpr AllPass(const Signal<N>& a) : a_(a) {}
+    constexpr AllPass(const Signal<N> &a) : a_(a) {}
 
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
         auto &x = c.getIn();
 
-        Signal<N> s0;
-        Signal<N> sN = tap_.read(c, delayline);
-        for (int i = 0; i < N; ++i) {
-            s0[i] = x[i] - a_[i] * sN[i];
-            x[i]  = a_[i] * s0[i] + sN[i];
+        auto sN = tap_.read(c, delayline);
+        decltype(sN) s0;
+        for (int k = 0; k < c.getStep(); ++k) {
+            for (int i = 0; i < N; ++i) {
+                s0[k][i] = x[k][i] - a_[i] * sN[k][i];
+                x[k][i]  = a_[i] * s0[k][i] + sN[k][i];
+            }
         }
         delayline.write(c, s0);
     }
@@ -68,8 +70,7 @@ template <int N, class Tap = TapFix<>> class TapAllPass : public TapNoInterp<N>
         }
     }
 
-    template <class Ctxt, class DL>
-    Signal<N> read(Ctxt c, DL &delayline) const
+    template <class Ctxt, class DL> Signal<N> read(Ctxt c, DL &delayline) const
     {
         auto x = TapNoInterp<N>::read(c, delayline);
         c.setIn(&x);

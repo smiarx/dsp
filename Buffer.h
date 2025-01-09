@@ -1,7 +1,5 @@
-#pragma once
-
 #include "Context.h"
-#include <array>
+#include <cstring>
 
 namespace dsp
 {
@@ -21,60 +19,96 @@ template <class In, std::size_t MinSize = 0> class Buffer
     }
 
   public:
-    static constexpr auto Size   = nextPow2(MinSize);
-    static constexpr auto Mask   = Size - 1;
+    /* let the Offset first element be free and copy and of buffer to it so that
+     * we can always retrieve Vec */
+    static constexpr auto Offset   = In::VectorSize;
+    static constexpr auto BaseSize = nextPow2(MinSize);
+    static constexpr auto Mask     = BaseSize - 1;
+    static constexpr auto Size     = BaseSize + Offset;
 
     using Type = In;
 
-    void setBuffer(In *buffer) { memset(buffer, 0, MinSize*sizeof(In)); buffer_ = buffer;}
+    void setBuffer(In *buffer)
+    {
+        memset(buffer, 0, MinSize * sizeof(In));
+        buffer_ = buffer;
+    }
     In *getBuffer() { return buffer_; }
 
-
-    void write(int i, const In &x) { buffer_[(bufId_ + i) & Mask] = x; }
-    const In &read(int i) const { return buffer_[(bufId_ + i) & Mask]; }
-
-    template<int S> std::array<In,S> readContigous(int i) const {
-        std::array<In,S> val;
-        auto* ptr = &buffer_[bufId_+i];
-        if(bufId_ + i + S < Size)
-        {
-            std::copy(ptr,ptr+S,val.begin());
+    void write(int i, const In &x) { buffer_[(bufId_ - i) & Mask] = x; }
+    template <bool Safe = true> void write(int i, const typename In::Vector &x)
+    {
+        const auto pos = (bufId_ - i) & Mask;
+        if constexpr (Safe) {
+            /* copy at the end of buffer for vector continuity */
+            if (pos == 0) {
+                buffer_[BaseSize].toVector() = x;
+            }
         }
-        else
-        {
-            auto dif = Size-bufId_;
-            std::copy(ptr,ptr+dif,val.begin());
-            ptr = buffer_;
-            std::copy(ptr,ptr+(S-dif),val.begin()+dif);
-        }
-        return val;
+        buffer_[pos].toVector() = x;
     }
+    void write(int i, const typename In::Scalar &x)
+    {
+        buffer_[(bufId_ - i) & Mask].toScalar() = x;
+    }
+    const In &read(int i) const { return buffer_[(bufId_ - i) & Mask]; }
 
-    void nextBufId(int incr) { bufId_ = (bufId_ - incr) & Mask; }
+    void nextBufId(int incr) { bufId_ = (bufId_ + incr) & Mask; }
+
+    void setLimits() { buffer_[BaseSize].toVector() = buffer_[0].toVector(); }
 
   private:
-    int bufId_{0};
+    bool isBufferOffset_{false};
+    int bufId_{Offset};
     In *buffer_;
 };
 
-template <class In, class Buffer> class BufferContext : public Context<In>
+template <class In, class Buffer, bool useVec = false>
+class BufferContext : public Context<In, useVec>
 {
+    using Parent = Context<In, useVec>;
+
   public:
-    BufferContext(In *in, Buffer &buffer) : Context<In>(in), buffer_(buffer) {}
-    BufferContext(BufferContext &ctxt, int step = 1) :
-        Context<In>(ctxt, step), buffer_(ctxt.buffer_)
+    BufferContext(In *in, int blockSize, const Buffer &buffer) :
+        Parent(in, blockSize), buffer_(buffer)
     {
+    }
+    BufferContext(const Parent &ctxt, const Buffer &buffer) :
+        Parent(ctxt), buffer_(buffer)
+    {
+    }
+
+    auto vec() const
+    {
+        return BufferContext<In, Buffer, true>(Context<In, useVec>::vec(),
+                                               buffer_);
     }
 
     Buffer &getBuffer() { return buffer_; }
-    void nextBufId(int incr) { buffer_.nextBufId(incr); }
 
-    void next(int incr = 1)
+    void next(int incr = Parent::VecSize)
     {
-        nextBufId(incr);
-        Context<In>::next(incr*Context<In>::getStep());
+        buffer_.nextBufId(incr);
+        Parent::next(incr);
     }
-    void nextBlock() { next(Context<In>::getBlockSize()); }
+
+    void nextBlock()
+    {
+        const auto blockSize = Parent::getBlockSize();
+        next(blockSize);
+    }
+
+    void bufferLimits() { buffer_.setLimits(); }
+
+    const auto &read(int i) const
+    {
+        auto &x = buffer_.read(i);
+        if constexpr (useVec) {
+            return x.toVector();
+        } else {
+            return x.toScalar();
+        }
+    }
 
     void save(Buffer &buffer) { buffer = buffer_; }
 

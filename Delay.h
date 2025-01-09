@@ -1,12 +1,16 @@
 #pragma once
 
-#include "Context.h"
 #include "Signal.h"
 #include <cassert>
-#include <type_traits>
 
 namespace dsp
 {
+
+static constexpr int nextAlignedOffset(int off)
+{
+    off += SIMDSIZE - 1;
+    return off - off % SIMDSIZE;
+}
 
 class BufferOffset
 {
@@ -36,11 +40,10 @@ template <> class DelayLine<>
      *      Length: maximum length of the delay line
      */
 
-    static constexpr int Length = 10000000;
+    static constexpr int Length     = 10000000;
     static constexpr int NextOffset = 0;
 
-    template<int>
-    using WithOffset = DelayLine;
+    template <int> using WithOffset = DelayLine;
 
     DelayLine(int length) : offset_(bufferOffset.add(length)) {}
 
@@ -56,11 +59,6 @@ template <> class DelayLine<>
         return c.getBuffer().read(offset_ + id);
     }
 
-    template <class Ctxt, int Size> auto readContiguous(Ctxt c, int id) const
-    {
-        return c.getBuffer().template readContiguous<Size>(offset_ + id);
-    }
-
   private:
     const int offset_;
 };
@@ -68,13 +66,13 @@ template <> class DelayLine<>
 /* delayline with compile time length */
 template <int L, int Off> class DelayLine
 {
+    /* find the next vector aligned offset */
   public:
-    static constexpr auto Length = L;
-    static constexpr auto Offset = Off;
-    static constexpr auto NextOffset = Offset+Length;
+    static constexpr auto Length     = L;
+    static constexpr auto Offset     = Off;
+    static constexpr auto NextOffset = Offset + nextAlignedOffset(Length);
 
-    template<int O>
-    using WithOffset = DelayLine<L,O>;
+    template <int O> using WithOffset = DelayLine<L, O>;
 
     constexpr DelayLine() {}
 
@@ -87,7 +85,7 @@ template <int L, int Off> class DelayLine
     /* read value at delay id */
     template <class Ctxt> const auto &read(Ctxt c, int id) const
     {
-        return c.getBuffer().read(Offset + id);
+        return c.read(Offset + id);
     }
 
     /* read value at tail */
@@ -97,82 +95,91 @@ template <int L, int Off> class DelayLine
     }
 };
 
-template <int N, int L = 1, int Off=0> class CopyDelayLine
+template <int N, int L = 1, int Off = 0> class CopyDelayLine
 {
     /* */
   public:
-    static constexpr auto Length = L;
-    static constexpr auto Offset = Off;
+    static constexpr auto Length     = L;
+    static constexpr auto Offset     = Off;
     static constexpr auto NextOffset = Offset;
 
-    template<int O>
-    using WithOffset = CopyDelayLine<N,L,O>;
+    template <int O> using WithOffset = CopyDelayLine<N, L, O>;
 
-    template <class Ctxt> void write(Ctxt c, const Signal<N> &x)
+    template <class Ctxt> void write(Ctxt c, const typename Ctxt::Type &x)
     {
-        for (int j = Length-1; j > 0; --j) mem_[j] = mem_[j-1];
-        mem_[0] = x;
+        constexpr auto vecSize = Ctxt::VecSize;
+        using Type             = typename Ctxt::Type;
+        int lastNonVector      = Length % vecSize;
+
+        /* first shift non vector aligned float */
+        for (int j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + vecSize];
+
+        /* shift rest */
+        for (int j = lastNonVector; j < Length - 1; j += vecSize)
+            mem_[j].template to<Type>() = mem_[j + vecSize].template to<Type>();
+
+        /* copy last value */
+        mem_[Length - vecSize].template to<Type>() = x;
     }
 
-    template <class Ctxt> const Signal<N> &read(Ctxt c, int i) const
+    template <class Ctxt> const auto &read(Ctxt c, int i) const
     {
-        return mem_[i - 1];
+        const auto &x = mem_[Length - i];
+        if constexpr (Ctxt::isUsingVector) {
+            return x.toVector();
+        } else {
+            return x.toScalar();
+        }
     }
 
-    template <class Ctxt, int Size> auto readContiguous(Ctxt c, int i) const
+    template <class Ctxt> const auto &tail(Ctxt c) const
     {
-        std::array<Signal<N>, Size> val = mem_+i;
-        return val;
-    }
-
-    template <class Ctxt> const Signal<N> &tail(Ctxt c) const
-    {
-        return mem_[Length - 1];
+        return read(c, Length);
     }
 
   private:
     Signal<N> mem_[Length] = {0};
 };
 
-template <class DL, class DLi, int Off = 0> class NestedDelayLine : public DL::template WithOffset<Off>
+template <class DL, class DLi, int Off = 0>
+class NestedDelayLine : public DL::template WithOffset<Off>
 {
     using Outer = typename DL::template WithOffset<Off>;
     using Inner = typename DLi::template WithOffset<Outer::NextOffset>;
-  public:
 
-    static constexpr auto Length = Outer::Length+Inner::Length;
-    static constexpr auto Offset = Off;
+  public:
+    static constexpr auto Length     = Outer::Length + Inner::Length;
+    static constexpr auto Offset     = Off;
     static constexpr auto NextOffset = Inner::NextOffset;
 
-    template<int O>
-    using WithOffset = NestedDelayLine<DL,DLi,O>;
+    template <int O> using WithOffset = NestedDelayLine<DL, DLi, O>;
 
     NestedDelayLine() = default;
     NestedDelayLine(Outer &&dl, Inner &&dli) : Outer(dl), inner_(dli) {}
 
-    Inner& getInner() { return inner_;}
+    Inner &getInner() { return inner_; }
 
   private:
     Inner inner_;
 };
 
-template <class DL, int Nm, int Off = 0> class ArrayDelayLine :
-    protected std::array<typename DL::template WithOffset<Off>, Nm>
+template <class DL, int Nm, int Off = 0>
+class ArrayDelayLine
+    : protected std::array<typename DL::template WithOffset<Off>, Nm>
 {
     using Base = typename DL::template WithOffset<Off>;
-public:
-    static constexpr auto Length = DL::Length*Nm;
-    static constexpr auto Offset = Off;
-    static constexpr auto OneOffset = (Base::NextOffset-Offset);
-    static constexpr auto NextOffset = OneOffset*Nm;
 
-    template<int O>
-    using WithOffset = ArrayDelayLine<DL,Nm,O>;
+  public:
+    static constexpr auto Length     = DL::Length * Nm;
+    static constexpr auto Offset     = Off;
+    static constexpr auto OneOffset  = (Base::NextOffset - Offset);
+    static constexpr auto NextOffset = OneOffset * Nm;
 
-    template <class Ctxt>
-    auto& get(Ctxt& c, int i)
+    template <int O> using WithOffset = ArrayDelayLine<DL, Nm, O>;
+
+    template <class Ctxt> auto &get(Ctxt &c, int i)
     {
-        c.nextBufId(OneOffset*i);
+        c.nextBufId(OneOffset * i);
         return (*this)[i];
     }
 };
@@ -197,20 +204,22 @@ struct TapTail {
 
 /* help function */
 template <class Ctxt, class DL, class T>
-void _fixread(Ctxt c, const DL &delayline, T& x, int i) {}
-template <class Ctxt, class DL, class T, int D, int...Ds>
-void _fixread(Ctxt c, const DL &delayline, T& x, int i)
+void _fixread(Ctxt c, const DL &delayline, T &x, int i)
 {
-    static_assert(D <= DL::Length,
+}
+template <class Ctxt, class DL, class T, int D, int... Ds>
+void _fixread(Ctxt c, const DL &delayline, T &x, int i)
+{
+    static_assert(D <= DL::Length - Ctxt::VecSize + 1,
                   "tap delay length is bigger than delay line");
-    x[i] = delayline.read(c, D)[i];
+    auto &val = delayline.read(c, D);
+    for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
     _fixread<Ctxt, DL, T, Ds...>(c, delayline, x, ++i);
 }
-template <int D=1, int...Ds> struct TapFix : public TapFix<Ds...>{
-    template <class Ctxt, class DL>
-    auto read(Ctxt c, const DL &delayline) const
+template <int D = 1, int... Ds> struct TapFix : public TapFix<Ds...> {
+    template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
     {
-        std::remove_const_t<std::remove_reference_t<decltype(delayline.read(c,0))>> x = {0};
+        typename Ctxt::Type x = {0};
         _fixread<Ctxt, DL, decltype(x), D, Ds...>(c, delayline, x, 0);
         return x;
     }
@@ -221,7 +230,7 @@ template <int D> struct TapFix<D> {
     template <class Ctxt, class DL>
     const auto &read(Ctxt c, const DL &delayline) const
     {
-        static_assert(D <= DL::Length,
+        static_assert(D <= DL::Length - Ctxt::VecSize + 1,
                       "tap delay length is bigger than delay line");
         return delayline.read(c, D);
     }
@@ -233,13 +242,13 @@ template <int N> class TapNoInterp
     void setDelay(int i, int id) { id_[i] = id; }
     void setDelay(iSignal<N> id) { id_ = id; }
 
-    template <class Ctxt, class DL>
-    Signal<N> read(Ctxt c, const DL &delayline) const
+    template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
     {
-        Signal<N> x;
+        typename Ctxt::Type x;
         for (int i = 0; i < N; i++) {
-            assert(id_[i] <= DL::Length);
-            x[i] = delayline.read(c, id_[i])[i];
+            assert(id_[i] <= DL::Length - Ctxt::VecSize + 1);
+            auto &val = delayline.read(c, id_[i]);
+            for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
         }
         return x;
     }
@@ -258,23 +267,36 @@ template <int N> class TapLin : public TapNoInterp<N>
         auto id  = static_cast<int>(d);
         float fd = d - static_cast<float>(id);
         fd_[i]   = fd;
-        setDelay(id);
+        TapNoInterp<N>::setDelay(id);
+    };
+    void setDelay(Signal<N> d)
+    {
+        iSignal<N> id;
+        for (int i = 0; i < N; ++i) {
+            id[i]  = static_cast<int>(d[i]);
+            fd_[i] = d[i] - static_cast<float>(id[i]);
+        }
+        TapNoInterp<N>::setDelay(id);
     };
 
-    template <class Ctxt, class DL> Signal<N> read(Ctxt c, DL &delayline) const
+    template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        Signal<N> x0;
-        Signal<N> x1;
-
+        typename Ctxt::Type x0;
+        typename Ctxt::Type x1;
         auto id = TapNoInterp<N>::id_;
 
-        for (int i = 0; i < N; ++i) {
-            assert(id[i] < DL::Length);
-            x0[i] = delayline.read(c, id[i])[i];
-            x1[i] = delayline.read(c, id[i] + 1)[i];
+        for (int i = 0; i < N; i++) {
+            assert(id[i] <= DL::Length - Ctxt::VecSize);
+            auto &val0 = delayline.read(c, id[i]);
+            for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
+            auto &val1 = delayline.read(c, id[i] + 1);
+            for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
         }
-        for (int i = 0; i < N; ++i) {
-            x0[i] += fd_[i] * (x1[i] - x0[i]);
+
+        for (auto k = 0; k < Ctxt::VecSize; ++k) {
+            for (int i = 0; i < N; ++i) {
+                x0[k][i] += fd_[i] * (x1[k][i] - x0[k][i]);
+            }
         }
         return x0;
     }

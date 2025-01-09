@@ -1,38 +1,46 @@
 #pragma once
 
 #include <cassert>
+#include <tuple>
 
 namespace dsp
 {
-template <typename In> class Context
+template <typename In, bool useVector = false> class Context
 {
   public:
-    Context(Context &) = default;
-    Context(In *in, int blockSize, int step = 1) :
-        blockSize_(blockSize), step_(step), in_(in)
-    {
-    }
-    Context(Context &ctxt, int step = 1) :
-        Context(ctxt), blockSize_(blockSize_ / step), step_(step)
-    {
-    }
+    Context(In *in, int blockSize) : blockSize_(blockSize), in_(in) {}
+    Context(const Context &ctxt) = default;
 
-    In &__restrict getIn() { return *in_; }
+    static constexpr auto VecSize       = useVector ? In::VectorSize : 1;
+    static constexpr auto isUsingVector = useVector;
+    using Type = typename std::conditional<useVector, typename In::Vector,
+                                           typename In::Scalar>::type;
 
-    void next(int incr = 1) { nextIn(incr); }
+    auto vec() const { return Context<In, true>(in_, blockSize_); }
+    int vecSize() const { return VecSize; }
+    int getStep() const { return VecSize; }
+
+    auto &__restrict getIn()
+    {
+        if constexpr (useVector) {
+            return in_->toVector();
+        } else {
+            return in_->toScalar();
+        }
+    }
+    void setIn(typename In::Scalar &x) { in_ = &x[0]; }
+    void setIn(typename In::Vector &x) { in_ = &x[0]; }
+
+    void next(int incr = VecSize) { nextIn(incr); }
 
     void nextBlock() { next(blockSize_); }
-
-    void setIn(In *in) { in_ = in; }
     int getBlockSize() const { return blockSize_; }
-    int getStep() const { return step_; }
 
   protected:
     void nextIn(int incr) { in_ += incr; }
 
   private:
     const int blockSize_;
-    const int step_{1};
     In *in_;
 };
 
@@ -68,6 +76,12 @@ template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
             ...);
     }
 }
+
+#define contextFor(ctxt)                                          \
+    for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \
+         n += c.getStep(), c.next())
+
+#define vecFor(ctxt) for (auto i = 0; i < ctxt.getStep(); ++i)
 
 // macro to easily redefine
 #define COMMA                 ,
