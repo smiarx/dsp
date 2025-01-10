@@ -19,6 +19,8 @@ template <typename T, int N>
 class alignas(N * sizeof(T)) _Signal : public std::array<T, N>
 {
     /* parallel Signal */
+    static constexpr auto Size = N;
+
   public:
     static constexpr auto VectorSize = SIMDSIZE / N;
 

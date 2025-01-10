@@ -83,6 +83,11 @@ class BufferContext : public Context<In, useVec>
         return BufferContext<In, Buffer, true>(Context<In, useVec>::vec(),
                                                buffer_);
     }
+    auto scalar() const
+    {
+        return BufferContext<In, Buffer, false>(Context<In, useVec>::scalar(),
+                                                buffer_);
+    }
 
     Buffer &getBuffer() { return buffer_; }
 

@@ -13,10 +13,13 @@ template <typename In, bool useVector = false> class Context
 
     static constexpr auto VecSize       = useVector ? In::VectorSize : 1;
     static constexpr auto isUsingVector = useVector;
+    using BaseType                      = In;
     using Type = typename std::conditional<useVector, typename In::Vector,
                                            typename In::Scalar>::type;
 
     auto vec() const { return Context<In, true>(in_, blockSize_); }
+    auto scalar() const { return Context<In, false>(in_, blockSize_); }
+
     int vecSize() const { return VecSize; }
     int getStep() const { return VecSize; }
 
@@ -30,6 +33,37 @@ template <typename In, bool useVector = false> class Context
     }
     void setIn(typename In::Scalar &x) { in_ = &x[0]; }
     void setIn(typename In::Vector &x) { in_ = &x[0]; }
+
+    template <class Ctxts, int Nm>
+    void interleave(std::array<Ctxts, Nm> &&ctxts)
+    {
+        static_assert(BaseType::Size == Ctxts::BaseType::Size * Nm);
+        static_assert(Ctxts::BaseType::Size == 1);
+        static_assert(isUsingVector == Ctxts::isUsingVector);
+
+        for (int k = 0; k < Ctxts::VecSize; ++k) {
+            for (int i = 0; i < Nm; ++i) {
+                getIn()[k][i] = ctxts[i].getIn()[k];
+            }
+            next();
+        }
+        next(-VecSize);
+    }
+    template <class Ctxts, int Nm>
+    void desinterleave(std::array<Ctxts, Nm> &&ctxts)
+    {
+        static_assert(BaseType::Size == Ctxts::BaseType::Size * Nm);
+        static_assert(Ctxts::BaseType::Size == 1);
+        static_assert(isUsingVector == Ctxts::isUsingVector);
+
+        for (int k = 0; k < Ctxts::VecSize; ++k) {
+            for (int i = 0; i < Nm; ++i) {
+                ctxts[i].getIn()[k] = getIn()[k][i];
+            }
+            next();
+        }
+        next(-VecSize);
+    }
 
     void next(int incr = VecSize) { nextIn(incr); }
 
