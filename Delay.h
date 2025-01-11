@@ -1,16 +1,11 @@
 #pragma once
 
 #include "Signal.h"
+#include "Utils.h"
 #include <cassert>
 
 namespace dsp
 {
-
-static constexpr int nextAlignedOffset(int off)
-{
-    off += SIMDSIZE - 1;
-    return off - off % SIMDSIZE;
-}
 
 class BufferOffset
 {
@@ -68,9 +63,10 @@ template <int L, int Off> class DelayLine
 {
     /* find the next vector aligned offset */
   public:
-    static constexpr auto Length     = L;
-    static constexpr auto Offset     = Off;
-    static constexpr auto NextOffset = Offset + nextAlignedOffset(Length);
+    static constexpr auto Length = L;
+    static constexpr auto Offset = Off;
+    static constexpr auto NextOffset =
+        Offset + nextAlignedOffset(Length, SIMDSIZE);
 
     template <int O> using WithOffset = DelayLine<L, O>;
 
