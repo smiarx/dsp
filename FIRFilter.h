@@ -102,7 +102,7 @@ template <int N, int Order, int M> class FIRDecimate
             for (int i = 0; i < N; ++i) {
                 auto mid = NCoeff / 2.f;
                 b_[PaddedLength - Pad - n][i] =
-                    sinc((n - mid) / (mid)) * sinc((n - mid) / M) / M;
+                    sinc((n - mid) / (mid)) * sinc((n - mid) / M * 0.92) / M;
             }
         }
     }
@@ -156,16 +156,29 @@ template <int N, int Order, int M> class FIRDecimate
         decimateId_ = decimateId;
     }
 
-    // private:
+  private:
     Signal<N> b_[PaddedLength] = {0};
     int decimateId_            = 0;
 };
 
-template <int N, int Order, int M> class FIRInterpolate
+/*
+    x0 |x1 x2 x3 x4| x5 x6 x7 x8 |x9
+    0  |0  0  b6 b3| b0 0  0  0  |
+    0  |0  0  b7 b4| b1 0  0  0  |
+    0  |0  0  b8 b5| b2 0  0  0  |
+    0  |0  0  0  b6| b3 0  0  0  |
+    0  |0  0  0  b7| b4 0  0  0  |
+    0  |0  0  0  b8| b5 0  0  0  |
+    0  |0  0  0  0 | b6 0  0  0  |
+    0  |0  0  0  0 | b7 0  0  0  |
+
+
+ */
+template <int N, int Order, int L> class FIRInterpolate
 {
   public:
     static constexpr auto Pad    = Signal<N>::VectorSize;
-    static constexpr auto NCoeff = (Order + 1) * M;
+    static constexpr auto NCoeff = (Order + 1);
 
     template <int N_ = N>
     class DL : public CopyDelayLine<N_, nextAlignedOffset(NCoeff - 1, Pad)>
@@ -176,67 +189,68 @@ template <int N, int Order, int M> class FIRInterpolate
 
     FIRInterpolate()
     {
-        for (int n = 0; n < NCoeff; ++n) {
-            for (int i = 0; i < N; ++i) {
-                auto mid = NCoeff / 2.f;
-                b_[PaddedLength - Pad - n][i] =
-                    sinc((n - mid) / (mid)) * sinc((n - mid) / M) / M;
+        for (int l = 0; l < L; ++l) {
+            for (int n = 0; n < NCoeff; ++n) {
+                for (int i = 0; i < N; ++i) {
+                    auto mid = NCoeff * L / 2.f;
+                    auto k   = l + n * L;
+                    b_[l][PaddedLength - Pad - n][i] =
+                        sinc((k - mid) / (mid)) * sinc((k - mid) / L);
+                }
             }
         }
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
-    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut cout,
-                                                 DL &delayline) // const
+    __attribute__((always_inline)) void interpolate(CtxtIn cin, CtxtOut cout,
+                                                    DL &delayline) // const
     {
+        static_assert(CtxtIn::VecSize == 1);
         static_assert(CtxtOut::VecSize == 1);
-        auto decimateId = decimateId_;
+        auto interpolateId = interpolateId_;
 
-        contextFor(cin)
+        contextFor(cout)
         {
-            auto x = c.getIn();
+            auto x = cin.getIn();
 
-            auto xOffset = decimateId;
-            while (xOffset < CtxtIn::VecSize) {
-                typename CtxtIn::Type sum = {0};
+            typename CtxtIn::Type sum = {0};
 
-                for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
-                     delay += CtxtIn::VecSize) {
-                    auto &x0 = delay == 0 ? x : delayline.read(c, delay);
-                    const auto &b =
-                        b_[PaddedLength - Pad - delay - xOffset].toVector();
+            for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+                 delay += CtxtIn::VecSize) {
+                auto &x0 = delay == 0 ? x : delayline.read(c, delay);
+                const auto &b =
+                    b_[interpolateId][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
-                    for (int k = 0; k < x0.size(); ++k) {
-                        for (int i = 0; i < x0[0].size(); ++i) {
-                            sum[k][i] += x0[k][i] * b[k][i % N];
-                        }
+                for (int k = 0; k < x0.size(); ++k) {
+                    for (int i = 0; i < x0[0].size(); ++i) {
+                        sum[k][i] += x0[k][i] * b[k][i % N];
                     }
                 }
-
-                auto &xout = cout.getIn();
-#pragma omp simd
-                for (int i = 0; i < sum[0].size(); ++i) {
-                    xout[i] = 0;
-                    for (int k = 0; k < sum.size(); ++k) {
-                        xout[0][i] += sum[k][i];
-                    }
-                }
-
-                xOffset += M;
-                cout.next();
             }
 
-            decimateId = (decimateId + CtxtIn::VecSize) % M;
-            delayline.write(c, x);
-        }
+            auto &xout = c.getIn();
+#pragma omp simd
+            for (int i = 0; i < sum[0].size(); ++i) {
+                xout[i] = 0;
+                for (int k = 0; k < sum.size(); ++k) {
+                    xout[0][i] += sum[k][i];
+                }
+            }
 
-        decimateId_ = decimateId;
+            ++interpolateId;
+            if (interpolateId == L) {
+                delayline.write(cin, x);
+                cin.next();
+                interpolateId = 0;
+            }
+        }
+        interpolateId_ = interpolateId;
     }
 
-    // private:
-    Signal<N> b_[PaddedLength] = {0};
-    int decimateId_            = 0;
+  private:
+    Signal<N> b_[L][PaddedLength] = {0};
+    int interpolateId_            = 0;
 };
 
 } // namespace dsp
