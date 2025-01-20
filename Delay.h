@@ -120,6 +120,7 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
 
     template <class Ctxt> const auto &read(Ctxt c, int i) const
     {
+        assert(i <= Length);
         const auto &x = mem_[Length - i];
         if constexpr (Ctxt::isUsingVector) {
             return x.toVector();

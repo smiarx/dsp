@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Context.h"
 #include "Delay.h"
+#include "FastMath.h"
 #include "Signal.h"
 #include <cmath>
 
@@ -19,6 +21,7 @@
 
 namespace dsp
 {
+
 template <int N, int Order> class FIRFilter
 {
   public:
@@ -43,8 +46,7 @@ template <int N, int Order> class FIRFilter
     }
 
     template <class Ctxt, class DL>
-        __attribute__((always_inline))
-    void process(Ctxt c, DL &delayline) const
+    __attribute__((always_inline)) void process(Ctxt c, DL &delayline) const
     {
         auto &x = c.getIn();
 
@@ -72,8 +74,8 @@ template <int N, int Order> class FIRFilter
                 x[n][i] = 0;
                 for (int k = 0; k < x.size(); ++k) {
                     x[n][i] += sums[n][k][i];
+                }
             }
-        }
         }
     }
 
@@ -81,129 +83,160 @@ template <int N, int Order> class FIRFilter
     Signal<N> b_[PaddedLength] = {0};
 };
 
-// enum class PolyLength {
-//     Fixed,
-//     Var,
-// };
-//
-// template <int Order, int M, PolyLength FixedVar = PolyLength::Fixed>
-// class FIRPolyphase
-//{
-//   public:
-//     template <class Ctxt> class MultiRateContext : public Ctxt
-//     {
-//         friend FIRPolyphase;
-//
-//         MultiRateContext(Ctxt c, FIRPolyphase &ply) :
-//             Ctxt(c), ply_(ply), multiRateId_(ply_.id)
-//         {
-//         }
-//
-//         void next(int incr = 1)
-//         {
-//             if (multiRateId_ == ply_.getFactor()) {
-//                 auto incrNewRate = multiRateId_ / getFactor();
-//                 Ctxt::next(incrNewRate);
-//                 Ctxt::nextIn(incr - incrNewRate);
-//
-//                 multiRateId_ %= ply_.getFactor();
-//             } else {
-//                 Ctxt::nextIn(incr);
-//             }
-//         }
-//
-//         int getMultiRateId() const { return multiRateId_; }
-//
-//         void save() { ply_.id_ = multiRateId_; }
-//
-//       private:
-//         const FIRPolyphase &ply_;
-//         int multiRateId_;
-//     };
-//
-//     template <class Ctxt>
-//     MultiRateContext<Ctxt> getMultiRateContext(Ctxt c) const
-//     {
-//         return MultiRateContext(c);
-//     }
-//
-//     template <class Ctxt>
-//     Ctxt getContext(Ctxt c) { return Ctxt(c, getFactor()); }
-//
-//     template <int N> struct delayline {
-//         Signal<N> accumulator_;
-//         std::array<typename FIRFilter<Order>::template delayline<N>, M>
-//         components_;
-//     };
-//
-//     /* construct polyphase filter */
-//     FIRPolyphase(int factor, float cutoff = 1.f)
-//     {
-//         int N = factor*Order;
-//         for(int m = 0; m < M; ++m)
-//         {
-//             Signal<Order> b;
-//             for(int k = 0; k < Order; ++k)
-//             {
-//                 int n = m+k*M;
-//                 auto x = n - N/2.f;
-//                 auto xpi = (x * M_PIf)/cutoff;
-//                 b[k] = sin(xpi/factor)/xpi;
-//             }
-//             polyphase_[m] = FIRFilter(b);
-//         }
-//
-//     }
-//
-//     int getFactor() const
-//     {
-//         if constexpr (FixedVar == PolyLength::Fixed) return M;
-//         else
-//             factor_;
-//     }
-//
-//     template <class Ctxt, int N> void decimate(Ctxt c, delayline<N>
-//     &delayline)
-//     {
-//         const auto id   = (getFactor() - c.getMultiRateId()) % getFactor();
-//         auto &component = delayline.components_[id];
-//         polyphase_[id].process(c, component[id]);
-//
-//         auto &x = c.getIn();
-//         delayline.accumulator_ += x;
-//
-//         if (id == 0) {
-//             x                = delayline.accumulator_;
-//             delayline.accumulator_ = {0};
-//         } else {
-//             x = {0};
-//         }
-//     }
-//
-//     template <class Ctxt, int N> void interpolate(Ctxt c, delayline<N>
-//     &delayline)
-//     {
-//         auto id = delayline.id_;
-//         auto &x = c.getIn();
-//
-//         if (id == 0) {
-//             delayline.accumulator_ = x;
-//         } else {
-//             x = delayline.accumulator_;
-//         }
-//         auto &component = delayline.components_[id];
-//         polyphase_[id].process(c, component[id]);
-//
-//         ++delayline.id_;
-//         if (delayline.id_ == getFactor()) {
-//             delayline.id_ = 0;
-//         }
-//     }
-//
-//   private:
-//     int id_{0};
-//     std::enable_if_t<FixedVar == PolyLength::Var, int> factor_{M};
-//     std::array<FIRFilter<Order>, M> polyphase_;
-// };
+template <int N, int Order, int M> class FIRDecimate
+{
+  public:
+    static constexpr auto Pad    = Signal<N>::VectorSize;
+    static constexpr auto NCoeff = (Order + 1) * M;
+
+    template <int Offset = 0>
+    class DL : public DelayLine<nextAlignedOffset(NCoeff - 1, Pad), Offset>
+    {
+    };
+
+    static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
+
+    FIRDecimate()
+    {
+        for (int n = 0; n < NCoeff; ++n) {
+            for (int i = 0; i < N; ++i) {
+                auto mid = NCoeff / 2.f;
+                b_[PaddedLength - Pad - n][i] =
+                    sinc((n - mid) / (mid)) * sinc((n - mid) / M) / M;
+            }
+        }
+    }
+
+    template <class CtxtIn, class CtxtOut, class DL>
+    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut cout,
+                                                 DL &delayline) // const
+    {
+        static_assert(CtxtOut::VecSize == 1);
+        auto decimateId = decimateId_;
+
+        contextFor(cin)
+        {
+            auto x = c.getIn();
+
+            auto xOffset = decimateId;
+            while (xOffset < CtxtIn::VecSize) {
+                typename CtxtIn::Type sum = {0};
+
+                for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+                     delay += CtxtIn::VecSize) {
+                    auto &x0 = delay == 0 ? x : delayline.read(c, delay);
+                    const auto &b =
+                        b_[PaddedLength - Pad - delay - xOffset].toVector();
+
+#pragma omp simd
+                    for (int k = 0; k < x0.size(); ++k) {
+                        for (int i = 0; i < x0[0].size(); ++i) {
+                            sum[k][i] += x0[k][i] * b[k][i % N];
+                        }
+                    }
+                }
+
+                auto &xout = cout.getIn();
+#pragma omp simd
+                for (int i = 0; i < sum[0].size(); ++i) {
+                    xout[i] = 0;
+                    for (int k = 0; k < sum.size(); ++k) {
+                        xout[0][i] += sum[k][i];
+                    }
+                }
+
+                xOffset += M;
+                cout.next();
+            }
+
+            decimateId = (decimateId + CtxtIn::VecSize) % M;
+            delayline.write(c, x);
+        }
+
+        decimateId_ = decimateId;
+    }
+
+    // private:
+    Signal<N> b_[PaddedLength] = {0};
+    int decimateId_            = 0;
+};
+
+template <int N, int Order, int M> class FIRInterpolate
+{
+  public:
+    static constexpr auto Pad    = Signal<N>::VectorSize;
+    static constexpr auto NCoeff = (Order + 1) * M;
+
+    template <int N_ = N>
+    class DL : public CopyDelayLine<N_, nextAlignedOffset(NCoeff - 1, Pad)>
+    {
+    };
+
+    static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
+
+    FIRInterpolate()
+    {
+        for (int n = 0; n < NCoeff; ++n) {
+            for (int i = 0; i < N; ++i) {
+                auto mid = NCoeff / 2.f;
+                b_[PaddedLength - Pad - n][i] =
+                    sinc((n - mid) / (mid)) * sinc((n - mid) / M) / M;
+            }
+        }
+    }
+
+    template <class CtxtIn, class CtxtOut, class DL>
+    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut cout,
+                                                 DL &delayline) // const
+    {
+        static_assert(CtxtOut::VecSize == 1);
+        auto decimateId = decimateId_;
+
+        contextFor(cin)
+        {
+            auto x = c.getIn();
+
+            auto xOffset = decimateId;
+            while (xOffset < CtxtIn::VecSize) {
+                typename CtxtIn::Type sum = {0};
+
+                for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+                     delay += CtxtIn::VecSize) {
+                    auto &x0 = delay == 0 ? x : delayline.read(c, delay);
+                    const auto &b =
+                        b_[PaddedLength - Pad - delay - xOffset].toVector();
+
+#pragma omp simd
+                    for (int k = 0; k < x0.size(); ++k) {
+                        for (int i = 0; i < x0[0].size(); ++i) {
+                            sum[k][i] += x0[k][i] * b[k][i % N];
+                        }
+                    }
+                }
+
+                auto &xout = cout.getIn();
+#pragma omp simd
+                for (int i = 0; i < sum[0].size(); ++i) {
+                    xout[i] = 0;
+                    for (int k = 0; k < sum.size(); ++k) {
+                        xout[0][i] += sum[k][i];
+                    }
+                }
+
+                xOffset += M;
+                cout.next();
+            }
+
+            decimateId = (decimateId + CtxtIn::VecSize) % M;
+            delayline.write(c, x);
+        }
+
+        decimateId_ = decimateId;
+    }
+
+    // private:
+    Signal<N> b_[PaddedLength] = {0};
+    int decimateId_            = 0;
+};
 
 } // namespace dsp
