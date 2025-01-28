@@ -2,6 +2,7 @@
 
 #include "Delay.h"
 #include "Signal.h"
+#include <cmath>
 
 namespace dsp
 {
@@ -92,5 +93,61 @@ class TapAllPass : public TapOut
 
   private:
     AllPass<N, TapIn> allpass_;
+};
+
+template <int N> class AllPass2
+{
+    /* 2nd order allpass */
+
+  public:
+    class DL : public CopyDelayLine<N, 2>
+    {
+    };
+
+    void setPole(Signal<N> &&R, Signal<N> &&freq)
+    {
+        auto &a1 = a_[1];
+        auto &a2 = a_[0];
+        for (int i = 0; i < N; ++i) {
+            a2[i] = R[i] * R[i];
+            a1[i] = -2 * R[i] * cos(M_PIf * freq[i]);
+        }
+    }
+
+    template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
+    {
+        const auto &a1 = a_[1];
+        const auto &a2 = a_[0];
+
+        static_assert(Ctxt::VecSize == 1);
+        auto &x  = c.getIn();
+        auto &sN = delayline.read(c, 2)[0].toVector();
+        typename Ctxt::Type s0;
+        auto &s1 = sN[1];
+        auto &s2 = sN[0];
+
+        typename Ctxt::BaseType sNa[2];
+
+#pragma omp simd
+        for (int k = 0; k < 2; ++k) {
+            for (int i = 0; i < x[0].size(); ++i) {
+                sNa[k][i] = sN[k][i] * a_[k][i];
+            }
+        }
+
+#pragma omp simd
+        for (int i = 0; i < x[0].size(); ++i) {
+            s0[0][i] = x[0][i] - sNa[1][i] - sNa[0][i];
+            x[0][i]  = a2[i] * s0[0][i] + sNa[1][i] + s2[i];
+        }
+        // for (int i = 0; i < x[0].size(); ++i) {
+        //     s0[0][i] = x[0][i] - a1[i]*s1[i] - a2[i]*s2[i];
+        //     x[0][i]  = a2[i] * s0[0][i] + a1[i]*s1[i]  + s2[i];
+        // }
+        delayline.write(c, s0);
+    }
+
+  private:
+    Signal<N> a_[2];
 };
 } // namespace dsp
