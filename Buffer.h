@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Context.h"
 #include <cstring>
 
@@ -27,6 +29,8 @@ template <class In, std::size_t MinSize = 0> class Buffer
     static constexpr auto Size     = BaseSize + Offset;
 
     using Type = In;
+
+    static constexpr auto getMinSize() { return MinSize; }
 
     void setBuffer(In *buffer)
     {

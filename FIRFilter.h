@@ -101,18 +101,21 @@ template <int N, int Order, int M> class FIRDecimate
         for (int n = 0; n < NCoeff; ++n) {
             for (int i = 0; i < N; ++i) {
                 auto mid = NCoeff / 2.f;
+                auto freq = 1.f/(M);
                 b_[PaddedLength - Pad - n][i] =
-                    sinc((n - mid) / (mid)) * sinc((n - mid) / M * 0.92) / M;
+                    sinc((n - mid) / (mid)) * sinc((n - mid) * freq) * freq;
             }
         }
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
-    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut cout,
+    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut& cout,
                                                  DL &delayline) // const
     {
         static_assert(CtxtOut::VecSize == 1);
+        auto decimatedBlockSize = 0;
         auto decimateId = decimateId_;
+        auto coutCopy = cout;
 
         contextFor(cin)
         {
@@ -136,7 +139,7 @@ template <int N, int Order, int M> class FIRDecimate
                     }
                 }
 
-                auto &xout = cout.getIn();
+                auto &xout = coutCopy.getIn();
 #pragma omp simd
                 for (int i = 0; i < sum[0].size(); ++i) {
                     xout[i] = 0;
@@ -145,8 +148,9 @@ template <int N, int Order, int M> class FIRDecimate
                     }
                 }
 
+                ++decimatedBlockSize;
                 xOffset += M;
-                cout.next();
+                coutCopy.next();
             }
 
             decimateId = (decimateId + CtxtIn::VecSize) % M;
@@ -154,6 +158,7 @@ template <int N, int Order, int M> class FIRDecimate
         }
 
         decimateId_ = decimateId;
+        cout.setBlockSize(decimatedBlockSize);
     }
 
   private:

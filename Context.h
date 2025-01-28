@@ -8,7 +8,7 @@ namespace dsp
 template <typename In, bool useVector = false> class Context
 {
   public:
-    Context(In *in, int blockSize) : blockSize_(blockSize), in_(in) {}
+    Context(In *in, int blockSize = 1) : blockSize_(blockSize), in_(in) {}
     Context(const Context &ctxt) = default;
 
     static constexpr auto VecSize       = useVector ? In::VectorSize : 1;
@@ -69,12 +69,13 @@ template <typename In, bool useVector = false> class Context
 
     void nextBlock() { next(blockSize_); }
     int getBlockSize() const { return blockSize_; }
+    void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 
   protected:
     void nextIn(int incr) { in_ += incr; }
 
   private:
-    const int blockSize_;
+    int blockSize_;
     In *in_;
 };
 
