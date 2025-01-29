@@ -31,8 +31,8 @@ template <typename In, bool useVector = false> class Context
             return in_->toScalar();
         }
     }
-    void setIn(typename In::Scalar &x) { in_ = &x[0]; }
-    void setIn(typename In::Vector &x) { in_ = &x[0]; }
+
+    template <typename T> void setIn(T &x) { in_ = &x[0]; }
 
     template <class Ctxts, int Nm>
     void interleave(std::array<Ctxts, Nm> &&ctxts)
