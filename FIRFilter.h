@@ -233,7 +233,7 @@ template <int N, int Order, int L> class FIRInterpolate
                 // a problem because CopyDelayLine index changes after each
                 // write whereas Buffer Delay Line changes with new context...
                 // we will see in the future
-                auto &x0      = delayline.read(c, delay);
+                auto &x0      = delayline.read(c, delay + 1);
                 const auto &b = b_[id][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
