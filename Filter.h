@@ -34,15 +34,15 @@ template <int N, int NSoS = 1> class IIRFilter
             decltype(s1) s0;
 
             /* use direct form II */
-            for (int k = 0; k < x.size(); ++k) {
-                for (int i = 0; i < x[0].size(); ++i) {
+            for (size_t k = 0; k < x.size(); ++k) {
+                for (size_t i = 0; i < x[0].size(); ++i) {
                     float a1 = a[1][i % N];
                     float a2 = a[2][i % N];
                     s0[k][i] = x[k][i] - a1 * s1[k][i] - a2 * s2[k][i];
                 }
             }
-            for (int k = 0; k < x.size(); ++k) {
-                for (int i = 0; i < x[0].size(); ++i) {
+            for (size_t k = 0; k < x.size(); ++k) {
+                for (size_t i = 0; i < x[0].size(); ++i) {
                     float b0 = b[0][i % N];
                     float b1 = b[1][i % N];
                     float b2 = b[2][i % N];
@@ -62,7 +62,7 @@ template <int N, int NSoS = 1> class IIRFilter
     };
 
   public:
-    template <int N_>
+    template <int N_ = N>
     using DL = std::array<typename SoS::template DL<N_>, NSoS>;
 
     constexpr IIRFilter()            = default;
@@ -100,7 +100,7 @@ void IIRFilter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<N> freq)
      * we use second order section filters (sos) for stability
      */
 
-    for (int j = 0; j < NSoS; ++j) {
+    for (size_t j = 0; j < NSoS; ++j) {
 
         /* bilinear transform */
         Signal<N> c;
@@ -110,7 +110,7 @@ void IIRFilter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<N> freq)
             csq[i] = c[i] * c[i];
         }
 
-        for (int j = 0; j < NSoS; ++j) {
+        for (size_t j = 0; j < NSoS; ++j) {
             for (int i = 0; i < N; ++i) {
                 assert(ba[j][1][0] == 1.f);
                 float a0  = ba[j][1][2];
@@ -160,7 +160,7 @@ constexpr void IIRFilter<N, NSoS>::butterworthLP(Signal<N> freq)
 
     auto &sos0 = sos_[0];
 
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
         float c   = tanf(M_PIf * 0.5f * freq[i]);
         float csq = c * c;
         float d   = 1.f / (1.f + sqrtf(2.f) * c + csq);

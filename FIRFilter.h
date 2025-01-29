@@ -39,8 +39,8 @@ template <int N, int Order> class FIRFilter
     FIRFilter() = default;
     FIRFilter(std::array<Signal<N>, NCoeff> &&b)
     {
-        for (int k = 0; k < NCoeff; ++k) {
-            for (int i = 0; i < N; ++i) {
+        for (size_t k = 0; k < NCoeff; ++k) {
+            for (size_t i = 0; i < N; ++i) {
                 b_[PaddedLength - Pad - k][i] = b[k][i];
             }
         }
@@ -53,15 +53,15 @@ template <int N, int Order> class FIRFilter
 
         typename Ctxt::Type sums[Ctxt::VecSize] = {0};
 
-        for (int j = 0; j < NCoeff + Ctxt::VecSize - 1; ++j) {
+        for (auto j = 0; j < NCoeff + Ctxt::VecSize - 1; ++j) {
             auto n        = j % Ctxt::VecSize;
             auto delay    = j - n;
             auto &x0      = delay == 0 ? x : delayline.read(c, delay);
             const auto &b = b_[PaddedLength - Pad - j].toVector();
 
 #pragma omp simd
-            for (int k = 0; k < x0.size(); ++k) {
-                for (int i = 0; i < x0[0].size(); ++i) {
+            for (size_t k = 0; k < x0.size(); ++k) {
+                for (size_t i = 0; i < x0[0].size(); ++i) {
                     sums[n][k][i] += x0[k][i] * b[k][i % N];
                 }
             }
@@ -70,10 +70,10 @@ template <int N, int Order> class FIRFilter
         delayline.write(c, x);
 
 #pragma omp simd
-        for (int n = 0; n < x.size(); ++n) {
-            for (int i = 0; i < x[0].size(); ++i) {
+        for (size_t n = 0; n < x.size(); ++n) {
+            for (size_t i = 0; i < x[0].size(); ++i) {
                 x[n][i] = 0;
-                for (int k = 0; k < x.size(); ++k) {
+                for (size_t k = 0; k < x.size(); ++k) {
                     x[n][i] += sums[n][k][i];
                 }
             }
@@ -99,8 +99,8 @@ template <int N, int Order, int M> class FIRDecimate
 
     FIRDecimate()
     {
-        for (int n = 0; n < NCoeff; ++n) {
-            for (int i = 0; i < N; ++i) {
+        for (auto n = 0; n < NCoeff; ++n) {
+            for (auto i = 0; i < N; ++i) {
                 auto mid  = NCoeff / 2.f;
                 auto freq = 1.f / (M);
                 b_[PaddedLength - Pad - n][i] =
@@ -127,15 +127,15 @@ template <int N, int Order, int M> class FIRDecimate
             while (xOffset < CtxtIn::VecSize) {
                 typename CtxtIn::Type sum = {0};
 
-                for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+                for (auto delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                      delay += CtxtIn::VecSize) {
                     auto &x0 = delay == 0 ? x : delayline.read(c, delay);
                     const auto &b =
                         b_[PaddedLength - Pad - delay - xOffset].toVector();
 
 #pragma omp simd
-                    for (int k = 0; k < x0.size(); ++k) {
-                        for (int i = 0; i < x0[0].size(); ++i) {
+                    for (size_t k = 0; k < x0.size(); ++k) {
+                        for (size_t i = 0; i < x0[0].size(); ++i) {
                             sum[k][i] += x0[k][i] * b[k][i % N];
                         }
                     }
@@ -143,9 +143,9 @@ template <int N, int Order, int M> class FIRDecimate
 
                 auto &xout = coutCopy.getIn();
 #pragma omp simd
-                for (int i = 0; i < sum[0].size(); ++i) {
+                for (size_t i = 0; i < sum[0].size(); ++i) {
                     xout[0][i] = 0;
-                    for (int k = 0; k < sum.size(); ++k) {
+                    for (size_t k = 0; k < sum.size(); ++k) {
                         xout[0][i] += sum[k][i];
                     }
                 }
@@ -195,9 +195,9 @@ template <int N, int Order, int L> class FIRInterpolate
 
     FIRInterpolate()
     {
-        for (int l = 0; l < L; ++l) {
-            for (int n = 0; n < NCoeff; ++n) {
-                for (int i = 0; i < N; ++i) {
+        for (size_t l = 0; l < L; ++l) {
+            for (size_t n = 0; n < NCoeff; ++n) {
+                for (size_t i = 0; i < N; ++i) {
                     auto mid = NCoeff * L / 2.f;
                     auto k   = l + n * L;
                     b_[l][PaddedLength - Pad - n][i] =
@@ -226,7 +226,7 @@ template <int N, int Order, int L> class FIRInterpolate
 
             typename CtxtIn::Type sum = {0};
 
-            for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+            for (size_t delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                  delay += CtxtIn::VecSize) {
                 // if delayline change to external buffer delayline we will have
                 // a problem because CopyDelayLine index changes after each
@@ -236,8 +236,8 @@ template <int N, int Order, int L> class FIRInterpolate
                 const auto &b = b_[id][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
-                for (int k = 0; k < x0.size(); ++k) {
-                    for (int i = 0; i < x0[0].size(); ++i) {
+                for (size_t k = 0; k < x0.size(); ++k) {
+                    for (size_t i = 0; i < x0[0].size(); ++i) {
                         // y_n = b0 * x_n + b1 * x_{n-1} + b2 *x_{n-2} + ....
                         sum[k][i] += x0[k][i] * b[k][i % N];
                     }
@@ -246,9 +246,9 @@ template <int N, int Order, int L> class FIRInterpolate
 
             auto &xout = c.getIn();
 #pragma omp simd
-            for (int i = 0; i < sum[0].size(); ++i) {
+            for (size_t i = 0; i < sum[0].size(); ++i) {
                 xout[0][i] = 0.f;
-                for (int k = 0; k < sum.size(); ++k) {
+                for (size_t k = 0; k < sum.size(); ++k) {
                     xout[0][i] += sum[k][i];
                 }
             }

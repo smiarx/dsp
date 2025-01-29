@@ -118,6 +118,11 @@ template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
 
 #define vecFor(ctxt) for (auto i = 0; i < ctxt.getStep(); ++i)
 
+#define arrayFor(x, k) for (size_t k = 0; k < x.size(); ++k)
+#define inFor(x, k, i)                    \
+    for (size_t k = 0; k < x.size(); ++k) \
+        for (size_t i = 0; i < x[0].size(); ++i)
+
 // macro to easily redefine
 #define COMMA                 ,
 #define processBlock(c, func) _processBlock([&](decltype(c) c) func, c)

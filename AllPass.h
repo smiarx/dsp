@@ -116,27 +116,27 @@ template <int N> class AllPass2
 
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
-        const auto &a1 = a_[1];
+        // const auto &a1 = a_[1];
         const auto &a2 = a_[0];
 
         static_assert(Ctxt::VecSize == 1);
         auto &x  = c.getIn();
         auto &sN = delayline.read(c, 2)[0].toVector();
         typename Ctxt::Type s0;
-        auto &s1 = sN[1];
+        // auto &s1 = sN[1];
         auto &s2 = sN[0];
 
         typename Ctxt::BaseType sNa[2];
 
 #pragma omp simd
-        for (int k = 0; k < 2; ++k) {
-            for (int i = 0; i < x[0].size(); ++i) {
+        for (size_t k = 0; k < 2; ++k) {
+            for (size_t i = 0; i < x[0].size(); ++i) {
                 sNa[k][i] = sN[k][i] * a_[k][i];
             }
         }
 
 #pragma omp simd
-        for (int i = 0; i < x[0].size(); ++i) {
+        for (size_t i = 0; i < x[0].size(); ++i) {
             s0[0][i] = x[0][i] - sNa[1][i] - sNa[0][i];
             x[0][i]  = a2[i] * s0[0][i] + sNa[1][i] + s2[i];
         }
