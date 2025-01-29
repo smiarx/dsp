@@ -34,7 +34,6 @@ template <class In, std::size_t MinSize = 0> class Buffer
 
     void setBuffer(In *buffer)
     {
-        memset(buffer, 0, MinSize * sizeof(In));
         buffer_ = buffer;
     }
     In *getBuffer() { return buffer_; }
@@ -55,7 +54,11 @@ template <class In, std::size_t MinSize = 0> class Buffer
     {
         buffer_[(bufId_ - i) & Mask].toScalar() = x;
     }
-    const In &read(int i) const { return buffer_[(bufId_ - i) & Mask]; }
+    const In &read(size_t i) const
+    {
+        assert(i <= MinSize);
+        return buffer_[(bufId_ - i) & Mask];
+    }
 
     void nextBufId(int incr) { bufId_ = (bufId_ + incr) & Mask; }
 
