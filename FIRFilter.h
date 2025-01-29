@@ -186,7 +186,7 @@ template <int N, int Order, int L> class FIRInterpolate
     static constexpr auto NCoeff = (Order + 1);
 
     template <int N_ = N>
-    class DL : public CopyDelayLine<N_, nextAlignedOffset(NCoeff - 1, Pad)>
+    class DL : public CopyDelayLine<N_, nextAlignedOffset(NCoeff, Pad)>
     {
     };
 
