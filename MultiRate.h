@@ -21,6 +21,10 @@ class _MultiRate : public _MultiRate<N, Order, MaxM, Offset, BufSize, 1>
     template <int BufSize_>
     using WithBuffer = _MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
 
+    _MultiRate(float cutoff = 1.f) : firdecimate(cutoff), firinterpolate(cutoff)
+    {
+    }
+
     virtual int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl,
                          int decimateId) const
     {
@@ -67,7 +71,7 @@ template <int N, int Order, int MaxM, int Offset = 0, int BufSize = 0,
 class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
 {
   public:
-    MultiRate() = default;
+    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate(cutoff) {};
 
     using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
     using Base = typename Next::Base;
@@ -90,7 +94,7 @@ template <int N, int Order, int MaxM, int Offset, int BufSize>
 class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
 {
   public:
-    MultiRate() = default;
+    MultiRate(float cutoff = 1.f) {}
 
     using Base          = _MultiRate<N, Order, MaxM, Offset, BufSize, 1>;
     using BufCtxt       = typename Base::BufCtxt;

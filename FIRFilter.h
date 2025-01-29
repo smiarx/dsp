@@ -97,12 +97,12 @@ template <int N, int Order, int M> class FIRDecimate
 
     static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
 
-    FIRDecimate()
+    FIRDecimate(float cutoff = 1.0f)
     {
         for (auto n = 0; n < NCoeff; ++n) {
             for (auto i = 0; i < N; ++i) {
                 auto mid  = NCoeff / 2.f;
-                auto freq = 1.f / (M);
+                auto freq = cutoff / M;
                 b_[PaddedLength - Pad - n][i] =
                     sinc((n - mid) / (mid)) * sinc((n - mid) * freq) * freq;
             }
@@ -122,7 +122,6 @@ template <int N, int Order, int M> class FIRDecimate
         {
             auto x = c.getIn();
 
-            // auto xOffset = id;
             auto xOffset = (M - id) % M;
             while (xOffset < CtxtIn::VecSize) {
                 typename CtxtIn::Type sum = {0};
@@ -193,15 +192,17 @@ template <int N, int Order, int L> class FIRInterpolate
 
     static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
 
-    FIRInterpolate()
+    FIRInterpolate(float cutoff = 1.f)
     {
         for (size_t l = 0; l < L; ++l) {
             for (size_t n = 0; n < NCoeff; ++n) {
                 for (size_t i = 0; i < N; ++i) {
-                    auto mid = NCoeff * L / 2.f;
-                    auto k   = l + n * L;
-                    b_[l][PaddedLength - Pad - n][i] =
-                        sinc((k - mid) / (mid)) * sinc((k - mid) / L);
+                    auto freq                        = cutoff / L;
+                    auto mid                         = NCoeff * L / 2.f;
+                    auto k                           = l + n * L;
+                    b_[l][PaddedLength - Pad - n][i] = sinc((k - mid) / (mid)) *
+                                                       sinc((k - mid) * freq) *
+                                                       cutoff;
                 }
             }
         }
