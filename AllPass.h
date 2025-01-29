@@ -35,8 +35,8 @@ template <int N, class Tap = TapTail> class AllPass
         auto sN = tap_.read(c, delayline);
         decltype(sN) s0;
 
-        for (int k = 0; k < x.size(); ++k) {
-            for (int i = 0; i < x[0].size(); ++i) {
+        for (size_t k = 0; k < x.size(); ++k) {
+            for (size_t i = 0; i < x[0].size(); ++i) {
                 auto a = a_[i % N];
 
                 s0[k][i] = x[k][i] - a * sN[k][i];
@@ -70,9 +70,11 @@ class TapAllPass : public TapOut
 
     void setDelay(int i, float d)
     {
-        auto id        = static_cast<int>(d - minfdelay);
-        float fd       = d - static_cast<float>(id);
-        allpass_.a_[i] = (1 - fd) / (1 + fd);
+        Signal<N> a;
+        auto id  = static_cast<int>(d - minfdelay);
+        float fd = d - static_cast<float>(id);
+        a[i]     = (1 - fd) / (1 + fd);
+        allpass_.setCoeff(a);
         TapOut::setDelay(i, id);
     };
 
