@@ -5,6 +5,7 @@
 #include "FastMath.h"
 #include "Signal.h"
 #include <cmath>
+#include <cstdio>
 
 /*
     x0 |x1 x2 x3 x4| x5 x6 x7 x8 |x9
@@ -109,19 +110,19 @@ template <int N, int Order, int M> class FIRDecimate
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
-    __attribute__((always_inline)) void decimate(CtxtIn cin, CtxtOut& cout,
-                                                 DL &delayline) // const
+    __attribute__((always_inline)) int decimate(CtxtIn cin, CtxtOut& cout,
+                                                 DL &delayline, int decimateId) const
     {
         static_assert(CtxtOut::VecSize == 1);
         auto decimatedBlockSize = 0;
-        auto decimateId = decimateId_;
+        auto id = decimateId;
         auto coutCopy = cout;
 
         contextFor(cin)
         {
             auto x = c.getIn();
 
-            auto xOffset = decimateId;
+            auto xOffset = id;
             while (xOffset < CtxtIn::VecSize) {
                 typename CtxtIn::Type sum = {0};
 
@@ -153,17 +154,16 @@ template <int N, int Order, int M> class FIRDecimate
                 coutCopy.next();
             }
 
-            decimateId = (decimateId + CtxtIn::VecSize) % M;
+            id = (id + CtxtIn::VecSize) % M;
             delayline.write(c, x);
         }
 
-        decimateId_ = decimateId;
         cout.setBlockSize(decimatedBlockSize);
+        return id;
     }
 
   private:
     Signal<N> b_[PaddedLength] = {0};
-    int decimateId_            = 0;
 };
 
 /*
@@ -207,12 +207,12 @@ template <int N, int Order, int L> class FIRInterpolate
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
-    __attribute__((always_inline)) void interpolate(CtxtIn cin, CtxtOut cout,
-                                                    DL &delayline) // const
+    __attribute__((always_inline)) int interpolate(CtxtIn cin, CtxtOut cout,
+                                                    DL &delayline, int interpolateId) const
     {
         static_assert(CtxtIn::VecSize == 1);
         static_assert(CtxtOut::VecSize == 1);
-        auto interpolateId = interpolateId_;
+        auto id = interpolateId;
 
         contextFor(cout)
         {
@@ -224,7 +224,7 @@ template <int N, int Order, int L> class FIRInterpolate
                  delay += CtxtIn::VecSize) {
                 auto &x0 = delay == 0 ? x : delayline.read(c, delay);
                 const auto &b =
-                    b_[interpolateId][PaddedLength - Pad - delay].toVector();
+                    b_[id][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
                 for (int k = 0; k < x0.size(); ++k) {
@@ -237,25 +237,24 @@ template <int N, int Order, int L> class FIRInterpolate
             auto &xout = c.getIn();
 #pragma omp simd
             for (int i = 0; i < sum[0].size(); ++i) {
-                xout[i] = 0;
+                xout[0][i] = 0.f;
                 for (int k = 0; k < sum.size(); ++k) {
                     xout[0][i] += sum[k][i];
                 }
             }
 
-            ++interpolateId;
-            if (interpolateId == L) {
+            ++id;
+            if (id == L) {
                 delayline.write(cin, x);
                 cin.next();
-                interpolateId = 0;
+                id = 0;
             }
         }
-        interpolateId_ = interpolateId;
+        return id;
     }
 
   private:
     Signal<N> b_[L][PaddedLength] = {0};
-    int interpolateId_            = 0;
 };
 
 } // namespace dsp

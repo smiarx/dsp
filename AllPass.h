@@ -104,7 +104,7 @@ template <int N> class AllPass2
     {
     };
 
-    void setPole(Signal<N> &&R, Signal<N> &&freq)
+    void setPole(Signal<N> R, Signal<N> freq)
     {
         auto &a1 = a_[1];
         auto &a2 = a_[0];
@@ -140,10 +140,6 @@ template <int N> class AllPass2
             s0[0][i] = x[0][i] - sNa[1][i] - sNa[0][i];
             x[0][i]  = a2[i] * s0[0][i] + sNa[1][i] + s2[i];
         }
-        // for (int i = 0; i < x[0].size(); ++i) {
-        //     s0[0][i] = x[0][i] - a1[i]*s1[i] - a2[i]*s2[i];
-        //     x[0][i]  = a2[i] * s0[0][i] + a1[i]*s1[i]  + s2[i];
-        // }
         delayline.write(c, s0);
     }
 
