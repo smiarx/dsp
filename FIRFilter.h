@@ -101,8 +101,8 @@ template <int N, int Order, int M> class FIRDecimate
     {
         for (int n = 0; n < NCoeff; ++n) {
             for (int i = 0; i < N; ++i) {
-                auto mid = NCoeff / 2.f;
-                auto freq = 1.f/(M);
+                auto mid  = NCoeff / 2.f;
+                auto freq = 1.f / (M);
                 b_[PaddedLength - Pad - n][i] =
                     sinc((n - mid) / (mid)) * sinc((n - mid) * freq) * freq;
             }
@@ -110,19 +110,20 @@ template <int N, int Order, int M> class FIRDecimate
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
-    __attribute__((always_inline)) int decimate(CtxtIn cin, CtxtOut& cout,
-                                                 DL &delayline, int decimateId) const
+    __attribute__((always_inline)) int
+    decimate(CtxtIn cin, CtxtOut &cout, DL &delayline, int decimateId) const
     {
         static_assert(CtxtOut::VecSize == 1);
         auto decimatedBlockSize = 0;
-        auto id = decimateId;
-        auto coutCopy = cout;
+        auto id                 = decimateId;
+        auto coutCopy           = cout;
 
         contextFor(cin)
         {
             auto x = c.getIn();
 
-            auto xOffset = id;
+            // auto xOffset = id;
+            auto xOffset = (M - id) % M;
             while (xOffset < CtxtIn::VecSize) {
                 typename CtxtIn::Type sum = {0};
 
@@ -143,7 +144,7 @@ template <int N, int Order, int M> class FIRDecimate
                 auto &xout = coutCopy.getIn();
 #pragma omp simd
                 for (int i = 0; i < sum[0].size(); ++i) {
-                    xout[i] = 0;
+                    xout[0][i] = 0;
                     for (int k = 0; k < sum.size(); ++k) {
                         xout[0][i] += sum[k][i];
                     }
@@ -208,7 +209,8 @@ template <int N, int Order, int L> class FIRInterpolate
 
     template <class CtxtIn, class CtxtOut, class DL>
     __attribute__((always_inline)) int interpolate(CtxtIn cin, CtxtOut cout,
-                                                    DL &delayline, int interpolateId) const
+                                                   DL &delayline,
+                                                   int interpolateId) const
     {
         static_assert(CtxtIn::VecSize == 1);
         static_assert(CtxtOut::VecSize == 1);
@@ -216,19 +218,27 @@ template <int N, int Order, int L> class FIRInterpolate
 
         contextFor(cout)
         {
-            auto x = cin.getIn();
+            if (id == 0) {
+                auto x = cin.getIn();
+                delayline.write(cin, x);
+                cin.next();
+            }
 
             typename CtxtIn::Type sum = {0};
 
             for (int delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                  delay += CtxtIn::VecSize) {
-                auto &x0 = delay == 0 ? x : delayline.read(c, delay);
-                const auto &b =
-                    b_[id][PaddedLength - Pad - delay].toVector();
+                // if delayline change to external buffer delayline we will have
+                // a problem because CopyDelayLine index changes after each
+                // write whereas Buffer Delay Line changes with new context...
+                // we will see in the future
+                auto &x0      = delayline.read(c, delay);
+                const auto &b = b_[id][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
                 for (int k = 0; k < x0.size(); ++k) {
                     for (int i = 0; i < x0[0].size(); ++i) {
+                        // y_n = b0 * x_n + b1 * x_{n-1} + b2 *x_{n-2} + ....
                         sum[k][i] += x0[k][i] * b[k][i % N];
                     }
                 }
@@ -243,12 +253,7 @@ template <int N, int Order, int L> class FIRInterpolate
                 }
             }
 
-            ++id;
-            if (id == L) {
-                delayline.write(cin, x);
-                cin.next();
-                id = 0;
-            }
+            id = (id + 1) % L;
         }
         return id;
     }

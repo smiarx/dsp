@@ -8,35 +8,39 @@ namespace dsp
 
 template <int N, int Order, int MaxM, int Offset = 0, int BufSize = 0,
           int M = MaxM>
-class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, 1>
+class _MultiRate : public _MultiRate<N, Order, MaxM, Offset, BufSize, 1>
 {
   public:
-    using Base          = MultiRate<N, Order, MaxM, Offset, BufSize, 1>;
-    using Next          = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
+    using Base          = _MultiRate<N, Order, MaxM, Offset, BufSize, 1>;
+    using Next          = _MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
     using BufCtxt       = typename Next::BufCtxt;
     using Ctxt          = typename Next::Ctxt;
     using DLDecimate    = typename Next::DLDecimate;
     using DLInterpolate = typename Next::DLInterpolate;
 
     template <int BufSize_>
-    using WithBuffer = MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
+    using WithBuffer = _MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
 
-    virtual void decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl)
+    virtual int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl,
+                         int decimateId) const
     {
-        firdecimate.decimate(cin.vec(), cout, dl);
+        auto id = firdecimate.decimate(cin.vec(), cout, dl, decimateId);
+        return id;
     }
-    virtual void interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl)
+    virtual int interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl,
+                            int interpolateId) const
     {
-        firinterpolate.interpolate(cin, cout, dl);
+        auto id = firinterpolate.interpolate(cin, cout, dl, interpolateId);
+        return id;
     }
 
   private:
-    FIRDecimate<N, Order, M> firdecimate;
-    FIRInterpolate<N, Order, M> firinterpolate;
+    const FIRDecimate<N, Order, M> firdecimate;
+    const FIRInterpolate<N, Order, M> firinterpolate;
 };
 
 template <int N, int Order, int MaxM, int Offset, int BufSize>
-class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
+class _MultiRate<N, Order, MaxM, Offset, BufSize, 1>
 {
   public:
     using BufCtxt = BufferContext<Signal<N>, Buffer<Signal<N>, BufSize>>;
@@ -46,61 +50,57 @@ class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
     using DLInterpolate =
         typename FIRInterpolate<N, Order, MaxM>::template DL<N>;
 
-    virtual void decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl)
+    virtual int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl, int) const
     {
         cout = cin;
+        return 0;
     }
-    virtual void interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl)
+    virtual int interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl, int) const
     {
         cout = cin;
+        return 0;
     }
 };
 
 template <int N, int Order, int MaxM, int Offset = 0, int BufSize = 0,
           int M = MaxM>
-class MultiRates : public MultiRates<N, Order, MaxM, Offset, BufSize, M - 1>
+class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
 {
   public:
-    using Base = MultiRates<N, Order, MaxM, Offset, BufSize, 1>;
-    using Next = MultiRates<N, Order, MaxM, Offset, BufSize, M - 1>;
+    MultiRate() = default;
+
+    using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
+    using Base = typename Next::Base;
     template <int BufSize_>
-    using WithBuffer = MultiRates<N, Order, MaxM, Offset, BufSize_, M>;
-    void set(unsigned int i)
+    using WithBuffer = MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
+    const typename Next::Base *get(unsigned int i) const
     {
         if (i >= M) {
-            Base::selected = &multirate;
+            return &multirate;
         } else {
-            Next::set(i);
+            return Next::get(i);
         }
     }
 
   private:
-    MultiRate<N, Order, MaxM, Offset, BufSize, M> multirate;
+    const _MultiRate<N, Order, MaxM, Offset, BufSize, M> multirate;
 };
 
 template <int N, int Order, int MaxM, int Offset, int BufSize>
-class MultiRates<N, Order, MaxM, Offset, BufSize, 1>
+class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
 {
   public:
-    using Base          = MultiRate<N, Order, MaxM, Offset, BufSize, 1>;
+    MultiRate() = default;
+
+    using Base          = _MultiRate<N, Order, MaxM, Offset, BufSize, 1>;
     using BufCtxt       = typename Base::BufCtxt;
     using Ctxt          = typename Base::Ctxt;
     using DLDecimate    = typename Base::DLDecimate;
     using DLInterpolate = typename Base::DLInterpolate;
-    void set(unsigned int i) { selected = &multirate; }
+    const Base *get(unsigned int i) const { return &multirate; }
 
-    virtual void decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl)
-    {
-        selected->decimate(cin, cout, dl);
-    }
-    virtual void interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl)
-    {
-        selected->interpolate(cin, cout, dl);
-    }
-
-  protected:
-    Base multirate;
-    Base *selected{&multirate};
+  private:
+    const Base multirate;
 };
 
 } // namespace dsp
