@@ -22,6 +22,7 @@ class alignas(N * sizeof(T)) _Signal : public std::array<T, N>
     static constexpr auto Size = N;
 
   public:
+    using Type                       = T;
     static constexpr auto VectorSize = SIMDSIZE / N;
 
     /* when an array of signals is given, use this to get as many signals as
