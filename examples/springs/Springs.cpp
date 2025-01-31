@@ -24,7 +24,7 @@ void Springs::setPole(float R, float freq)
         M     = std::min(M, MaxDecimate);
 
         float f            = freq * freqScale_ * M;
-        _dsp::Signal<N> fs = {f - 0.03f, f - 0.01f, f + 0.01f, f + 0.03f};
+        dsp::Signal<N> fs = {f - 0.03f, f - 0.01f, f + 0.01f, f + 0.03f};
         for (int i = 0; i < N; ++i) {
             fs[i] = std::min(0.995f, fs[i]);
             fs[i] = std::max(0.005f, fs[i]);
@@ -63,12 +63,11 @@ void Springs::setTd(float Td)
 {
     Td_ = Td;
     float sampleTd = Td *  sampleRate_ / M_;
-    dsp::Signal<N> sTds;
     for(int i = 0; i < N; ++i)
     {
-        sTds[i] = sampleTd * (1 + -0.1f + 0.048f*i);
+        loopTd_[i] = sampleTd * loopTdFactor[i];;
+        loopModAmp_[i] = loopTd_[i]* loopModFactor[i];
     }
-    looptap_.setDelay(sTds);
 
     setT60(T60_);
 }
@@ -88,8 +87,8 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
     int blockSize = std::min(count, MaxBlockSize);
 
-    auto ctxt    = _dsp::BufferContext(x_, blockSize, buffer_);
-    auto ctxtdec = _dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
+    auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
+    auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
     while (count) {
 
         contextFor(ctxt)
@@ -107,7 +106,17 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         contextFor(ctxtdec)
         {
             auto &x   = c.getIn();
-            auto loop = looptap_.read(c, loopdl_);
+
+            LoopType looptap;
+            auto mod = loopMod_.process();
+            auto delay = loopTd_;
+            for(int i = 0; i < N; ++i)
+            {
+                delay[i] += mod[i]*loopModAmp_[i];
+            }
+            looptap.setDelay(delay);
+
+            auto loop = looptap.read(c, loopdl_);
 
             inFor(x, k, i) { x[k][i] += loop[k][i] * loopGain_; }
         }
