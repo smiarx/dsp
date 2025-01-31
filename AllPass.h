@@ -47,8 +47,11 @@ template <int N, class Tap = TapTail> class AllPass
     }
 
     void setCoeff(Signal<N> a) { a_ = a; }
+    const auto& getCoeff() const { return a_;}
     void setDelay(Signal<N> d) { tap_.setDelay(d); }
     void setDelay(iSignal<N> d) { tap_.setDelay(d); }
+
+    const auto& getTap() const { return tap_;}
 
   private:
     Signal<N> a_;
@@ -59,7 +62,7 @@ template <int N, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
-    static constexpr auto minfdelay = 0.1f;
+    static constexpr auto minfdelay = 0.3f;
 
     constexpr TapAllPass() = default;
     template <class... Args>
@@ -94,6 +97,66 @@ class TapAllPass : public TapOut
     }
 
   private:
+    AllPass<N, TapIn> allpass_;
+};
+
+template <int N>
+class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
+{
+public:
+    static constexpr auto minfdelay = 0.6f;
+    using TapOut = TapNoInterp<N>;
+    using TapIn = TapTail;
+
+    constexpr TapAllPass() = default;
+    void setDelay(int i, float d)
+    {
+    };
+
+    void setDelay(Signal<N> d)
+    {
+        Signal<N> a;
+        iSignal<N> id;
+        for (int i = 0; i < N; ++i) {
+            id[i]  = static_cast<int>(d[i] - minfdelay);
+            float fd = d[i] - static_cast<float>(id[i]);
+            a[i]     = (1 - fd) / (1 + fd);
+        }
+        allpass_.setCoeff(a);
+        TapOut::setDelay(id);
+    }
+
+    template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
+    {
+        static_assert(Ctxt::VecSize==1);
+        typename Ctxt::Type x;
+        typename Ctxt::Type x1;
+        typename Ctxt::Type y;
+        typename Ctxt::Type y1;
+
+        for (int i = 0; i < N; i++) {
+            auto id = TapOut::id_[i];
+            assert(id+1 <= DL::Length - Ctxt::VecSize + 1);
+
+            auto &val = delayline.read(c, id);
+            for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
+            auto &val1 = delayline.read(c, id+1);
+            for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
+        }
+
+        y1 = allpass_.getTap().read(c, delayline.getInner());
+
+        const auto& a = allpass_.getCoeff();
+        for (int k = 0; k < Ctxt::VecSize; ++k)
+        {
+            for (int i = 0; i < N; i++) {
+                y[k][i] = a[i]*(x[k][i] - y1[k][i]) + x1[k][i];
+            }
+        }
+        delayline.getInner().write(c, y);
+        return y;
+    }
+private:
     AllPass<N, TapIn> allpass_;
 };
 
