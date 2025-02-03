@@ -166,11 +166,23 @@ template <int N> class AllPass2
     {
     };
 
+   /**
+     * @brief Set the poles of the allpass filter.
+     *
+     * This function sets the poles of the allpass filter based on the given radius
+     * and frequency.
+     *
+     * @param R A signal representing the radius of the pole in the z-plane.
+     *          Must be between -1 and 1.
+     * @param freq A signal representing the frequency of the pole in the z-plane.
+     *             Typically in the range [0, 1], where 1 represents the Nyquist frequency.
+     */
     void setPole(Signal<N> R, Signal<N> freq)
     {
         auto &a1 = a_[1];
         auto &a2 = a_[0];
         for (int i = 0; i < N; ++i) {
+            assert(R[i] >= -1 && R[i] <= 1);
             a2[i] = R[i] * R[i];
             a1[i] = -2 * R[i] * cos(M_PIf * freq[i]);
         }
@@ -181,15 +193,22 @@ template <int N> class AllPass2
         // const auto &a1 = a_[1];
         const auto &a2 = a_[0];
 
-        static_assert(Ctxt::VecSize == 1);
+        static_assert(Ctxt::VecSize == 1, "Vector size must be 1");
+
+        // Input signal
         auto &x  = c.getIn();
-        auto &sN = delayline.read(c, 2)[0].toVector();
+
+        // Direct form II value and its delayed signals
         typename Ctxt::Type s0;
+        auto &sN = delayline.read(c, 2)[0].toVector();
         // auto &s1 = sN[1];
         auto &s2 = sN[0];
 
+        /* intermadiate values */
         typename Ctxt::BaseType sNa[2];
 
+        // Apply the filter coefficients to the delayed signals.
+        // Doing in a loop like this allows for compiler vectorization.
 #pragma omp simd
         for (size_t k = 0; k < 2; ++k) {
             for (size_t i = 0; i < x[0].size(); ++i) {
@@ -197,11 +216,14 @@ template <int N> class AllPass2
             }
         }
 
+        // Compute output using direct form II
 #pragma omp simd
         for (size_t i = 0; i < x[0].size(); ++i) {
             s0[0][i] = x[0][i] - sNa[1][i] - sNa[0][i];
             x[0][i]  = a2[i] * s0[0][i] + sNa[1][i] + s2[i];
         }
+
+        // Update the delay line with the new value
         delayline.write(c, s0);
     }
 
