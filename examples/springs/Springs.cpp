@@ -8,72 +8,69 @@ void Springs::update(float R, float freq, float Td, float T60)
     if (R != R_ || freq != freq_) {
         setPole(R, freq);
     }
-    if(Td != Td_)
-    {
+    if (Td != Td_) {
         setTd(Td);
     }
-    if(T60 != T60_)
-    {
+    if (T60 != T60_) {
         setT60(T60);
     }
 }
 
 void Springs::setPole(float R, float freq)
 {
-        int M = sampleRate_ / 2.f / freq * 1.1f;
-        M     = std::min(M, MaxDecimate);
+    int M = sampleRate_ / 2.f / freq * 1.1f;
+    M     = std::min(M, MaxDecimate);
 
-        float f            = freq * freqScale_ * M;
-        dsp::Signal<N> fs;
-        dsp::Signal<N> Rs;
-        for (int i = 0; i < N; ++i) {
-            fs[i] = f*freqFactor[i];
-            fs[i] = std::min(0.995f, fs[i]);
-            fs[i] = std::max(0.005f, fs[i]);
-            Rs[i] = R*freqFactor[i];
-            Rs[i] = std::min(Rs[i], 1.f);
-            Rs[i] = std::max(Rs[i], -1.f);
-        }
-        allpass_.setPole(Rs, fs);
+    float f = freq * freqScale_ * M;
+    dsp::Signal<N> fs;
+    dsp::Signal<N> Rs;
+    for (int i = 0; i < N; ++i) {
+        fs[i] = f * freqFactor[i];
+        fs[i] = std::min(0.995f, fs[i]);
+        fs[i] = std::max(0.005f, fs[i]);
+        Rs[i] = R * freqFactor[i];
+        Rs[i] = std::min(Rs[i], 1.f);
+        Rs[i] = std::max(Rs[i], -1.f);
+    }
+    allpass_.setPole(Rs, fs);
 
-        multirate_  = multirates.get(M);
-        decimateId_ = 0;
+    multirate_  = multirates.get(M);
+    decimateId_ = 0;
 
-        /* scipy.signal.ellip(10, 1, 60, 1.0, analog=True, output='sos') */
-        const float analoglowpasssos[][2][3] = {
-            {{1.00000000e-03, 0.00000000e+00, 1.43497622e-02},
-             {1.00000000e+00, 4.79554974e-01, 1.41121071e-01}},
-            {{1.00000000e+00, 0.00000000e+00, 2.24894555e+00},
-             {1.00000000e+00, 2.72287841e-01, 5.26272885e-01}},
-            {{1.00000000e+00, 0.00000000e+00, 1.33580569e+00},
-             {1.00000000e+00, 1.11075112e-01, 8.24889759e-01}},
-            {{1.00000000e+00, 0.00000000e+00, 1.12840768e+00},
-             {1.00000000e+00, 3.84115770e-02, 9.56268315e-01}},
-            {{1.00000000e+00, 0.00000000e+00, 1.07288063e+00},
-             {1.00000000e+00, 9.05107247e-03, 9.99553018e-01}}};
-        lowpass_.sosanalog(analoglowpasssos, fs);
+    /* scipy.signal.ellip(10, 1, 60, 1.0, analog=True, output='sos') */
+    const float analoglowpasssos[][2][3] = {
+        {{1.00000000e-03, 0.00000000e+00, 1.43497622e-02},
+         {1.00000000e+00, 4.79554974e-01, 1.41121071e-01}},
+        {{1.00000000e+00, 0.00000000e+00, 2.24894555e+00},
+         {1.00000000e+00, 2.72287841e-01, 5.26272885e-01}},
+        {{1.00000000e+00, 0.00000000e+00, 1.33580569e+00},
+         {1.00000000e+00, 1.11075112e-01, 8.24889759e-01}},
+        {{1.00000000e+00, 0.00000000e+00, 1.12840768e+00},
+         {1.00000000e+00, 3.84115770e-02, 9.56268315e-01}},
+        {{1.00000000e+00, 0.00000000e+00, 1.07288063e+00},
+         {1.00000000e+00, 9.05107247e-03, 9.99553018e-01}}};
+    lowpass_.sosanalog(analoglowpasssos, fs);
 
-        int oldM = M_;
-        M_ = M;
-        R_    = R;
-        freq_ = freq;
+    int oldM = M_;
+    M_       = M;
+    R_       = R;
+    freq_    = freq;
 
-        if(M != oldM)
-        {
-            setTd(Td_);
-        }
+    if (M != oldM) {
+        setTd(Td_);
+    }
 }
 
 void Springs::setTd(float Td)
 {
     Td_ = Td;
     dsp::iSignal<N> loopEchoT;
-    float sampleTd = Td *  sampleRate_ / M_;
-    for(int i = 0; i < N; ++i)
-    {
-        loopTd_[i] = sampleTd * loopTdFactor[i];;
-        loopModAmp_[i] = loopTd_[i]* loopModFactor[i];
-        loopEchoT[i] = loopTd_[i] / 5.f;
+    float sampleTd = Td * sampleRate_ / M_;
+    for (int i = 0; i < N; ++i) {
+        loopTd_[i] = sampleTd * loopTdFactor[i];
+        ;
+        loopModAmp_[i] = loopTd_[i] * loopModFactor[i];
+        loopEchoT[i]   = loopTd_[i] / 5.f;
         loopTd_[i] -= loopEchoT[i];
     }
 
@@ -84,8 +81,8 @@ void Springs::setTd(float Td)
 
 void Springs::setT60(float T60)
 {
-    T60_ = T60;
-    loopGain_ = -powf(0.001, Td_/T60_);
+    T60_      = T60;
+    loopGain_ = -powf(0.001, Td_ / T60_);
 }
 
 void Springs::process(float **__restrict in, float **__restrict out, int count)
@@ -115,14 +112,13 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec)
         {
-            auto &x   = c.getIn();
+            auto &x = c.getIn();
 
             LoopType looptap;
-            auto mod = loopMod_.process();
+            auto mod   = loopMod_.process();
             auto delay = loopTd_;
-            for(int i = 0; i < N; ++i)
-            {
-                delay[i] += mod[i]*loopModAmp_[i];
+            for (int i = 0; i < N; ++i) {
+                delay[i] += mod[i] * loopModAmp_[i];
             }
             looptap.setDelay(delay);
 
@@ -132,21 +128,22 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
             auto loopEchoVal = loopEcho_.read(c, loopEchoDL_);
 
-            inFor(loop, k, i) {
-                loopEchoVal[k][i] += loopEchoGain*(loop[k][i] - loopEchoVal[k][i]);
+            inFor(loop, k, i)
+            {
+                loopEchoVal[k][i] +=
+                    loopEchoGain * (loop[k][i] - loopEchoVal[k][i]);
             }
 
             loopRippleDL_.write(c, loop);
             auto loopRippleVal = dsp::TapTail{}.read(c, loopRippleDL_);
 
-            inFor(loop, k, i) {
-                loopRippleVal[k][i] += loopRippleGain*(loopEchoVal[k][i] - loopRippleVal[k][i]);
+            inFor(loop, k, i)
+            {
+                loopRippleVal[k][i] +=
+                    loopRippleGain * (loopEchoVal[k][i] - loopRippleVal[k][i]);
             }
 
-
-            inFor(x, k, i) {
-                x[k][i] += loopRippleVal[k][i]*loopGain_;
-            }
+            inFor(x, k, i) { x[k][i] += loopRippleVal[k][i] * loopGain_; }
         }
 
         contextFor(ctxtdec)

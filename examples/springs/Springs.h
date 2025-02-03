@@ -15,13 +15,15 @@ class Springs
     static constexpr auto MaxDecimate  = 8;
     static constexpr auto CascadeL     = 80;
 
-    static constexpr float freqFactor[] = {0.97743f,1.04391f,1.0593f,0.934f};
-    static constexpr float RFactor[] = {1.07743f,0.94391f,0.9893f,1.034f};
-    static constexpr float loopTdFactor[] = {0.97874f,1.03913f,0.953872f,1.18373f};
-    static constexpr float loopModFreq[] = {0.35f,0.564f,0.46,0.20f};
-    static constexpr float loopModFactor[] = {0.002743f,0.00205f,0.00348f,0.0021f};
-    static constexpr float loopEchoGain = 0.076f;
-    static constexpr float loopRippleGain = 0.036f;
+    static constexpr float freqFactor[] = {0.97743f, 1.04391f, 1.0593f, 0.934f};
+    static constexpr float RFactor[]    = {1.07743f, 0.94391f, 0.9893f, 1.034f};
+    static constexpr float loopTdFactor[]  = {0.97874f, 1.03913f, 0.953872f,
+                                              1.18373f};
+    static constexpr float loopModFreq[]   = {0.35f, 0.564f, 0.46, 0.20f};
+    static constexpr float loopModFactor[] = {0.002743f, 0.00205f, 0.00348f,
+                                              0.0021f};
+    static constexpr float loopEchoGain    = 0.076f;
+    static constexpr float loopRippleGain  = 0.036f;
 
     Springs(float sampleRate)
     {
@@ -33,8 +35,8 @@ class Springs
         dsp::iNoise<N> noise;
         loopMod_.setPhase(noise.process());
 
-        dsp::Signal<N>freq;
-        for(int i = 0; i < N; ++i){
+        dsp::Signal<N> freq;
+        for (int i = 0; i < N; ++i) {
             freq[i] = loopModFreq[i] * freqScale_;
         }
         loopMod_.setFreq(freq);
@@ -76,8 +78,8 @@ class Springs
     using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
     dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>>
         loopdl_;
-    dsp::DelayLine<LoopLength/5, nextTo(loopdl_)> loopEchoDL_;
-    dsp::CopyDelayLine<N,1,nextTo(loopEchoDL_)> loopRippleDL_;
+    dsp::DelayLine<LoopLength / 5, nextTo(loopdl_)> loopEchoDL_;
+    dsp::CopyDelayLine<N, 1, nextTo(loopEchoDL_)> loopRippleDL_;
 
     static constexpr auto BufDecSize = nextTo(loopRippleDL_) + MaxBlockSize;
     dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
