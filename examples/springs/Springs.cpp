@@ -24,12 +24,17 @@ void Springs::setPole(float R, float freq)
         M     = std::min(M, MaxDecimate);
 
         float f            = freq * freqScale_ * M;
-        dsp::Signal<N> fs = {f - 0.03f, f - 0.01f, f + 0.01f, f + 0.03f};
+        dsp::Signal<N> fs;
+        dsp::Signal<N> Rs;
         for (int i = 0; i < N; ++i) {
+            fs[i] = f*freqFactor[i];
             fs[i] = std::min(0.995f, fs[i]);
             fs[i] = std::max(0.005f, fs[i]);
+            Rs[i] = R*freqFactor[i];
+            Rs[i] = std::min(Rs[i], 1.f);
+            Rs[i] = std::max(Rs[i], -1.f);
         }
-        allpass_.setPole({R - 0.02f, R + 0.01f, R - 0.01f, R + 0.02f}, fs);
+        allpass_.setPole(Rs, fs);
 
         multirate_  = multirates.get(M);
         decimateId_ = 0;
@@ -62,12 +67,17 @@ void Springs::setPole(float R, float freq)
 void Springs::setTd(float Td)
 {
     Td_ = Td;
+    dsp::iSignal<N> loopEchoT;
     float sampleTd = Td *  sampleRate_ / M_;
     for(int i = 0; i < N; ++i)
     {
         loopTd_[i] = sampleTd * loopTdFactor[i];;
         loopModAmp_[i] = loopTd_[i]* loopModFactor[i];
+        loopEchoT[i] = loopTd_[i] / 5.f;
+        loopTd_[i] -= loopEchoT[i];
     }
+
+    loopEcho_.setDelay(loopEchoT);
 
     setT60(T60_);
 }
@@ -118,7 +128,25 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
             auto loop = looptap.read(c, loopdl_);
 
-            inFor(x, k, i) { x[k][i] += loop[k][i] * loopGain_; }
+            loopEchoDL_.write(c, loop);
+
+            auto loopEchoVal = loopEcho_.read(c, loopEchoDL_);
+
+            inFor(loop, k, i) {
+                loopEchoVal[k][i] += loopEchoGain*(loop[k][i] - loopEchoVal[k][i]);
+            }
+
+            loopRippleDL_.write(c, loop);
+            auto loopRippleVal = dsp::TapTail{}.read(c, loopRippleDL_);
+
+            inFor(loop, k, i) {
+                loopRippleVal[k][i] += loopRippleGain*(loopEchoVal[k][i] - loopRippleVal[k][i]);
+            }
+
+
+            inFor(x, k, i) {
+                x[k][i] += loopRippleVal[k][i]*loopGain_;
+            }
         }
 
         contextFor(ctxtdec)

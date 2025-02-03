@@ -13,11 +13,15 @@ class Springs
   public:
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
-    static constexpr auto CascadeL     = 120;
+    static constexpr auto CascadeL     = 80;
 
-    static constexpr float loopTdFactor[] = {0.98874f,1.03913f,0.993872f,1.098373f};
-    static constexpr float loopModFreq[] = {0.35f,0.464f,0.532,0.260f};
-    static constexpr float loopModFactor[] = {0.008743f,0.0105f,0.00832f,0.011f};
+    static constexpr float freqFactor[] = {0.97743f,1.04391f,1.0593f,0.934f};
+    static constexpr float RFactor[] = {1.07743f,0.94391f,0.9893f,1.034f};
+    static constexpr float loopTdFactor[] = {0.97874f,1.03913f,0.953872f,1.18373f};
+    static constexpr float loopModFreq[] = {0.35f,0.564f,0.46,0.20f};
+    static constexpr float loopModFactor[] = {0.002743f,0.00205f,0.00348f,0.0021f};
+    static constexpr float loopEchoGain = 0.076f;
+    static constexpr float loopRippleGain = 0.036f;
 
     Springs(float sampleRate)
     {
@@ -68,11 +72,14 @@ class Springs
     dsp::Signal<N> loopTd_{0.f};
     dsp::Signal<N> loopModAmp_{0.f};
     dsp::LFOParabolic<N> loopMod_;
+    dsp::TapNoInterp<N> loopEcho_;
     using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
     dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>>
         loopdl_;
+    dsp::DelayLine<LoopLength/5, nextTo(loopdl_)> loopEchoDL_;
+    dsp::CopyDelayLine<N,1,nextTo(loopEchoDL_)> loopRippleDL_;
 
-    static constexpr auto BufDecSize = nextTo(loopdl_) + MaxBlockSize;
+    static constexpr auto BufDecSize = nextTo(loopRippleDL_) + MaxBlockSize;
     dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
     dsp::Signal<N> bufferDecArray_[decltype(bufferDec_)::Size] = {{0.f}};
 
