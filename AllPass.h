@@ -62,7 +62,7 @@ template <int N, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
-    static constexpr auto minfdelay = 0.3f;
+    static constexpr auto minfdelay = 0.5f;
 
     constexpr TapAllPass() = default;
     template <class... Args>
@@ -71,21 +71,17 @@ class TapAllPass : public TapOut
     {
     }
 
-    void setDelay(int i, float d)
-    {
-        Signal<N> a;
-        auto id  = static_cast<int>(d - minfdelay);
-        float fd = d - static_cast<float>(id);
-        a[i]     = (1 - fd) / (1 + fd);
-        allpass_.setCoeff(a);
-        TapOut::setDelay(i, id);
-    };
-
     void setDelay(Signal<N> d)
     {
+        Signal<N> a;
+        iSignal<N> id;
         for (int i = 0; i < N; ++i) {
-            setDelay(i, d[i]);
+            id[i]  = static_cast<int>(d[i] - minfdelay);
+            float fd = d[i] - static_cast<float>(id[i]);
+            a[i]     = (1 - fd) / (1 + fd);
         }
+        allpass_.setCoeff(a);
+        TapOut::setDelay(id);
     }
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
@@ -104,14 +100,11 @@ template <int N>
 class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
 {
 public:
-    static constexpr auto minfdelay = 0.6f;
+    static constexpr auto minfdelay = 0.618f;
     using TapOut = TapNoInterp<N>;
     using TapIn = TapTail;
 
     constexpr TapAllPass() = default;
-    void setDelay(int i, float d)
-    {
-    };
 
     void setDelay(Signal<N> d)
     {
@@ -119,8 +112,12 @@ public:
         iSignal<N> id;
         for (int i = 0; i < N; ++i) {
             id[i]  = static_cast<int>(d[i] - minfdelay);
+
             float fd = d[i] - static_cast<float>(id[i]);
-            a[i]     = (1 - fd) / (1 + fd);
+            // taylor approximation of (1-fd)/(1+fd)
+            // -(fd-1)/2 + (fd-1)²/4 - (fd-1)³/8
+            float z = (fd-1.f)*0.5f;
+            a[i]     = z*(-1.f+z*(1.f-z));
         }
         allpass_.setCoeff(a);
         TapOut::setDelay(id);
