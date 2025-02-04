@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Delay.h"
+#include "Context.h"
 #include "Utils.h"
 
 namespace dsp
@@ -31,21 +31,22 @@ template <int L> class TapePosition
         tapePos_ += ispeed;
 
         tapePosBuf_[nwrite_] = tapePos_;
-        ++nwrite_;
+        nwrite_              = (nwrite_ + 1) & Mask;
     }
 
     position_t get() const { return tapePos_; }
 
-    position_t at(std::size_t index) const { return tapePosBuf_[index & Mask]; }
+    position_t at(int index) const { return tapePosBuf_[index & Mask]; }
 
     static bool greaterThan(position_t x1, position_t x2)
     {
-        auto diff = x1 - x2;
+        unsigned int tmp = -x2;
+        position_t diff  = x1 + tmp;
         return diff > 0;
     }
 
   private:
-    std::size_t nwrite_{2};
+    int nwrite_{2};
     int count_{0};
     position_t tapePos_{Unity};
     position_t tapePosBuf_[Size];
@@ -55,52 +56,50 @@ class TapTape
 {
   public:
     template <class Ctxt, class DL, class TapePos>
-    auto read(Ctxt c, DL &delayline, TapePos tapePos)
+    auto read(Ctxt c, const DL &delayline, const TapePos &tapePos)
     {
         // the tape position we need to read
         auto readPosition = tapePos.get() - TapePos::Unity;
         using position_t  = decltype(readPosition);
 
         // binary search of the position;
-        auto nsearch = 1;
+        auto nsearch = 2;
+        size_t nread = nread_;
         for (position_t searchPosition;
-             searchPosition = tapePos.at(nread_ + nsearch),
+             searchPosition = tapePos.at(nread + nsearch),
              TapePos::greaterThan(readPosition, searchPosition);
-             nread_ += nsearch, nsearch *= 2) {
+             nread += nsearch, nsearch *= 2) {
 
-            assert(nread_ + nsearch < tapePos.nwrite_);
+            // assert(nread + nsearch < tapePos.nwrite_);
         }
 
         while (nsearch > 1) {
             nsearch /= 2;
-            auto searchPosition = tapePos.at(nread_ + nsearch);
+            auto searchPosition = tapePos.at(nread + nsearch);
             if (TapePos::greaterThan(readPosition, searchPosition)) {
-                nread_ += nsearch;
+                nread += nsearch;
             }
         }
 
-        nread_ &= TapePos::Mask;
+        nread_ = nread & TapePos::Mask;
 
         auto foundPos0 = tapePos.at(nread_);
         auto foundPos1 = tapePos.at(nread_ + 1);
 
         // determine delay;
-        auto delay  = (tapePos.nwrite_ - nread_);
+        int delay   = (tapePos.nwrite_ - nread_) & TapePos::Mask;
         auto fdelay = static_cast<float>(readPosition - foundPos0) /
                       (foundPos1 - foundPos0);
 
         auto x0 = delayline.read(c, delay);
         auto x1 = delayline.read(c, delay + 1);
-        for (int k = 0; k < x0.size(); ++k) {
-            for (int i = 0; i < x0[0].size(); ++i) {
-                x1[k][i] += fdelay * (x0[k][i] - x1[k][i]);
-            }
-        }
+        inFor(x1, k, i) { x1[k][i] += fdelay * (x0[k][i] - x1[k][i]); }
+
         return x1;
     }
 
   private:
     // index of last read position
-    std::size_t nread_{0};
+    int nread_{0};
 };
 } // namespace dsp
