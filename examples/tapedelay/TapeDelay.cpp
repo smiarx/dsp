@@ -1,7 +1,14 @@
 #include "TapeDelay.h"
 #include "SC_Unit.h"
 
-void TapeDelay::update(float delay) { speed_ = 1.f / delay / sampleRate_; }
+void TapeDelay::update(float delay)
+{
+    if (delay != delay_) {
+        delay_ = delay;
+        // set new target speed
+        targetSpeed_ = tapePos_.convertSpeed(1.f / delay_ * invSampleRate_);
+    }
+}
 
 void TapeDelay::process(float **__restrict in, float **__restrict out,
                         int count)
@@ -19,9 +26,11 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
 
         contextFor(ctxt)
         {
+            // smooth speed;
+            speed_ += ((targetSpeed_ - speed_)) >> 8;
+            // move tape
             tapePos_.move(speed_);
             auto loop = tapTape_.read(c, delayline_, tapePos_);
-            // auto loop = dsp::TapFix<24002>().read(c, delayline_);
 
             dsp::Signal<N>::Scalar x = {{{*(inl++), *(inr++)}}};
 

@@ -20,8 +20,9 @@ class TapeDelay
 
     void setSampleRate(float sR)
     {
-        sampleRate_ = sR;
-        freqScale_  = 2.f / sR;
+        sampleRate_    = sR;
+        invSampleRate_ = 1.f / sR;
+        freqScale_     = 2.f * invSampleRate_;
     }
 
     void update(float delay);
@@ -30,12 +31,16 @@ class TapeDelay
   private:
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
+    float invSampleRate_{1.f / 48000.f};
 
-    float speed_{1.f / 0.5f / 48000.f};
+    float delay_{0.f};
 
-    dsp::DelayLine<MaxDelay> delayline_;
-    dsp::TapePosition<MaxDelay> tapePos_;
+    using TapePosition = dsp::TapePosition<MaxDelay>;
+    TapePosition::position_t targetSpeed_{0};
+    TapePosition::position_t speed_{0};
+    TapePosition tapePos_;
     dsp::TapTape tapTape_;
+    dsp::DelayLine<MaxDelay> delayline_;
 
     static constexpr auto BufferSize = nextTo(delayline_);
     dsp::Buffer<dsp::Signal<2>, BufferSize> buffer_;
