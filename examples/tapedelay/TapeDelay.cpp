@@ -6,7 +6,8 @@ void TapeDelay::update(float delay, float feedback, float drywet)
     if (delay != delay_) {
         delay_ = delay;
         // set new target speed
-        targetSpeed_ = tapePos_.convertSpeed(1.f / delay_ * invSampleRate_);
+        targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
+        speedMod_    = targetSpeed_ * 0.013f;
     }
     feedback_ = feedback;
     drywet_   = drywet;
@@ -23,10 +24,15 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
         contextFor(ctxt)
         {
             auto &x = c.getIn();
+
             // smooth speed;
-            speed_ += ((targetSpeed_ - speed_)) >> 8;
+            speed_ += (targetSpeed_ - speed_) * speedSmooth_;
+
+            // speed modulation
+            auto mod = speedLFO_.process()[0] * speedMod_;
+
             // move tape
-            tapePos_.move(speed_);
+            tapePos_.move(static_cast<TapePosition::position_t>(speed_ + mod));
             x = tapTape_.read(c, delayline_, tapePos_);
         }
 
