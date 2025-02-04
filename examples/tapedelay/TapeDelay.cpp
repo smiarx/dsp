@@ -1,45 +1,49 @@
 #include "TapeDelay.h"
 #include "SC_Unit.h"
 
-void TapeDelay::update(float delay)
+void TapeDelay::update(float delay, float feedback, float drywet)
 {
     if (delay != delay_) {
         delay_ = delay;
         // set new target speed
         targetSpeed_ = tapePos_.convertSpeed(1.f / delay_ * invSampleRate_);
     }
+    feedback_ = feedback;
+    drywet_   = drywet;
 }
 
 void TapeDelay::process(float **__restrict in, float **__restrict out,
                         int count)
 {
-    auto *inl  = in[0];
-    auto *inr  = in[1];
-    auto *outl = out[0];
-    auto *outr = out[1];
-
     int blockSize = std::min(count, MaxBlockSize);
 
-    auto ctxt = dsp::BufferContext<dsp::Signal<N>, decltype(buffer_)>(
-        nullptr, blockSize, buffer_);
+    auto ctxt = dsp::BufferContext(x_, blockSize, buffer_);
     while (count) {
 
         contextFor(ctxt)
         {
+            auto &x = c.getIn();
             // smooth speed;
             speed_ += ((targetSpeed_ - speed_)) >> 8;
             // move tape
             tapePos_.move(speed_);
-            auto loop = tapTape_.read(c, delayline_, tapePos_);
+            x = tapTape_.read(c, delayline_, tapePos_);
+        }
 
-            dsp::Signal<N>::Scalar x = {{{*(inl++), *(inr++)}}};
+        contextFor(ctxt.vec())
+        {
+            auto &loop = c.getIn();
+            decltype(c)::Type xin;
 
-            inFor(x, k, i) { x[k][i] += loop[k][i] * 0.8f; }
+            inFor(xin, k, i) { xin[k][i] = *in[i]++; }
+            inFor(xin, k, i)
+            {
+                *out[i]++ = xin[k][i] + drywet_ * (loop[k][i] - xin[k][i]);
+            }
 
-            delayline_.write(c, x);
+            inFor(xin, k, i) { xin[k][i] += loop[k][i] * feedback_; }
 
-            *outl++ = x[0][0];
-            *outr++ = x[0][1];
+            delayline_.write(c, xin);
         }
         ctxt.nextBlock();
         ctxt.save(buffer_);
@@ -79,10 +83,10 @@ void SCTapeDelay_Dtor(SCTapeDelay *unit)
 
 void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(1), IN(2)};
+    float *in[2]  = {IN(3), IN(4)};
     float *out[2] = {OUT(0), OUT(1)};
 
-    unit->tapedelay->update(IN0(0));
+    unit->tapedelay->update(IN0(0), IN0(1), IN0(2));
     unit->tapedelay->process(in, out, inNumSamples);
 }
 

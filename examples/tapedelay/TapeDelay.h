@@ -25,7 +25,7 @@ class TapeDelay
         freqScale_     = 2.f * invSampleRate_;
     }
 
-    void update(float delay);
+    void update(float delay, float feedback, float drywet);
     void process(float **__restrict in, float **__restrict out, int count);
 
   private:
@@ -34,6 +34,8 @@ class TapeDelay
     float invSampleRate_{1.f / 48000.f};
 
     float delay_{0.f};
+    float feedback_{0.f};
+    float drywet_{1.f};
 
     using TapePosition = dsp::TapePosition<MaxDelay>;
     TapePosition::position_t targetSpeed_{0};
@@ -45,4 +47,7 @@ class TapeDelay
     static constexpr auto BufferSize = nextTo(delayline_);
     dsp::Buffer<dsp::Signal<2>, BufferSize> buffer_;
     dsp::Signal<N> bufferArray_[decltype(buffer_)::Size] = {{0.f}};
+
+    // write tmp buffers
+    dsp::Signal<N> x_[MaxBlockSize] = {{0.f}};
 };
