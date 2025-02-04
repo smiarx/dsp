@@ -25,10 +25,14 @@ template <int L> class TapePosition
     static constexpr auto Q           = 30;
     static constexpr position_t Unity = (1 << Q);
 
-    void move(float speed)
+    static constexpr position_t convertSpeed(float speed)
     {
-        position_t ispeed = Unity * speed;
-        tapePos_ += ispeed;
+        return Unity * speed;
+    }
+
+    void move(position_t speed)
+    {
+        tapePos_ += speed;
 
         tapePosBuf_[nwrite_] = tapePos_;
         nwrite_              = (nwrite_ + 1) & Mask;
