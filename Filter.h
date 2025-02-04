@@ -57,8 +57,8 @@ template <int N, int NSoS = 1> class IIRFilter
         }
 
       private:
-        Signal<N> b[3] = {0};
-        Signal<N> a[3] = {0};
+        Signal<N> b[3] = {{0.f}};
+        Signal<N> a[3] = {{0.f}};
     };
 
   public:
@@ -76,6 +76,7 @@ template <int N, int NSoS = 1> class IIRFilter
 
     void sosanalog(const float ba[NSoS][2][3], Signal<N> freq);
     constexpr void butterworthLP(Signal<N> freq);
+    constexpr void butterworthHP(Signal<N> freq);
 
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
@@ -106,32 +107,30 @@ void IIRFilter<N, NSoS>::sosanalog(const float ba[NSoS][2][3], Signal<N> freq)
         Signal<N> c;
         Signal<N> csq;
         for (int i = 0; i < N; ++i) {
-            c[i]   = 1 / tanf(M_PIf * 0.5f * freq[i]);
+            c[i]   = tanf(M_PIf * 0.5f * freq[i]);
             csq[i] = c[i] * c[i];
         }
 
-        for (size_t j = 0; j < NSoS; ++j) {
-            for (int i = 0; i < N; ++i) {
-                assert(ba[j][1][0] == 1.f);
-                float a0  = ba[j][1][2];
-                float a1  = ba[j][1][1];
-                float b0  = ba[j][0][2];
-                float b1  = ba[j][0][1];
-                float b2  = ba[j][0][0];
-                float d   = 1.f / (a0 + a1 * c[i] + csq[i]);
-                float b0d = (b0 + b1 * c[i] + b2 * csq[i]) * d;
-                float b1d = 2 * (b0 - b2 * csq[i]) * d;
-                float b2d = (b0 - b1 * c[i] + b2 * csq[i]) * d;
-                float a1d = 2 * (a0 - csq[i]) * d;
-                float a2d = (a0 - a1 * c[i] + csq[i]) * d;
+        for (int i = 0; i < N; ++i) {
+            assert(ba[j][1][0] == 1.f);
+            float a0  = ba[j][1][2];
+            float a1  = ba[j][1][1];
+            float b0  = ba[j][0][2];
+            float b1  = ba[j][0][1];
+            float b2  = ba[j][0][0];
+            float d   = 1.f / (1.f + a1 * c[i] + a0 * csq[i]);
+            float b0d = (b2 + b1 * c[i] + b0 * csq[i]) * d;
+            float b1d = 2 * (-b2 + b0 * csq[i]) * d;
+            float b2d = (b2 - b1 * c[i] + b0 * csq[i]) * d;
+            float a1d = 2 * (-1.f + a0 * csq[i]) * d;
+            float a2d = (1.f - a1 * c[i] + a0 * csq[i]) * d;
 
-                sos_[j].b[0][i] = b0d;
-                sos_[j].b[1][i] = b1d;
-                sos_[j].b[2][i] = b2d;
-                sos_[j].a[0][i] = 1.f;
-                sos_[j].a[1][i] = a1d;
-                sos_[j].a[2][i] = a2d;
-            }
+            sos_[j].b[0][i] = b0d;
+            sos_[j].b[1][i] = b1d;
+            sos_[j].b[2][i] = b2d;
+            sos_[j].a[0][i] = 1.f;
+            sos_[j].a[1][i] = a1d;
+            sos_[j].a[2][i] = a2d;
         }
     }
 
@@ -158,26 +157,18 @@ constexpr void IIRFilter<N, NSoS>::butterworthLP(Signal<N> freq)
 {
     static_assert(NSoS == 1);
 
-    auto &sos0 = sos_[0];
+    float ba[2][3] = {{0.f, 0.f, 1.f}, {1.f, sqrtf(2.f), 1.f}};
+    sosanalog(&ba, freq);
+    return;
+}
 
-    for (size_t i = 0; i < N; ++i) {
-        float c   = tanf(M_PIf * 0.5f * freq[i]);
-        float csq = c * c;
-        float d   = 1.f / (1.f + sqrtf(2.f) * c + csq);
+template <int N, int NSoS>
+constexpr void IIRFilter<N, NSoS>::butterworthHP(Signal<N> freq)
+{
+    static_assert(NSoS == 1);
 
-        float a0 = 1.f;
-        float a1 = 2.f * (csq - 1.f) * d;
-        float a2 = (1.f - sqrtf(2.f) * c + csq) * d;
-        float b0 = csq * d;
-        float b1 = 2.f * b0;
-        float b2 = b0;
-
-        sos0.a[0][i] = a0;
-        sos0.a[1][i] = a1;
-        sos0.a[2][i] = a2;
-        sos0.b[0][i] = b0;
-        sos0.b[1][i] = b1;
-        sos0.b[2][i] = b2;
-    }
+    float ba[2][3] = {{1.f, 0.f, 0.f}, {1.f, sqrtf(2.f), 1.f}};
+    sosanalog(&ba, freq);
+    return;
 }
 } // namespace dsp
