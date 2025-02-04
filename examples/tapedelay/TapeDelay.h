@@ -2,6 +2,7 @@
 
 #include "../../Buffer.h"
 #include "../../Delay.h"
+#include "../../Filter.h"
 #include "../../LFO.h"
 #include "../../TapeDelay.h"
 
@@ -34,7 +35,8 @@ class TapeDelay
             1.f - powf(0.001, 1.f / speedSmoothTime * invSampleRate_);
     }
 
-    void update(float delay, float feedback, float drywet);
+    void update(float delay, float feedback, float cutlp, float cuthp,
+                float drywet);
     void process(float **__restrict in, float **__restrict out, int count);
 
   private:
@@ -55,6 +57,16 @@ class TapeDelay
     TapePosition tapePos_;
     dsp::TapTape tapTape_;
     dsp::DelayLine<MaxDelay> delayline_;
+
+    // low pass filter
+    float cutlowpass_;
+    dsp::IIRFilter<N> lpf_;
+    decltype(lpf_)::DL<N> lpfDL_;
+
+    // high pass filter
+    float cuthighpass_;
+    dsp::IIRFilter<N> hpf_;
+    decltype(lpf_)::DL<N> hpfDL_;
 
     static constexpr auto BufferSize = nextTo(delayline_);
     dsp::Buffer<dsp::Signal<2>, BufferSize> buffer_;

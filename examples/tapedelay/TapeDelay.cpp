@@ -1,7 +1,8 @@
 #include "TapeDelay.h"
 #include "SC_Unit.h"
 
-void TapeDelay::update(float delay, float feedback, float drywet)
+void TapeDelay::update(float delay, float feedback, float cutlowpass,
+                       float cuthighpass, float drywet)
 {
     if (delay != delay_) {
         delay_ = delay;
@@ -9,6 +10,18 @@ void TapeDelay::update(float delay, float feedback, float drywet)
         targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
         speedMod_    = targetSpeed_ * 0.013f;
     }
+    if (cutlowpass != cutlowpass_) {
+        cutlowpass_ = cutlowpass;
+        auto freq   = cutlowpass_ * freqScale_;
+        lpf_.butterworthLP({freq, freq});
+    }
+    if (cuthighpass != cuthighpass_) {
+        cuthighpass_ = cuthighpass;
+        auto freq    = cuthighpass_ * freqScale_;
+        printf("%f\n", freq);
+        hpf_.butterworthHP({freq, freq});
+    }
+
     feedback_ = feedback;
     drywet_   = drywet;
 }
@@ -35,6 +48,11 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             tapePos_.move(static_cast<TapePosition::position_t>(speed_ + mod));
             x = tapTape_.read(c, delayline_, tapePos_);
         }
+
+        // low pass filter
+        contextFor(ctxt) { lpf_.process(c, lpfDL_); }
+        // high pass filter
+        contextFor(ctxt) { hpf_.process(c, hpfDL_); }
 
         contextFor(ctxt.vec())
         {
@@ -89,10 +107,10 @@ void SCTapeDelay_Dtor(SCTapeDelay *unit)
 
 void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(3), IN(4)};
+    float *in[2]  = {IN(5), IN(6)};
     float *out[2] = {OUT(0), OUT(1)};
 
-    unit->tapedelay->update(IN0(0), IN0(1), IN0(2));
+    unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4));
     unit->tapedelay->process(in, out, inNumSamples);
 }
 
