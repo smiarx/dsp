@@ -18,7 +18,6 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
     if (cuthighpass != cuthighpass_) {
         cuthighpass_ = cuthighpass;
         auto freq    = cuthighpass_ * freqScale_;
-        printf("%f\n", freq);
         hpf_.butterworthHP({freq, freq});
     }
 

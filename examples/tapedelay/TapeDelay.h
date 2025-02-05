@@ -53,7 +53,7 @@ class TapeDelay
     float speed_{0};
     float speedSmooth_{0.f};
     float speedMod_{0.000004f};
-    dsp::LFOParabolic<1> speedLFO_;
+    dsp::LFOSine<1> speedLFO_;
     TapePosition tapePos_;
     dsp::TapTape tapTape_;
     dsp::DelayLine<MaxDelay> delayline_;
