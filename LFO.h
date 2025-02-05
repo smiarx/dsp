@@ -6,6 +6,50 @@
 namespace dsp
 {
 
+template <int N> class LFOSine
+{
+    /* second midified coupled-form oscillator as seen in dattorro effect design
+     * part.3
+     * */
+  public:
+    LFOSine()
+    {
+        for (int i = 0; i < N; ++i) {
+            cos_[i] = 1.f;
+        }
+    }
+    void setPhase(Signal<N> phase)
+    {
+        for (int i = 0; i < N; ++i) {
+            // TODO modify to real value
+            sin_[i] = sinf(2.f * M_PIf * phase[i]);
+            cos_[i] = cosf(2.f * M_PIf * phase[i]);
+        }
+    }
+
+    void setFreq(Signal<N> freq)
+    {
+        for (int i = 0; i < N; ++i) {
+            a_[i] = 2.f * sinf(M_PIf / 2.f * freq[i]);
+        }
+    }
+
+    Signal<N> process()
+    {
+        auto y = sin_;
+        for (int i = 0; i < N; ++i) {
+            cos_[i] -= a_[i] * sin_[i];
+            sin_[i] += a_[i] * cos_[i];
+        }
+        return y;
+    }
+
+  private:
+    Signal<N> a_   = {{0.f}};
+    Signal<N> sin_ = {{0.f}};
+    Signal<N> cos_;
+};
+
 /**
  * @brief Generate sin-like parabolic Low-Frequency Oscillator (LFO) using the
  * formula: y = x⋅(2 - |x|), x in [-2,2[
