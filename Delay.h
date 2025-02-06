@@ -283,16 +283,16 @@ template <int N> class TapLin : public TapNoInterp<N>
         auto id = TapNoInterp<N>::id_;
 
         if constexpr (N == 1) {
-            assert(id[0] <= DL::Length - Ctxt::VecSize);
-            x0 = delayline.read(c, id[0]);
-            x1 = delayline.read(c, id[0] + 1);
+            assert(id[0] <= DL::Length - Ctxt::VecSize - 1);
+            x0 = delayline.read(c, id[0] + 1);
+            x1 = delayline.read(c, id[0]);
         } else {
             arrayFor(x0[0], i)
             {
-                assert(id[i % N] <= DL::Length - Ctxt::VecSize);
-                auto &val0 = delayline.read(c, id[i % N]);
+                assert(id[i % N] <= DL::Length - Ctxt::VecSize - 1);
+                auto &val0 = delayline.read(c, id[i % N] + 1);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
-                auto &val1 = delayline.read(c, id[i % N] + 1);
+                auto &val1 = delayline.read(c, id[i % N]);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
             }
         }
