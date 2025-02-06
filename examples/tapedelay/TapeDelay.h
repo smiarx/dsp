@@ -55,7 +55,7 @@ class TapeDelay
     float speedMod_{0.000004f};
     dsp::LFOSine<1> speedLFO_;
     TapePosition tapePos_;
-    dsp::TapTape tapTape_;
+    dsp::TapTape<> tapTape_;
     dsp::DelayLine<MaxDelay> delayline_;
 
     // low pass filter
