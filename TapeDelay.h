@@ -89,8 +89,8 @@ template <class Tap = TapLin<1>> class TapTape
         auto foundPos1 = tapePos.at(nread_ + 1);
 
         // determine delay;
-        int delay   = (tapePos.getNwrite() - nread_) & TapePos::Mask;
-        auto fdelay = static_cast<float>(readPosition - foundPos0) /
+        int delay   = (tapePos.getNwrite() - nread_ + 1) & TapePos::Mask;
+        auto fdelay = static_cast<float>(foundPos1 - readPosition) /
                       (foundPos1 - foundPos0);
 
         Tap tap;

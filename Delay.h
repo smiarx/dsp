@@ -285,15 +285,15 @@ template <int N> class TapLin : public TapNoInterp<N>
 
         if constexpr (N == 1) {
             assert(id[0] <= DL::Length - Ctxt::VecSize - 1);
-            x0 = delayline.read(c, id[0] + 1);
-            x1 = delayline.read(c, id[0]);
+            x0 = delayline.read(c, id[0]);
+            x1 = delayline.read(c, id[0] + 1);
         } else {
             arrayFor(x0[0], i)
             {
                 assert(id[i % N] <= DL::Length - Ctxt::VecSize - 1);
-                auto &val0 = delayline.read(c, id[i % N] + 1);
+                auto &val0 = delayline.read(c, id[i % N]);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
-                auto &val1 = delayline.read(c, id[i % N]);
+                auto &val1 = delayline.read(c, id[i % N] + 1);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
             }
         }
@@ -324,21 +324,21 @@ template <int N> class TapCubic : public TapLin<N>
 
         if constexpr (N == 1) {
             assert(id[0] <= DL::Length - Ctxt::VecSize - 2);
-            xm1 = delayline.read(c, id[0] + 2);
-            x0  = delayline.read(c, id[0] + 1);
-            x1  = delayline.read(c, id[0]);
-            x2  = delayline.read(c, id[0] - 1);
+            xm1 = delayline.read(c, id[0] - 1);
+            x0  = delayline.read(c, id[0]);
+            x1  = delayline.read(c, id[0] + 1);
+            x2  = delayline.read(c, id[0] + 2);
         } else {
             arrayFor(x0[0], i)
             {
                 assert(id[i % N] <= DL::Length - Ctxt::VecSize - 2);
-                auto &valm1 = delayline.read(c, id[i % N] + 2);
+                auto &valm1 = delayline.read(c, id[i % N] - 1);
                 for (int k = 0; k < Ctxt::VecSize; ++k) xm1[k][i] = valm1[k][i];
-                auto &val0 = delayline.read(c, id[i % N] + 1);
+                auto &val0 = delayline.read(c, id[i % N]);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
-                auto &val1 = delayline.read(c, id[i % N]);
+                auto &val1 = delayline.read(c, id[i % N] + 1);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
-                auto &val2 = delayline.read(c, id[i % N] - 1);
+                auto &val2 = delayline.read(c, id[i % N] + 2);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val2[k][i];
             }
         }
