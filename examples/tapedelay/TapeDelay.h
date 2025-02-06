@@ -59,12 +59,12 @@ class TapeDelay
     dsp::DelayLine<MaxDelay> delayline_;
 
     // low pass filter
-    float cutlowpass_;
+    float cutlowpass_{0.f};
     dsp::IIRFilter<N> lpf_;
     decltype(lpf_)::DL<N> lpfDL_;
 
     // high pass filter
-    float cuthighpass_;
+    float cuthighpass_{0.f};
     dsp::IIRFilter<N> hpf_;
     decltype(lpf_)::DL<N> hpfDL_;
 
