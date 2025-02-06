@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Context.h"
 #include "Signal.h"
 #include "Utils.h"
 #include <cassert>
@@ -259,13 +260,6 @@ template <int N> class TapLin : public TapNoInterp<N>
     /* Tap that can read at any point in de delay line, with linear
      * interpolation */
   public:
-    void setDelay(int i, float d)
-    {
-        auto id  = static_cast<int>(d);
-        float fd = d - static_cast<float>(id);
-        fd_[i]   = fd;
-        TapNoInterp<N>::setDelay(id);
-    };
     void setDelay(Signal<N> d)
     {
         iSignal<N> id;
@@ -276,25 +270,34 @@ template <int N> class TapLin : public TapNoInterp<N>
         TapNoInterp<N>::setDelay(id);
     };
 
+    void setDelay(iSignal<N> d, Signal<N> fd)
+    {
+        TapNoInterp<N>::setDelay(d);
+        fd_ = fd;
+    }
+
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
         typename Ctxt::Type x0;
         typename Ctxt::Type x1;
         auto id = TapNoInterp<N>::id_;
 
-        for (int i = 0; i < N; i++) {
-            assert(id[i] <= DL::Length - Ctxt::VecSize);
-            auto &val0 = delayline.read(c, id[i]);
-            for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
-            auto &val1 = delayline.read(c, id[i] + 1);
-            for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
-        }
-
-        for (auto k = 0; k < Ctxt::VecSize; ++k) {
-            for (int i = 0; i < N; ++i) {
-                x0[k][i] += fd_[i] * (x1[k][i] - x0[k][i]);
+        if constexpr (N == 1) {
+            assert(id[0] <= DL::Length - Ctxt::VecSize);
+            x0 = delayline.read(c, id[0]);
+            x1 = delayline.read(c, id[0] + 1);
+        } else {
+            arrayFor(x0[0], i)
+            {
+                assert(id[i % N] <= DL::Length - Ctxt::VecSize);
+                auto &val0 = delayline.read(c, id[i % N]);
+                for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
+                auto &val1 = delayline.read(c, id[i % N] + 1);
+                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
             }
         }
+
+        inFor(x0, k, i) { x0[k][i] += fd_[i % N] * (x1[k][i] - x0[k][i]); }
         return x0;
     }
 

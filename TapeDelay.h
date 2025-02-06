@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "Delay.h"
 #include "Utils.h"
 
 namespace dsp
@@ -8,13 +9,9 @@ namespace dsp
 
 // https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_9.pdf
 
-class TapTape;
-
 template <int L> class TapePosition
 {
   public:
-    friend TapTape;
-
     TapePosition() : tapePosBuf_{0, Unity} {}
     using position_t = int;
 
@@ -38,6 +35,7 @@ template <int L> class TapePosition
         nwrite_              = (nwrite_ + 1) & Mask;
     }
 
+    int getNwrite() const { return nwrite_; }
     position_t get() const { return tapePos_; }
 
     position_t at(int index) const { return tapePosBuf_[index & Mask]; }
@@ -56,7 +54,7 @@ template <int L> class TapePosition
     position_t tapePosBuf_[Size];
 };
 
-class TapTape
+template <class Tap = TapLin<1>> class TapTape
 {
   public:
     template <class Ctxt, class DL, class TapePos>
@@ -91,15 +89,13 @@ class TapTape
         auto foundPos1 = tapePos.at(nread_ + 1);
 
         // determine delay;
-        int delay   = (tapePos.nwrite_ - nread_) & TapePos::Mask;
+        int delay   = (tapePos.getNwrite() - nread_) & TapePos::Mask;
         auto fdelay = static_cast<float>(readPosition - foundPos0) /
                       (foundPos1 - foundPos0);
 
-        auto x0 = delayline.read(c, delay);
-        auto x1 = delayline.read(c, delay + 1);
-        inFor(x1, k, i) { x1[k][i] += fdelay * (x0[k][i] - x1[k][i]); }
-
-        return x1;
+        Tap tap;
+        tap.setDelay({delay}, {fdelay});
+        return tap.read(c, delayline);
     }
 
   private:
