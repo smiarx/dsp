@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "FastMath.h"
 #include "Signal.h"
 #include "Utils.h"
 #include <cassert>
@@ -303,5 +304,51 @@ template <int N> class TapLin : public TapNoInterp<N>
 
   protected:
     Signal<N> fd_;
+};
+
+template <int N> class TapCubic : public TapLin<N>
+{
+    /* Tap that can read at any point in the delay line, with cubic
+     * interpolation */
+
+  public:
+    template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
+    {
+        typename Ctxt::Type y;
+        typename Ctxt::Type xm1;
+        typename Ctxt::Type x0;
+        typename Ctxt::Type x1;
+        typename Ctxt::Type x2;
+        auto id = TapNoInterp<N>::id_;
+        auto fd = TapLin<N>::fd_;
+
+        if constexpr (N == 1) {
+            assert(id[0] <= DL::Length - Ctxt::VecSize - 2);
+            xm1 = delayline.read(c, id[0] + 2);
+            x0  = delayline.read(c, id[0] + 1);
+            x1  = delayline.read(c, id[0]);
+            x2  = delayline.read(c, id[0] - 1);
+        } else {
+            arrayFor(x0[0], i)
+            {
+                assert(id[i % N] <= DL::Length - Ctxt::VecSize - 2);
+                auto &valm1 = delayline.read(c, id[i % N] + 2);
+                for (int k = 0; k < Ctxt::VecSize; ++k) xm1[k][i] = valm1[k][i];
+                auto &val0 = delayline.read(c, id[i % N] + 1);
+                for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
+                auto &val1 = delayline.read(c, id[i % N]);
+                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
+                auto &val2 = delayline.read(c, id[i % N] - 1);
+                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val2[k][i];
+            }
+        }
+
+        inFor(y, k, i)
+        {
+            y[k][i] =
+                hermite(xm1[k][i], x0[k][i], x1[k][i], x2[k][i], fd[i % N]);
+        }
+        return y;
+    }
 };
 } // namespace dsp
