@@ -7,9 +7,39 @@
 
 namespace dsp
 {
-template <int N, int A, int LutSize> class TapKernel : public TapLin<1>
+
+namespace kernel
+{
+
+template <int A> class Sinc
+{
+  public:
+    Sinc()                     = delete;
+    static constexpr auto Size = A;
+    static constexpr auto generate(float x)
+    {
+        auto xpi = x * M_PIf;
+        return sinf(xpi) / (xpi);
+    }
+};
+
+template <int A> class Lanczos
+{
+  public:
+    Lanczos()                  = delete;
+    static constexpr auto Size = A;
+    static constexpr auto generate(float x)
+    {
+        auto xpi = x * M_PIf;
+        return sinf(xpi) * sinf(xpi / A) / (xpi * xpi) * A;
+    }
+};
+} // namespace kernel
+
+template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
 {
   private:
+    static constexpr auto A           = Kernel::Size;
     static constexpr auto FilterWidth = A * 2;
 
     // type used in lookup table
@@ -39,75 +69,72 @@ template <int N, int A, int LutSize> class TapKernel : public TapLin<1>
         }
     };
 
-  public:
-    using LutType = Lut<KernelType, LutSize>;
+    /* define the LookUpTable that generate kernels */
+    class LutType : public Lut<KernelType, LutSize>
+    {
+      public:
+        LutType()
+        {
+            // prepare convolution kernel
+            Lut<KernelType, LutSize>::fill([](float x) -> auto {
+                KernelType kernels = {{0.f}};
+                if (fabs(x) < 1e-7) {
+                    for (int i = 0; i < N; ++i) {
+                        kernels[idFromKernel(0)][i] = 1.f;
+                    }
+                } else if (fabs(x - 1.f) < 1e-7) {
+                    for (int i = 0; i < N; ++i) {
+                        kernels[idFromKernel(-1)][i] = 1.f;
+                    }
+                } else {
+                    for (int id = 0; id < FilterWidth; ++id) {
+                        auto k     = kernelFromId(id);
+                        auto value = Kernel::generate(-k - x);
+                        for (int i = 0; i < N; ++i) {
+                            kernels[id][i] = value;
+                        }
+                    }
+                }
+
+                return kernels;
+            });
+        }
+    };
 
   private:
     static LutType lut;
 
-    enum Kernel {
+    enum KernelNum {
         First = -A,
         Last  = A - 1,
     };
+
     static constexpr int kernelFromId(int id) { return First + id; }
     static constexpr int idFromKernel(int k) { return k - First; }
 
   public:
-    static constexpr auto kernelFunc(float x)
-    {
-        auto xpi = x * M_PIf;
-        return sinf(xpi) * sinf(xpi / A) / (xpi * xpi) * A;
-    }
-
-  public:
-    static void initLut()
-    {
-        // prepare convolution kernel
-        lut.fill([](float x) -> auto {
-            KernelType kernels = {{0.f}};
-            if (fabs(x) < 1e-7) {
-                for (int i = 0; i < N; ++i) {
-                    kernels[idFromKernel(0)][i] = 1.f;
-                }
-            } else if (fabs(x - 1.f) < 1e-7) {
-                for (int i = 0; i < N; ++i) {
-                    kernels[idFromKernel(-1)][i] = 1.f;
-                }
-            } else {
-                for (int k = Kernel::First; k <= Kernel::Last; ++k) {
-                    auto idK   = idFromKernel(k);
-                    auto value = kernelFunc(-k - x);
-                    for (int i = 0; i < N; ++i) {
-                        kernels[idK][i] = value;
-                    }
-                }
-            }
-            return kernels;
-        });
-    }
-
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline)
     {
         static_assert(Ctxt::VecSize == 1);
 
         typename Ctxt::Type x = {{0.f}};
 
-        auto id = TapNoInterp<1>::id_[0];
-        auto fd = TapLin<1>::fd_[0];
+        auto idelay = TapNoInterp<1>::id_[0];
+        auto fdelay = TapLin<1>::fd_[0];
 
-        auto kernels = lut.read(fd);
+        auto kernels = lut.read(fdelay);
 
         constexpr auto VecSize = Ctxt::BaseType::VectorSize;
         for (int l = 0; l < FilterWidth - FilterWidth % VecSize; l += VecSize) {
             auto points =
-                delayline.read(c, id - (Kernel::First + l))[0].toVector();
+                delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
             inFor(points, k, i) { points[k][i] *= kernels[l + k][i]; }
             inFor(points, k, i) { x[0][i] += points[k][i]; }
         }
         for (int l = FilterWidth - FilterWidth % VecSize; l < FilterWidth;
              ++l) {
             auto point =
-                delayline.read(c, id - (Kernel::First + l))[0].toVector();
+                delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
             arrayFor(point[0], i) { x[0][i] += point[0][i] * kernels[l][i]; }
         }
 
@@ -138,6 +165,7 @@ template <int N, int A, int LutSize> class TapKernel : public TapLin<1>
 };
 
 // define static variable
-template <int N, int A, int LutSize>
-typename TapKernel<N, A, LutSize>::LutType TapKernel<N, A, LutSize>::lut;
+template <int N, class Kernel, int LutSize>
+typename TapKernel<N, Kernel, LutSize>::LutType
+    TapKernel<N, Kernel, LutSize>::lut;
 } // namespace dsp
