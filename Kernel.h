@@ -11,7 +11,7 @@ namespace dsp
 namespace kernel
 {
 
-template <int A> class Sinc
+template <int A, class Window> class Sinc
 {
   public:
     Sinc()                     = delete;
@@ -19,7 +19,7 @@ template <int A> class Sinc
     static constexpr auto generate(float x)
     {
         auto xpi = x * M_PIf;
-        return sinf(xpi) / (xpi);
+        return sinf(xpi) / (xpi)*Window::generate(x / A);
     }
 };
 
