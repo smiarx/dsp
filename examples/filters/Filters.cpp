@@ -18,34 +18,29 @@ template <class Base> struct Filter<Base, true> : public Unit {
     float res{0};
 };
 
-template <class Base, bool hasRes> void Filter_Ctor(Filter<Base,hasRes> *unit);
-template <class Base, bool hasRes> void Filter_next(Filter<Base,hasRes> *unit, int inNumSamples);
-template <class Base, bool hasRes> void Filter_next_a(Filter<Base,hasRes> *unit, int inNumSamples);
+template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit);
+template <class Base, bool hasRes>
+void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples);
+template <class Base, bool hasRes>
+void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples);
 
-template <class Base, bool hasRes> void Filter_Ctor(Filter<Base,hasRes> *unit)
+template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit)
 {
-    if(INRATE(1) == calc_FullRate)
-    {
-        auto& nextFunc = Filter_next_a<Base,hasRes>;
+    if (INRATE(1) == calc_FullRate) {
+        auto &nextFunc = Filter_next_a<Base, hasRes>;
         SETCALC(nextFunc);
-    }
-    else
-    {
-        auto& nextFunc = Filter_next<Base,hasRes>;
+    } else {
+        auto &nextFunc = Filter_next<Base, hasRes>;
         SETCALC(nextFunc);
     }
 
     unit->freq = IN0(1);
     float freq = unit->freq * SAMPLEDUR * 2.f;
-    freq = dsp::warpFreq<1>({freq})[0];
-    if constexpr(hasRes)
-    {
-        unit->res = IN0(2);
-        unit->filter = Base({freq},{unit->res});
-    }
-    else
-    {
-        unit->filter = Base({IN0(1)});
+    if constexpr (hasRes) {
+        unit->res    = IN0(2);
+        unit->filter = Base({freq}, {unit->res});
+    } else {
+        unit->filter = Base({freq});
     }
     unit->state = {{{0.f}}};
 
@@ -57,14 +52,10 @@ void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
         unit->freq = IN0(1);
-    }
-    else
-    {
-        if constexpr (hasRes)
-        {
-            float res    = IN0(2);
-            if(unit->res != res)
-            {
+    } else {
+        if constexpr (hasRes) {
+            float res = IN0(2);
+            if (unit->res != res) {
                 unit->filter.setRes({res});
                 unit->res = res;
             }
@@ -75,7 +66,6 @@ void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples)
     auto *out = OUT(0);
     for (int n = 0; n < inNumSamples; ++n) {
         float freq = IN(1)[n] * SAMPLEDUR * 2.f;
-        freq = dsp::warpFreq<1>({freq})[0];
         if constexpr (hasRes) {
             float res    = IN0(2);
             unit->filter = Base({freq}, {res});
@@ -96,7 +86,6 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
         float freq = IN0(1) * SAMPLEDUR * 2.f;
-        freq = dsp::warpFreq<1>({freq})[0];
         if constexpr (hasRes) {
             float res    = IN0(2);
             unit->filter = Base({freq}, {res});
@@ -105,14 +94,10 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
             unit->filter = Base({freq});
         }
         unit->freq = IN0(1);
-    }
-    else
-    {
-        if constexpr (hasRes)
-        {
-            float res    = IN0(2);
-            if(unit->res != res)
-            {
+    } else {
+        if constexpr (hasRes) {
+            float res = IN0(2);
+            if (unit->res != res) {
                 unit->filter.setRes({res});
                 unit->res = res;
             }
@@ -132,8 +117,8 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
 
 #define CMA ,
 #define DefineFilterUnit(name, Base, hasRes)                \
-    (*ft->fDefineUnit)(#name, sizeof(Filter<Base,hasRes>), \
-                       (UnitCtorFunc) & Filter_Ctor<Base,hasRes>, 0, 0);
+    (*ft->fDefineUnit)(#name, sizeof(Filter<Base, hasRes>), \
+                       (UnitCtorFunc) & Filter_Ctor<Base, hasRes>, 0, 0);
 PluginLoad(SCTapeDelay)
 {
     ft = inTable; // store pointer to InterfaceTable

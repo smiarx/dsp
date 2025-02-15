@@ -19,7 +19,7 @@ enum FilterType {
     Notch,
 };
 
-template <int N> static constexpr Signal<N> warpFreq(Signal<N> freq)
+template <int N> static constexpr Signal<N> warpGain(Signal<N> freq)
 {
     arrayFor(freq, i) { freq[i] = tanf(M_PIf * freq[i] * 0.5f); }
     return freq;
@@ -38,7 +38,8 @@ template <int N, FilterType FT = LowPass> class OnePole
 
     void setFreq(Signal<N> freq)
     {
-        arrayFor(freq, i) { gain_[i] = freq[i] / (1.f + freq[i]); }
+        auto gain = warpGain(freq);
+        arrayFor(freq, i) { gain_[i] = gain[i] / (1.f + gain[i]); }
     }
 
     template <class Ctxt> void process(Ctxt c, State &state) const
@@ -94,7 +95,8 @@ template <int N, FilterType FT = LowPass> class SVF
 
     void setFreq(Signal<N> freq, Signal<N> res)
     {
-        arrayFor(freq, i) { gain_[i] = freq[i]; }
+        auto gain = warpGain(freq);
+        arrayFor(freq, i) { gain_[i] = gain[i]; }
         setRes(res);
     }
     void setFreq(Signal<N> freq)
@@ -112,7 +114,9 @@ template <int N, FilterType FT = LowPass> class SVF
             assert(res[i] > 0.f);
             denominator_[i] =
                 1.f / (1.f + gain_[i] * (2.f * res[i] + gain_[i]));
-
+            if constexpr (FT == HighPass) {
+                gains1_[i] = 2 * res[i] + gain_[i];
+            }
             if constexpr (NormaLizedBandPass) {
                 inputGain_[i] = 2.f * res[i];
                 if constexpr (FT == AllPass) {
@@ -131,32 +135,38 @@ template <int N, FilterType FT = LowPass> class SVF
         if constexpr (NormaLizedBandPass) {
             inFor(x, k, i) { x[k][i] *= inputGain_[i]; }
         }
+
         inFor(x, k, i)
         {
             auto s1 = s[0][i], s2 = s[1][i];
-            auto bp = (gain_[i] * (x[k][i] - s2) + s1) * denominator_[i];
-            if constexpr (NormaLizedBandPass) {
-                auto bp2 = bp + bp; // first integrator;
-                s1       = bp2 - s1;
-                auto v22 = gain_[i] * bp2; // second integrator
-                s2       = v22 + s2;
-                if constexpr (FT == BandPass) {
-                    in[k][i] = bp;
-                } else if constexpr (FT == AllPass || FT == Notch) {
-                    in[k][i] -= bp;
-                }
+            if constexpr (FT == HighPass) {
+                auto hp  = (x[k][i] - gains1_[i] * s1 - s2) * denominator_[i];
+                auto v1  = gain_[i] * hp;
+                auto bp  = v1 + s1;
+                s1       = bp + v1; // first integrator
+                auto v2  = gain_[i] * bp;
+                auto lp  = v2 + s2;
+                s2       = lp + v2; // second integrator
+                in[k][i] = hp;
             } else {
-                auto v1 = bp - s1; // first integrator
-                s1      = bp + v1;
-                auto v2 = gain_[i] * bp; // secondintegrator
-                auto lp = v2 + s2;
-                s2      = lp + v2;
-
-                if constexpr (FT == LowPass) {
+                auto bp = (gain_[i] * (x[k][i] - s2) + s1) * denominator_[i];
+                if constexpr (NormaLizedBandPass) {
+                    auto bp2 = bp + bp; // first integrator;
+                    s1       = bp2 - s1;
+                    auto v22 = gain_[i] * bp2; // second integrator
+                    s2       = v22 + s2;
+                    if constexpr (FT == BandPass) {
+                        in[k][i] = bp;
+                    } else if constexpr (FT == AllPass || FT == Notch) {
+                        in[k][i] -= bp;
+                    }
+                } else if (FT == LowPass) {
+                    auto v1  = bp - s1; // first integrator
+                    s1       = bp + v1;
+                    auto v2  = gain_[i] * bp; // secondintegrator
+                    auto lp  = v2 + s2;
+                    s2       = lp + v2;
                     in[k][i] = lp;
-                } else if constexpr (FT == HighPass) {
-                    auto hp  = x[k][i] - lp;
-                    in[k][i] = hp;
                 }
             }
 
@@ -173,8 +183,9 @@ template <int N, FilterType FT = LowPass> class SVF
     class Empty
     {
     };
-    typename std::conditional<FT == BandPass || FT == AllPass || FT == Notch,
-                              Signal<N>, Empty>::type inputGain_;
+    typename std::conditional<FT == HighPass, Signal<N>, Empty>::type gains1_;
+    typename std::conditional<NormaLizedBandPass, Signal<N>, Empty>::type
+        inputGain_;
 };
 
 template <int N, FilterType FT = LowPass> class Ladder
