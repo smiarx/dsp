@@ -85,7 +85,7 @@ template <int N, int Order> class IIRFilter
     void butterworthHP(Signal<N> freq)
     {
         float ba[NSOS][2][3];
-        butterworthTF<false>(ba);
+        butterworthTF<true>(ba);
         tfAnalog(ba, freq);
     }
 
