@@ -62,7 +62,7 @@ class alignas(N * sizeof(T)) _Signal : public std::array<T, N>
 
     _Signal &operator-=(const _Signal &rhs)
     {
-        for (int i = 0; i < N; ++i) this->x[i] -= rhs[i];
+        for (int i = 0; i < N; ++i) (*this)[i] -= rhs[i];
         return *this;
     }
 
