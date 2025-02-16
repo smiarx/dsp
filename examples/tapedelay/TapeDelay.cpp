@@ -1,28 +1,33 @@
 #include "TapeDelay.h"
+#include "../../Utils.h"
 #include "SC_Unit.h"
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
-                       float cuthighpass, float drywet)
+                       float cuthighpass, float saturation, float flutter,
+                       float drywet)
 {
-    if (delay != delay_) {
+    if (delay != delay_ || flutter_ != flutter) {
         delay_ = delay;
         // set new target speed
         targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
-        speedMod_    = targetSpeed_ * 0.013f;
+
+        flutter_ = flutter;
+        speedMod_.set({targetSpeed_ * flutter * speedModAmp}, invBlockSize_);
     }
-    if (cutlowpass != cutlowpass_) {
+    if (cutlowpass_ != cutlowpass) {
         cutlowpass_ = cutlowpass;
         auto freq   = cutlowpass_ * freqScale_;
-        lpf_.butterworthLP({freq, freq});
+        lpf_.setFreq({freq, freq});
     }
     if (cuthighpass != cuthighpass_) {
         cuthighpass_ = cuthighpass;
         auto freq    = cuthighpass_ * freqScale_;
-        hpf_.butterworthHP({freq, freq});
+        hpf_.setFreq({freq, freq});
     }
 
-    feedback_ = feedback;
-    drywet_   = drywet;
+    saturation_.set({saturation}, invBlockSize_);
+    feedback_.set({feedback, feedback}, invBlockSize_);
+    drywet_.set({drywet, drywet}, invBlockSize_);
 }
 
 void TapeDelay::process(float **__restrict in, float **__restrict out,
@@ -41,7 +46,8 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             speed_ += (targetSpeed_ - speed_) * speedSmooth_;
 
             // speed modulation
-            auto mod = speedLFO_.process()[0] * speedMod_;
+            speedMod_.step();
+            auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
 
             // move tape
             tapePos_.move(static_cast<TapePosition::position_t>(speed_ + mod));
@@ -49,9 +55,44 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
         }
 
         // low pass filter
-        contextFor(ctxt) { lpf_.process(c, lpfDL_); }
+        contextFor(ctxt) { lpf_.process(c, lpfMem_); }
+
         // high pass filter
-        contextFor(ctxt) { hpf_.process(c, hpfDL_); }
+        contextFor(ctxt) { hpf_.process(c, hpfMem_); }
+
+        // distortion
+        if (saturation_.isActive()) {
+            float pregain  = 1.f;
+            float postgain = 1.f;
+            contextFor(ctxt)
+            {
+                saturation_.step();
+                auto saturation = saturation_.get()[0][0];
+                pregain         = dsp::db2gain(saturation);
+                postgain = dsp::db2gain(-saturation / (saturation > 0 ? 2 : 1));
+                auto &x  = c.getIn();
+                inFor(x, k, i)
+                {
+                    x[k][i] = postgain * dsp::tanh(x[k][i] * pregain);
+                }
+            }
+            inFor(pregain_, k, i)
+            {
+                pregain_[k][i]  = pregain;
+                postgain_[k][i] = postgain;
+            }
+        } else {
+            contextFor(ctxt.vec())
+            {
+                auto &x = c.getIn();
+                inFor(x, k, i)
+                {
+                    x[k][i] *= pregain_[k][i];
+                    x[k][i] = dsp::tanh(x[k][i]);
+                    x[k][i] *= postgain_[k][i];
+                }
+            }
+        }
 
         contextFor(ctxt.vec())
         {
@@ -59,19 +100,40 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             decltype(c)::Type xin;
 
             inFor(xin, k, i) { xin[k][i] = *in[i]++; }
+
+            drywet_.step();
+            feedback_.step();
+            auto drywet   = drywet_.get();
+            auto feedback = feedback_.get();
             inFor(xin, k, i)
             {
-                *out[i]++ = xin[k][i] + drywet_ * (loop[k][i] - xin[k][i]);
+                *out[i]++ = xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
             }
 
-            inFor(xin, k, i) { xin[k][i] += loop[k][i] * feedback_; }
-
-            delayline_.write(c, xin);
+            inFor(xin, k, i)
+            {
+                loop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
+            }
+            delayline_.write(c, loop);
         }
+
         ctxt.nextBlock();
         ctxt.save(buffer_);
 
         count -= blockSize;
+    }
+
+    drywet_.reset();
+    feedback_.reset();
+    speedMod_.reset();
+    if (saturation_.isActive()) {
+        saturation_.reset();
+        inFor(pregain_, k, i)
+        {
+            auto K          = pregain_.size();
+            pregain_[k][i]  = pregain_[K - 1][i];
+            postgain_[k][i] = postgain_[K - 1][i];
+        }
     }
 }
 
@@ -93,7 +155,7 @@ void SCTapeDelay_Ctor(SCTapeDelay *unit)
 
     unit->tapedelay = (TapeDelay *)RTAlloc(unit->mWorld, sizeof(TapeDelay));
     ClearUnitIfMemFailed(unit->tapedelay);
-    new (unit->tapedelay) TapeDelay(SAMPLERATE);
+    new (unit->tapedelay) TapeDelay(SAMPLERATE, BUFLENGTH);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;
@@ -106,10 +168,11 @@ void SCTapeDelay_Dtor(SCTapeDelay *unit)
 
 void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(5), IN(6)};
+    float *in[2]  = {IN(7), IN(8)};
     float *out[2] = {OUT(0), OUT(1)};
 
-    unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4));
+    unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
+                            IN0(6));
     unit->tapedelay->process(in, out, inNumSamples);
 }
 
