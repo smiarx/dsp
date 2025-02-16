@@ -18,6 +18,9 @@ class Springs
     static constexpr auto DecimateMaxFreq = 0.78f;
     static constexpr auto DCBlockFreq     = 20.f;
 
+    static constexpr auto EQPeak      = 100.f;
+    static constexpr auto EQBandWidth = 5.f;
+
     static constexpr float freqFactor[] = {0.97743f, 1.04391f, 1.0593f, 0.934f};
     static constexpr float RFactor[]    = {1.07743f, 0.94391f, 0.9893f, 1.034f};
     static constexpr float loopTdFactor[]  = {0.97874f, 1.03913f, 0.953872f,
@@ -59,6 +62,9 @@ class Springs
     dsp::va::SVF<N, dsp::va::LowPass> lowpass_;
     typename decltype(lowpass_)::State lowpassState_;
 
+    dsp::va::SVF<N, dsp::va::BandPass> eq_;
+    typename decltype(eq_)::State eqState_;
+
     dsp::va::OnePole<N, dsp::va::HighPass> dcblocker_;
     typename decltype(dcblocker_)::State dcblockerState_;
 
@@ -96,11 +102,8 @@ class Springs
 
     void setSampleRate(float sR)
     {
-        sampleRate_      = sR;
-        freqScale_       = 2.f / sR;
-        auto dcblockfreq = DCBlockFreq * freqScale_;
-        dcblocker_.setFreq(
-            {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
+        sampleRate_ = sR;
+        freqScale_  = 2.f / sR;
     }
 
     void setPole(float R, float freq);

@@ -46,6 +46,15 @@ void Springs::setPole(float R, float freq)
     freq_    = freq;
 
     if (M != oldM) {
+
+        auto eqPeak = EQPeak * freqScale_ * M;
+        eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});
+        eq_.setBandWidth({EQBandWidth, EQBandWidth, EQBandWidth, EQBandWidth});
+
+        auto dcblockfreq = DCBlockFreq * freqScale_ * M;
+        dcblocker_.setFreq(
+            {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
+
         setTd(Td_);
     }
 }
@@ -151,6 +160,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         }
 
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
+        contextFor(ctxtdec) { eq_.process(c, eqState_); }
 
         decimateId_ =
             multirate_->interpolate(ctxtdec, ctxt, dlinterpolate_, decimateId_);
