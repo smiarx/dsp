@@ -127,6 +127,24 @@ template <int N, FilterType FT = LowPass> class SVF
         }
     }
 
+    /* -3db bandwidth in octave */
+    void setBandWidth(Signal<N> bw)
+    {
+        static_assert(FT == BandPass);
+        Signal<N> res;
+        arrayFor(bw, i)
+        {
+            auto freqbwm = gain_[i] * powf(2.f, -bw[i] * 0.5f);
+            auto freqbwp = gain_[i] * powf(2.f, bw[i] * 0.5f);
+            auto bwwarp =
+                logf(warpGain<1>({freqbwp})[0] / warpGain<1>({freqbwm})[0]) /
+                logf(2.f);
+            res[i] = pow(2.f, bwwarp * 0.5f) - pow(2.f, -bwwarp * 0.5);
+            res[i] *= 0.5f;
+        }
+        setRes(res);
+    }
+
     template <class Ctxt> void process(Ctxt c, State &state) const
     {
         auto &in = c.getIn();
