@@ -199,7 +199,7 @@ void SCSprings_Ctor(SCSprings *unit)
 
     unit->springs = (Springs *)RTAlloc(unit->mWorld, sizeof(Springs));
     ClearUnitIfMemFailed(unit->springs);
-    *unit->springs = Springs(SAMPLERATE);
+    new (unit->springs) Springs(SAMPLERATE);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;
