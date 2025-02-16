@@ -35,6 +35,7 @@ template <int N, FilterType FT = LowPass> class OnePole
         static_assert(FT == LowPass || FT == HighPass || FT == AllPass);
         setFreq(freq);
     }
+    OnePole() = default;
 
     void setFreq(Signal<N> freq)
     {
@@ -251,4 +252,4 @@ template <int N, FilterType FT = LowPass> class Ladder
     Signal<N> denominator_;
     OP onepole_;
 };
-} // namespace dsp
+} // namespace dsp::va

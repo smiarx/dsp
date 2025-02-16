@@ -135,6 +135,8 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             inFor(x, k, i) { x[k][i] += loopRippleVal[k][i] * loopGain_; }
         }
 
+        contextFor(ctxtdec) { dcblocker_.process(c, dcblockerState_); }
+
         contextFor(ctxtdec)
         {
             for (int j = 0; j < CascadeL; ++j) {
