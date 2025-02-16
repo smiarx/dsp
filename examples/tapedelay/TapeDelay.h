@@ -48,7 +48,7 @@ class TapeDelay
     }
 
     void update(float delay, float feedback, float cutlp, float cuthp,
-                float saturation, float flutter, float drywet);
+                float saturation, float drift, float drywet);
     void process(float **__restrict in, float **__restrict out, int count);
 
   private:
@@ -75,7 +75,7 @@ class TapeDelay
     dsp::DelayLine<MaxDelay> delayline_;
 
     // speed modulation
-    float flutter_{0.f};
+    float drift_{0.f};
     dsp::ControlSmoother<1> speedMod_{{0.f}};
     dsp::LFOSine<1> speedLFO_;
 

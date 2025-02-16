@@ -3,18 +3,18 @@
 #include "SC_Unit.h"
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
-                       float cuthighpass, float saturation, float flutter,
+                       float cuthighpass, float saturation, float drift,
                        float drywet)
 {
-    if (delay != delay_ || flutter_ != flutter) {
+    if (delay != delay_ || drift_ != drift) {
         delay_ = delay;
         // set new target speed
         targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
 
-        flutter_ = flutter;
-        speedMod_.set({targetSpeed_ * flutter * speedModAmp}, invBlockSize_);
+        drift_ = drift;
+        speedMod_.set({targetSpeed_ * drift * speedModAmp}, invBlockSize_);
     }
-    if (cutlowpass_ != cutlowpass) {
+    if (cutlowpass != cutlowpass_) {
         cutlowpass_ = cutlowpass;
         auto freq   = cutlowpass_ * freqScale_;
         lpf_.setFreq({freq, freq});
