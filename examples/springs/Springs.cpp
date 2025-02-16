@@ -37,19 +37,7 @@ void Springs::setPole(float R, float freq)
     multirate_  = multirates.get(M);
     decimateId_ = 0;
 
-    /* scipy.signal.ellip(10, 1, 60, 1.0, analog=True, output='sos') */
-    const float analoglowpasssos[][2][3] = {
-        {{1.00000000e-03, 0.00000000e+00, 1.43497622e-02},
-         {1.00000000e+00, 4.79554974e-01, 1.41121071e-01}},
-        {{1.00000000e+00, 0.00000000e+00, 2.24894555e+00},
-         {1.00000000e+00, 2.72287841e-01, 5.26272885e-01}},
-        {{1.00000000e+00, 0.00000000e+00, 1.33580569e+00},
-         {1.00000000e+00, 1.11075112e-01, 8.24889759e-01}},
-        {{1.00000000e+00, 0.00000000e+00, 1.12840768e+00},
-         {1.00000000e+00, 3.84115770e-02, 9.56268315e-01}},
-        {{1.00000000e+00, 0.00000000e+00, 1.07288063e+00},
-         {1.00000000e+00, 9.05107247e-03, 9.99553018e-01}}};
-    lowpass_.sosanalog(analoglowpasssos, fs);
+    lowpass_.setFreq(fs);
 
     int oldM = M_;
     M_       = M;
@@ -159,7 +147,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             loopdl_.write(c, x);
         }
 
-        contextFor(ctxtdec) { lowpass_.process(c, lowpassdl_); }
+        contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
 
         decimateId_ =
             multirate_->interpolate(ctxtdec, ctxt, dlinterpolate_, decimateId_);

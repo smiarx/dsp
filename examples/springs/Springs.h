@@ -1,10 +1,10 @@
 
 
 #include "../../AllPass.h"
-#include "../../Filter.h"
 #include "../../LFO.h"
 #include "../../MultiRate.h"
 #include "../../Noise.h"
+#include "../../VAFilters.h"
 
 static constexpr auto N = 4;
 
@@ -53,8 +53,8 @@ class Springs
     dsp::AllPass2<N> allpass_;
     typename decltype(allpass_)::DL allpassdl_[CascadeL];
 
-    dsp::IIRFilter<N, 4> lowpass_;
-    typename decltype(lowpass_)::DL<N> lowpassdl_;
+    dsp::va::SVF<N, dsp::va::LowPass> lowpass_;
+    typename decltype(lowpass_)::State lowpassState_;
 
     using MR = dsp::MultiRate<N, 15, MaxDecimate>;
     MR::DLDecimate dldecimate_;
