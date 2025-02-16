@@ -15,6 +15,8 @@ class Springs
     static constexpr auto MaxDecimate  = 8;
     static constexpr auto CascadeL     = 80;
 
+    static constexpr auto DecimateMaxFreq = 0.78f;
+
     static constexpr float freqFactor[] = {0.97743f, 1.04391f, 1.0593f, 0.934f};
     static constexpr float RFactor[]    = {1.07743f, 0.94391f, 0.9893f, 1.034f};
     static constexpr float loopTdFactor[]  = {0.97874f, 1.03913f, 0.953872f,

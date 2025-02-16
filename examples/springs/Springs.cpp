@@ -1,7 +1,7 @@
 #include "Springs.h"
 #include "SC_Unit.h"
 
-static const Springs::MRs multirates{0.97f};
+static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
 void Springs::update(float R, float freq, float Td, float T60)
 {
@@ -18,26 +18,27 @@ void Springs::update(float R, float freq, float Td, float T60)
 
 void Springs::setPole(float R, float freq)
 {
-    int M = sampleRate_ / 2.f / freq * 1.1f;
-    M     = std::min(M, MaxDecimate);
+    auto freqScaled = freq * freqScale_;
+    int M           = DecimateMaxFreq / freqScaled;
+    M               = std::min(M, MaxDecimate);
 
-    float f = freq * freqScale_ * M;
-    dsp::Signal<N> fs;
+    freqScaled *= M;
+    dsp::Signal<N> freqs;
     dsp::Signal<N> Rs;
     for (int i = 0; i < N; ++i) {
-        fs[i] = f * freqFactor[i];
-        fs[i] = std::min(0.995f, fs[i]);
-        fs[i] = std::max(0.005f, fs[i]);
-        Rs[i] = R * freqFactor[i];
-        Rs[i] = std::min(Rs[i], 1.f);
-        Rs[i] = std::max(Rs[i], -1.f);
+        freqs[i] = freqScaled * freqFactor[i];
+        freqs[i] = std::min(0.995f, freqs[i]);
+        freqs[i] = std::max(0.005f, freqs[i]);
+        Rs[i]    = R * freqFactor[i];
+        Rs[i]    = std::min(Rs[i], 1.f);
+        Rs[i]    = std::max(Rs[i], -1.f);
     }
-    allpass_.setPole(Rs, fs);
+    allpass_.setPole(Rs, freqs);
 
     multirate_  = multirates.get(M);
     decimateId_ = 0;
 
-    lowpass_.setFreq(fs);
+    lowpass_.setFreq(freqs);
 
     int oldM = M_;
     M_       = M;
