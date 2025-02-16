@@ -4,7 +4,7 @@
 #include "Signal.h"
 #include <cmath>
 
-namespace dsp
+namespace dsp::va
 {
 
 /* Various implementation from

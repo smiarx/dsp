@@ -88,12 +88,12 @@ class TapeDelay
 
     // low pass filter
     float cutlowpass_{0.f};
-    dsp::SVF<N, dsp::LowPass> lpf_;
+    dsp::va::SVF<N, dsp::va::LowPass> lpf_;
     decltype(lpf_)::State lpfMem_;
 
     // high pass filter
     float cuthighpass_{0.f};
-    dsp::SVF<N, dsp::HighPass> hpf_;
+    dsp::va::SVF<N, dsp::va::HighPass> hpf_;
     decltype(hpf_)::State hpfMem_;
 
     static constexpr auto BufferSize = nextTo(delayline_);
