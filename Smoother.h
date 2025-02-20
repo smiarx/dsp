@@ -8,24 +8,6 @@
 namespace dsp
 {
 
-class Smoother
-{
-  public:
-    Smoother(float target) : target_{target}, value_(target) {}
-    void set(float target) { target_ = target; }
-    void setTime(float time) { coef_ = 1.f - powf(0.001f, 1.f / time); }
-    float step()
-    {
-        value_ += coef_ * (target_ - value_);
-        return value_;
-    }
-
-  private:
-    float target_{0.f};
-    float value_{0.f};
-    float coef_{0.f};
-};
-
 template <int N = 1, bool useVector = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
@@ -80,29 +62,55 @@ template <int N = 1, bool useVector = false> class ControlSmoother
     bool active_{false};
 };
 
-// class ControlSmoother
-//{
-//   public:
-//     ControlSmoother(float target) : smoother_{target},
-//     linearSmoother_{target}
-//     {
-//     }
-//     void set(float target) { smoother_.set(target); }
-//     void setTime(float time)
-//     {
-//         smoother_.setTime(time);
-//     }
-//     void controlStep(float invBlockSize)
-//     {
-//         linearSmoother_.set(smoother_.step(), invBlockSize);
-//     }
-//     bool audioStep() { return linearSmoother_.step(); }
-//     float get() const { return linearSmoother_.get(); }
-//     void reset() { linearSmoother_.reset(); }
-//
-//   private:
-//     Smoother smoother_;
-//     LinearSmoother linearSmoother_;
-// };
+class SmootherExp
+{
+  public:
+    SmootherExp(float target) : target_{target}, value_(target) {}
+    void set(float target) { target_ = target; }
+    void setTime(float time) { coef_ = 1.f - powf(0.001f, 1.f / time); }
+    float step()
+    {
+        value_ += coef_ * (target_ - value_);
+        return value_;
+    }
+
+  private:
+    float target_{0.f};
+    float value_{0.f};
+    float coef_{0.f};
+};
+
+template <int N> class SmootherLin
+{
+  public:
+    SmootherLin() = default;
+    SmootherLin(Signal<N> target) : value_{target} {}
+
+    void set(Signal<N> target, int count)
+    {
+        for (int i = 0; i < N; ++i) {
+            step_[i] = (target[i] - value_[i]) / count;
+            count_   = count;
+        }
+    }
+
+    Signal<N> step()
+    {
+        if (count_ == 0) {
+            step_ = {0.f};
+        } else {
+            for (int i = 0; i < N; ++i) {
+                value_[i] += step_[i];
+            }
+            --count_;
+        }
+        return value_;
+    }
+
+  private:
+    Signal<N> value_{{0.f}};
+    Signal<N> step_{{0.f}};
+    int count_{0};
+};
 
 } // namespace dsp
