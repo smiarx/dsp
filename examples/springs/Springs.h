@@ -14,7 +14,8 @@ class Springs
   public:
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
-    static constexpr auto CascadeL     = 80;
+    static constexpr int LoopLength    = 0.25 * 48000;
+    static constexpr auto CascadeL     = 100;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
     static constexpr auto DCBlockFreq     = 20.f;
@@ -83,7 +84,9 @@ class Springs
     dsp::Buffer<dsp::Signal<N>, BufSize> buffer_;
     dsp::Signal<N> bufferArray_[decltype(buffer_)::Size]{{0.f}};
 
-    static constexpr int LoopLength = 0.25 * 48000;
+    dsp::DelayLine<LoopLength / 2> predelaydl_;
+    dsp::TapNoInterp<N> predelay_;
+
     float loopGain_{0.f};
     dsp::Signal<N> loopTd_{0.f};
     dsp::Signal<N> loopModAmp_{0.f};
@@ -93,7 +96,8 @@ class Springs
     dsp::Signal<N> loopChaosMod_;
     dsp::TapNoInterp<N> loopEcho_;
     using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
-    dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>>
+    dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>,
+                         nextTo(predelaydl_)>
         loopdl_;
     dsp::DelayLine<LoopLength / 5, nextTo(loopdl_)> loopEchoDL_;
     dsp::CopyDelayLine<N, 1, nextTo(loopEchoDL_)> loopRippleDL_;

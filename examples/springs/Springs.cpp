@@ -70,6 +70,7 @@ void Springs::setTd(float Td, float chaos)
     Td_    = Td;
     chaos_ = chaos;
     dsp::iSignal<N> loopEchoT;
+    dsp::iSignal<N> predelayT;
     float sampleTd = Td * sampleRate_ / M_;
     for (int i = 0; i < N; ++i) {
         loopTd_[i]     = sampleTd * loopTdFactor[i];
@@ -77,8 +78,11 @@ void Springs::setTd(float Td, float chaos)
         loopEchoT[i]   = loopTd_[i] / 5.f;
         loopTd_[i] -= loopEchoT[i];
         loopChaosMod_[i] = loopTd_[i] * 0.12f * std::pow(chaos, 2.5f);
+
+        predelayT[i] = loopTd_[i] * 0.5f;
     }
 
+    predelay_.setDelay(predelayT);
     loopEcho_.setDelay(loopEchoT);
 
     setT60(T60_);
@@ -121,6 +125,14 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         }
 
         multirate_->decimate(ctxt, ctxtdec, dldecimate_, decimateId_);
+
+        contextFor(ctxtdec)
+        {
+            auto &x = c.getIn();
+            predelaydl_.write(c, x);
+
+            x = predelay_.read(c, predelaydl_);
+        }
 
         contextFor(ctxtdec)
         {
