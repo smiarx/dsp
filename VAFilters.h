@@ -112,7 +112,7 @@ template <int N, FilterType FT = LowPass> class SVF
     {
         arrayFor(res, i)
         {
-            assert(res[i] > 0.f);
+            assert(res[i] >= 0.f);
             denominator_[i] =
                 1.f / (1.f + gain_[i] * (2.f * res[i] + gain_[i]));
             if constexpr (FT == HighPass) {
