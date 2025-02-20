@@ -65,10 +65,10 @@ class Springs
     typename decltype(lowpass_)::State lowpassState_;
 
     dsp::va::SVF<N, dsp::va::BandPass> eq_;
-    typename decltype(eq_)::State eqState_;
+    typename decltype(eq_)::State eqState_{{{0.f}}};
 
     dsp::va::OnePole<N, dsp::va::HighPass> dcblocker_;
-    typename decltype(dcblocker_)::State dcblockerState_;
+    typename decltype(dcblocker_)::State dcblockerState_{{0.f}};
 
     using MR = dsp::MultiRate<N, 15, MaxDecimate>;
     MR::DLDecimate dldecimate_;
