@@ -4,6 +4,7 @@
 #include "Delay.h"
 #include "FastMath.h"
 #include "Signal.h"
+#include "Window.h"
 #include <cmath>
 #include <cstdio>
 
@@ -104,7 +105,8 @@ template <int N, int Order, int M> class FIRDecimate
                 auto mid  = NCoeff / 2.f;
                 auto freq = cutoff / M;
                 b_[PaddedLength - Pad - n][i] =
-                    sinc((n - mid) / (mid)) * sinc((n - mid) * freq) * freq;
+                    window::Kaiser<140>::generate((n - mid) / (mid)) *
+                    sinc((n - mid) * freq) * freq;
             }
         }
     }
@@ -197,12 +199,12 @@ template <int N, int Order, int L> class FIRInterpolate
         for (size_t l = 0; l < L; ++l) {
             for (size_t n = 0; n < NCoeff; ++n) {
                 for (size_t i = 0; i < N; ++i) {
-                    auto freq                        = cutoff / L;
-                    auto mid                         = NCoeff * L / 2.f;
-                    auto k                           = l + n * L;
-                    b_[l][PaddedLength - Pad - n][i] = sinc((k - mid) / (mid)) *
-                                                       sinc((k - mid) * freq) *
-                                                       cutoff;
+                    auto freq = cutoff / L;
+                    auto mid  = NCoeff * L / 2.f;
+                    auto k    = l + n * L;
+                    b_[l][PaddedLength - Pad - n][i] =
+                        window::Kaiser<140>::generate((k - mid) / (mid)) *
+                        sinc((k - mid) * freq) * cutoff;
                 }
             }
         }
