@@ -53,13 +53,13 @@ class Springs
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
     float R_{0.f};
-    float freq_{1.f};
+    float freq_{0.f};
     float Td_{0.f};
     float T60_{0.f};
     float chaos_{0.f};
 
-    dsp::AllPass2<N> allpass_;
-    typename decltype(allpass_)::DL allpassdl_[CascadeL];
+    dsp::va::SVF<N, dsp::va::AllPass> allpass_;
+    typename decltype(allpass_)::State allpassState_[CascadeL]{{{{0.f}}}};
 
     dsp::va::SVF<N, dsp::va::LowPass> lowpass_;
     typename decltype(lowpass_)::State lowpassState_;
@@ -81,7 +81,7 @@ class Springs
     const MRs::Base *multirate_;
 
     dsp::Buffer<dsp::Signal<N>, BufSize> buffer_;
-    dsp::Signal<N> bufferArray_[decltype(buffer_)::Size] = {{0.f}};
+    dsp::Signal<N> bufferArray_[decltype(buffer_)::Size]{{0.f}};
 
     static constexpr int LoopLength = 0.25 * 48000;
     float loopGain_{0.f};
@@ -100,10 +100,10 @@ class Springs
 
     static constexpr auto BufDecSize = nextTo(loopRippleDL_) + MaxBlockSize;
     dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
-    dsp::Signal<N> bufferDecArray_[decltype(bufferDec_)::Size] = {{0.f}};
+    dsp::Signal<N> bufferDecArray_[decltype(bufferDec_)::Size]{{0.f}};
 
-    dsp::Signal<N> x_[MaxBlockSize];
-    dsp::Signal<N> xdecimate_[MaxBlockSize / 2];
+    dsp::Signal<N> x_[MaxBlockSize]{{0.f}};
+    dsp::Signal<N> xdecimate_[MaxBlockSize / 2]{{0.f}};
 
     void setSampleRate(float sR)
     {
@@ -111,7 +111,7 @@ class Springs
         freqScale_  = 2.f / sR;
     }
 
-    void setPole(float R, float freq);
+    void setFreq(float R, float freq);
     void setTd(float Td, float chaos);
     void setT60(float T60);
     void update(float R, float freq, float Td, float T60, float chaos);

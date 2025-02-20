@@ -6,7 +6,7 @@ static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 void Springs::update(float R, float freq, float Td, float T60, float chaos)
 {
     if (R != R_ || freq != freq_) {
-        setPole(R, freq);
+        setFreq(R, freq);
     }
     if (Td != Td_ || chaos != chaos_) {
         setTd(Td, chaos);
@@ -16,7 +16,7 @@ void Springs::update(float R, float freq, float Td, float T60, float chaos)
     }
 }
 
-void Springs::setPole(float R, float freq)
+void Springs::setFreq(float R, float freq)
 {
     auto freqScaled = freq * freqScale_;
     int M           = DecimateMaxFreq / freqScaled;
@@ -29,11 +29,17 @@ void Springs::setPole(float R, float freq)
         freqs[i] = freqScaled * freqFactor[i];
         freqs[i] = std::min(0.995f, freqs[i]);
         freqs[i] = std::max(0.005f, freqs[i]);
-        Rs[i]    = R * freqFactor[i];
+        Rs[i]    = std::abs(R) * freqFactor[i];
         Rs[i]    = std::min(Rs[i], 1.f);
         Rs[i]    = std::max(Rs[i], -1.f);
     }
-    allpass_.setPole(Rs, freqs);
+
+    if (R < 0) {
+        for (int i = 0; i < N; ++i) {
+            freqs[i] = 1.f - freqs[i];
+        }
+    }
+    allpass_.setFreq(freqs, Rs);
 
     multirate_  = multirates.get(M);
     decimateId_ = 0;
@@ -158,7 +164,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         contextFor(ctxtdec)
         {
             for (int j = 0; j < CascadeL; ++j) {
-                allpass_.process(c, allpassdl_[j]);
+                allpass_.process(c, allpassState_[j]);
             }
         }
 
