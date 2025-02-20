@@ -4,6 +4,7 @@
 #include "../../LFO.h"
 #include "../../MultiRate.h"
 #include "../../Noise.h"
+#include "../../Smoother.h"
 #include "../../VAFilters.h"
 
 static constexpr auto N = 4;
@@ -55,6 +56,7 @@ class Springs
     float freq_{1.f};
     float Td_{0.f};
     float T60_{0.f};
+    float chaos_{0.f};
 
     dsp::AllPass2<N> allpass_;
     typename decltype(allpass_)::DL allpassdl_[CascadeL];
@@ -86,6 +88,9 @@ class Springs
     dsp::Signal<N> loopTd_{0.f};
     dsp::Signal<N> loopModAmp_{0.f};
     dsp::LFOParabolic<N> loopMod_;
+    dsp::Noise<N> loopChaosNoise_;
+    dsp::SmootherLin<N> loopChaos_;
+    dsp::Signal<N> loopChaosMod_;
     dsp::TapNoInterp<N> loopEcho_;
     using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
     dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>>
@@ -107,8 +112,8 @@ class Springs
     }
 
     void setPole(float R, float freq);
-    void setTd(float Td);
+    void setTd(float Td, float chaos);
     void setT60(float T60);
-    void update(float R, float freq, float Td, float T60);
+    void update(float R, float freq, float Td, float T60, float chaos);
     void process(float **__restrict in, float **__restrict out, int num);
 };

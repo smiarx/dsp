@@ -3,13 +3,13 @@
 
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
-void Springs::update(float R, float freq, float Td, float T60)
+void Springs::update(float R, float freq, float Td, float T60, float chaos)
 {
     if (R != R_ || freq != freq_) {
         setPole(R, freq);
     }
-    if (Td != Td_) {
-        setTd(Td);
+    if (Td != Td_ || chaos != chaos_) {
+        setTd(Td, chaos);
     }
     if (T60 != T60_) {
         setT60(T60);
@@ -55,21 +55,22 @@ void Springs::setPole(float R, float freq)
         dcblocker_.setFreq(
             {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
 
-        setTd(Td_);
+        setTd(Td_, chaos_);
     }
 }
 
-void Springs::setTd(float Td)
+void Springs::setTd(float Td, float chaos)
 {
-    Td_ = Td;
+    Td_    = Td;
+    chaos_ = chaos;
     dsp::iSignal<N> loopEchoT;
     float sampleTd = Td * sampleRate_ / M_;
     for (int i = 0; i < N; ++i) {
-        loopTd_[i] = sampleTd * loopTdFactor[i];
-        ;
+        loopTd_[i]     = sampleTd * loopTdFactor[i];
         loopModAmp_[i] = loopTd_[i] * loopModFactor[i];
         loopEchoT[i]   = loopTd_[i] / 5.f;
         loopTd_[i] -= loopEchoT[i];
+        loopChaosMod_[i] = loopTd_[i] * 0.12f * std::pow(chaos, 2.5f);
     }
 
     loopEcho_.setDelay(loopEchoT);
@@ -94,6 +95,13 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
     auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
     auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
+
+    auto noise = loopChaosNoise_.process();
+    for (int i = 0; i < N; ++i) {
+        noise[i] *= loopChaosMod_[i];
+    }
+    loopChaos_.set(noise, sampleRate_ * 0.025f);
+
     while (count) {
 
         contextFor(ctxt)
@@ -114,9 +122,10 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
             LoopType looptap;
             auto mod   = loopMod_.process();
+            auto chaos = loopChaos_.step();
             auto delay = loopTd_;
             for (int i = 0; i < N; ++i) {
-                delay[i] += mod[i] * loopModAmp_[i];
+                delay[i] += mod[i] * loopModAmp_[i] + chaos[i];
             }
             looptap.setDelay(delay);
 
@@ -221,10 +230,10 @@ void SCSprings_Dtor(SCSprings *unit) { RTFree(unit->mWorld, unit->springs); }
 
 void SCSprings_next(SCSprings *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(4), IN(5)};
+    float *in[2]  = {IN(5), IN(6)};
     float *out[2] = {OUT(0), OUT(1)};
 
-    unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3));
+    unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4));
     unit->springs->process(in, out, inNumSamples);
 }
 
