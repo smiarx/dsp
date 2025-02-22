@@ -28,7 +28,6 @@ class Springs
     static constexpr float loopTdFactor[]  = {0.979f, 1.0f, 1.035f, 1.05f};
     static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
     static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
-    static constexpr float loopEchoGain    = 0.036f;
     static constexpr float loopRippleGain  = 0.016f;
 
     Springs(float sampleRate)
@@ -55,6 +54,7 @@ class Springs
     float freq_{0.f};
     float Td_{0.f};
     float T60_{0.f};
+    float diffusion_{0.f};
     float chaos_{0.f};
 
     dsp::va::SVF<N, dsp::va::AllPass> allpass_;
@@ -92,21 +92,14 @@ class Springs
     dsp::Noise<N> loopChaosNoise_;
     dsp::SmootherLin<N> loopChaos_;
     dsp::Signal<N> loopChaosMod_;
-    dsp::TapNoInterp<N> loopEcho_;
     using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
     dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>,
                          nextTo(predelaydl_)>
         loopdl_;
-    dsp::DelayLine<LoopLength / 5, nextTo(loopdl_)> loopEchoDL_;
-    dsp::CopyDelayLine<N, 1, nextTo(loopEchoDL_)> loopRippleDL_;
+    dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
-    dsp::AllPass<N, dsp::TapFix<133, 139, 121, 153>> ap1_{{
-        -0.25f,
-        -0.25f,
-        -0.25f,
-        -0.25f,
-    }};
-    dsp::DelayLine<258, nextTo(loopRippleDL_)> ap1dl_;
+    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{0.f, 0.f, 0.f, 0.f}};
+    dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
@@ -124,6 +117,8 @@ class Springs
     void setFreq(float R, float freq);
     void setTd(float Td, float chaos);
     void setT60(float T60);
-    void update(float R, float freq, float Td, float T60, float chaos);
+    void setDiffusion(float dif);
+    void update(float R, float freq, float Td, float T60, float diffusion,
+                float chaos);
     void process(float **__restrict in, float **__restrict out, int num);
 };

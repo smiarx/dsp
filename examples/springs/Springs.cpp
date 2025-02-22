@@ -3,7 +3,8 @@
 
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
-void Springs::update(float R, float freq, float Td, float T60, float chaos)
+void Springs::update(float R, float freq, float Td, float T60, float diffusion,
+                     float chaos)
 {
     if (R != R_ || freq != freq_) {
         setFreq(R, freq);
@@ -13,6 +14,9 @@ void Springs::update(float R, float freq, float Td, float T60, float chaos)
     }
     if (T60 != T60_) {
         setT60(T60);
+    }
+    if (diffusion != diffusion_) {
+        setDiffusion(diffusion);
     }
 }
 
@@ -77,15 +81,21 @@ void Springs::setTd(float Td, float chaos)
         loopModAmp_[i] = loopTd_[i] * loopModFactor[i];
         loopEchoT[i]   = loopTd_[i] / 5.f;
         loopTd_[i] -= loopEchoT[i];
-        loopChaosMod_[i] = loopTd_[i] * 0.12f * std::pow(chaos, 2.5f);
+        loopChaosMod_[i] = loopTd_[i] * 0.07f * std::pow(chaos, 2.5f);
 
         predelayT[i] = loopTd_[i] * 0.5f;
     }
 
     predelay_.setDelay(predelayT);
-    loopEcho_.setDelay(loopEchoT);
+    ap1_.setDelay(loopEchoT);
 
     setT60(T60_);
+}
+
+void Springs::setDiffusion(float dif)
+{
+    diffusion_ = dif;
+    ap1_.setCoeff({-dif, -dif, -dif, -dif});
 }
 
 void Springs::setT60(float T60)
@@ -110,7 +120,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
     for (int i = 0; i < N; ++i) {
         noise[i] *= loopChaosMod_[i];
     }
-    loopChaos_.set(noise, sampleRate_ * 0.025f);
+    loopChaos_.set(noise, sampleRate_ * 0.05f);
 
     while (count) {
 
@@ -149,26 +159,23 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
             auto loop = looptap.read(c, loopdl_);
 
-            loopEchoDL_.write(c, loop);
-
-            auto loopEchoVal = loopEcho_.read(c, loopEchoDL_);
-
-            inFor(loop, k, i)
+            // allpass diff
             {
-                loopEchoVal[k][i] +=
-                    loopEchoGain * (loop[k][i] - loopEchoVal[k][i]);
+                auto apctxt = c;
+                apctxt.setIn(loop);
+                ap1_.process(apctxt, ap1dl_);
             }
 
             loopRippleDL_.write(c, loop);
-            auto loopRippleVal = dsp::TapTail{}.read(c, loopRippleDL_);
+            auto loopRipple = dsp::TapTail{}.read(c, loopRippleDL_);
 
             inFor(loop, k, i)
             {
-                loopRippleVal[k][i] +=
-                    loopRippleGain * (loopEchoVal[k][i] - loopRippleVal[k][i]);
+                loopRipple[k][i] +=
+                    loopRippleGain * (loop[k][i] - loopRipple[k][i]);
             }
 
-            inFor(x, k, i) { x[k][i] += loopRippleVal[k][i] * loopGain_; }
+            inFor(x, k, i) { x[k][i] += loopRipple[k][i] * loopGain_; }
         }
 
         contextFor(ctxtdec) { dcblocker_.process(c, dcblockerState_); }
@@ -182,11 +189,8 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec.vec())
         {
-            auto &x    = c.getIn();
-            auto xcopy = x;
-            ap1_.process(c, ap1dl_);
+            auto &x = c.getIn();
             loopdl_.write(c, x);
-            x = xcopy;
         }
 
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
@@ -251,10 +255,10 @@ void SCSprings_Dtor(SCSprings *unit) { RTFree(unit->mWorld, unit->springs); }
 
 void SCSprings_next(SCSprings *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(5), IN(6)};
+    float *in[2]  = {IN(6), IN(7)};
     float *out[2] = {OUT(0), OUT(1)};
 
-    unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4));
+    unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5));
     unit->springs->process(in, out, inNumSamples);
 }
 
