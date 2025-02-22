@@ -50,12 +50,16 @@ class Springs
     int M_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
+
+    float width_{1.f};
     float R_{0.f};
     float freq_{0.f};
     float Td_{0.f};
     float T60_{0.f};
     float diffusion_{0.f};
     float chaos_{0.f};
+
+    float widthcos_{1.f}, widthsin_{0.f};
 
     dsp::va::SVF<N, dsp::va::AllPass> allpass_;
     typename decltype(allpass_)::State allpassState_[CascadeL]{{{{0.f}}}};
@@ -119,6 +123,6 @@ class Springs
     void setT60(float T60);
     void setDiffusion(float dif);
     void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos);
+                float chaos, float width);
     void process(float **__restrict in, float **__restrict out, int num);
 };
