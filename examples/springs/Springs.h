@@ -23,6 +23,8 @@ class Springs
     static constexpr auto EQPeak      = 100.f;
     static constexpr auto EQBandWidth = 5.f;
 
+    static constexpr auto NonLinearityGain = 0.2f;
+
     static constexpr float freqFactor[]    = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr float RFactor[]       = {1.03f, 0.97f, 1.05f, 0.98f};
     static constexpr float loopTdFactor[]  = {0.979f, 1.0f, 1.035f, 1.05f};

@@ -184,6 +184,16 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             inFor(x, k, i) { x[k][i] += loopRipple[k][i] * loopGain_; }
         }
 
+        contextFor(ctxtdec)
+        {
+            auto &x = c.getIn();
+            inFor(x, k, i)
+            {
+                x[k][i] *= NonLinearityGain;
+                x[k][i] = dsp::tanh(x[k][i]);
+                x[k][i] /= NonLinearityGain;
+            }
+        }
         contextFor(ctxtdec) { dcblocker_.process(c, dcblockerState_); }
 
         contextFor(ctxtdec)
