@@ -53,6 +53,7 @@ class Springs
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
 
+    float drywet_{1.f};
     float width_{1.f};
     float R_{0.f};
     float freq_{0.f};
@@ -125,6 +126,6 @@ class Springs
     void setT60(float T60);
     void setDiffusion(float dif);
     void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos, float width);
+                float chaos, float width, float drywet);
     void process(float **__restrict in, float **__restrict out, int num);
 };

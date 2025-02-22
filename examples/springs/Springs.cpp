@@ -4,7 +4,7 @@
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
-                     float chaos, float width)
+                     float chaos, float width, float drywet)
 {
     if (R != R_ || freq != freq_) {
         setFreq(R, freq);
@@ -24,6 +24,7 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
         widthcos_  = cosf(theta);
         widthsin_  = sinf(theta);
     }
+    drywet_ = drywet;
 }
 
 void Springs::setFreq(float R, float freq)
@@ -114,6 +115,8 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 {
     auto *inl  = in[0];
     auto *inr  = in[1];
+    auto *inl2 = inl;
+    auto *inr2 = inr;
     auto *outl = out[0];
     auto *outr = out[1];
 
@@ -225,11 +228,15 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             for (auto i = N / 2; i < N; ++i) {
                 mix[1] += x[0][i];
             }
+            mix[0] *= 2.f / N;
+            mix[1] *= 2.f / N;
             mix[0] = widthcos_ * mix[0] + widthsin_ * mix[1];
             mix[1] = widthcos_ * mix[1] + widthsin_ * mix[0];
 
-            *(outl++) = mix[0] / N * 2;
-            *(outr++) = mix[1] / N * 2;
+            *outl = *inl2 + drywet_ * (mix[0] - *inl2);
+            *outr = *inr2 + drywet_ * (mix[1] - *inr2);
+            ++outl, ++inl2;
+            ++outr, ++inr2;
         }
 
         ctxt.nextBlock();
@@ -269,11 +276,11 @@ void SCSprings_Dtor(SCSprings *unit) { RTFree(unit->mWorld, unit->springs); }
 
 void SCSprings_next(SCSprings *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(7), IN(8)};
+    float *in[2]  = {IN(8), IN(9)};
     float *out[2] = {OUT(0), OUT(1)};
 
     unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
-                          IN0(6));
+                          IN0(6), IN0(7));
     unit->springs->process(in, out, inNumSamples);
 }
 
