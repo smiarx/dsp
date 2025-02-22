@@ -18,20 +18,18 @@ class Springs
     static constexpr auto CascadeL     = 100;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
-    static constexpr auto DCBlockFreq     = 20.f;
+    static constexpr auto DCBlockFreq     = 80.f;
 
     static constexpr auto EQPeak      = 100.f;
     static constexpr auto EQBandWidth = 5.f;
 
-    static constexpr float freqFactor[] = {0.97743f, 1.04391f, 1.0593f, 0.934f};
-    static constexpr float RFactor[]    = {1.07743f, 0.94391f, 0.9893f, 1.034f};
-    static constexpr float loopTdFactor[]  = {0.97874f, 1.03913f, 0.953872f,
-                                              1.18373f};
-    static constexpr float loopModFreq[]   = {0.35f, 0.564f, 0.46, 0.20f};
-    static constexpr float loopModFactor[] = {0.002743f, 0.00205f, 0.00348f,
-                                              0.0021f};
-    static constexpr float loopEchoGain    = 0.076f;
-    static constexpr float loopRippleGain  = 0.036f;
+    static constexpr float freqFactor[]    = {0.98f, 1.02f, 0.97f, 1.03f};
+    static constexpr float RFactor[]       = {1.03f, 0.97f, 1.05f, 0.98f};
+    static constexpr float loopTdFactor[]  = {0.979f, 1.0f, 1.035f, 1.05f};
+    static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
+    static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
+    static constexpr float loopEchoGain    = 0.036f;
+    static constexpr float loopRippleGain  = 0.016f;
 
     Springs(float sampleRate)
     {
@@ -102,7 +100,15 @@ class Springs
     dsp::DelayLine<LoopLength / 5, nextTo(loopdl_)> loopEchoDL_;
     dsp::CopyDelayLine<N, 1, nextTo(loopEchoDL_)> loopRippleDL_;
 
-    static constexpr auto BufDecSize = nextTo(loopRippleDL_) + MaxBlockSize;
+    dsp::AllPass<N, dsp::TapFix<133, 139, 121, 153>> ap1_{{
+        -0.25f,
+        -0.25f,
+        -0.25f,
+        -0.25f,
+    }};
+    dsp::DelayLine<258, nextTo(loopRippleDL_)> ap1dl_;
+
+    static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
     dsp::Signal<N> bufferDecArray_[decltype(bufferDec_)::Size]{{0.f}};
 

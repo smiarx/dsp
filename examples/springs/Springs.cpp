@@ -182,8 +182,11 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec.vec())
         {
-            auto &x = c.getIn();
+            auto &x    = c.getIn();
+            auto xcopy = x;
+            ap1_.process(c, ap1dl_);
             loopdl_.write(c, x);
+            x = xcopy;
         }
 
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
