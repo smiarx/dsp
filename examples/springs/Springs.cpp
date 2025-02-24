@@ -41,8 +41,6 @@ void Springs::setFreq(float R, float freq)
         freqs[i] = std::min(0.995f, freqs[i]);
         freqs[i] = std::max(0.005f, freqs[i]);
         Rs[i]    = std::abs(R) * freqFactor[i];
-        Rs[i]    = std::min(Rs[i], 1.f);
-        Rs[i]    = std::max(Rs[i], -1.f);
     }
 
     if (R < 0) {
