@@ -99,10 +99,9 @@ class Springs
     dsp::Noise<N> loopChaosNoise_;
     dsp::SmootherLin<N> loopChaos_;
     dsp::Signal<N> loopChaosMod_;
-    using LoopType = dsp::TapAllPass<N, dsp::TapNoInterp<N>>;
-    dsp::NestedDelayLine<dsp::DelayLine<LoopLength>, dsp::CopyDelayLine<N, 1>,
-                         nextTo(predelaydl_)>
-        loopdl_;
+    using LoopType = dsp::TapCubic<N>;
+    dsp::DelayLine<LoopLength, nextTo(predelaydl_)> loopdl_;
+
     dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
     dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{0.f, 0.f, 0.f, 0.f}};

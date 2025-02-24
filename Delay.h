@@ -339,7 +339,7 @@ template <int N> class TapCubic : public TapLin<N>
                 auto &val1 = delayline.read(c, id[i % N] + 1);
                 for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
                 auto &val2 = delayline.read(c, id[i % N] + 2);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val2[k][i];
+                for (int k = 0; k < Ctxt::VecSize; ++k) x2[k][i] = val2[k][i];
             }
         }
 
