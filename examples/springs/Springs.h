@@ -18,7 +18,7 @@ class Springs
     static constexpr auto CascadeL     = 100;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
-    static constexpr auto DCBlockFreq     = 80.f;
+    static constexpr auto DCBlockFreq     = 10.f;
 
     static constexpr auto EQPeak      = 100.f;
     static constexpr auto EQBandWidth = 5.f;

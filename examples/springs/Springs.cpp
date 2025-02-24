@@ -206,13 +206,13 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             }
         }
 
+        contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
         contextFor(ctxtdec.vec())
         {
             auto &x = c.getIn();
             loopdl_.write(c, x);
         }
 
-        contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
         contextFor(ctxtdec) { eq_.process(c, eqState_); }
 
         decimateId_ =
