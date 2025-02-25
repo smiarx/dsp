@@ -33,5 +33,15 @@ template <int Attenuation> class Kaiser
     }
 };
 
+class Hann
+{
+  public:
+    Hann() = delete;
+    template <typename F> static constexpr auto generate(F x)
+    {
+        return 0.5f + 0.5f * cosf(M_PI * x);
+    }
+};
+
 } // namespace window
 } // namespace dsp
