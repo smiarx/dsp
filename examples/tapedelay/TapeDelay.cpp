@@ -2,9 +2,11 @@
 #include "../../Utils.h"
 #include "SC_Unit.h"
 
+TapeDelay::FadeLut TapeDelay::fadeLut;
+
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
                        float cuthighpass, float saturation, float drift,
-                       float drywet)
+                       Mode mode, float drywet)
 {
     if (delay != delay_ || drift_ != drift) {
         delay_ = delay;
@@ -24,34 +26,152 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
         auto freq    = cuthighpass_ * freqScale_;
         hpf_.setFreq({freq, freq});
     }
+    if (mode != mode_) {
+        switchTap(mode);
+    }
 
     saturation_.set({saturation}, invBlockSize_);
     feedback_.set({feedback, feedback}, invBlockSize_);
     drywet_.set({drywet, drywet}, invBlockSize_);
 }
 
+void TapeDelay::switchTap(Mode mode)
+{
+    oldMode_ = mode_;
+    mode_    = mode;
+    fadePos_ = FadeSize - 1;
+    tapId_ ^= 1;
+
+    if (mode_ == Normal) {
+    } else if (mode_ == BackForth) {
+        reverseDist_[tapId_] = 0;
+        tapTape_[tapId_].reset(tapePos_);
+    }
+}
+
+template <TapeDelay::Mode M, bool check = true, class Ctxt>
+bool TapeDelay::read(Ctxt ctxt, int tapId,
+                     TapeDelay::TapePosition::position_t speed)
+{
+    auto &tapTape = tapTape_[tapId];
+    auto &x       = ctxt.getIn();
+
+    if constexpr (M == Normal) {
+        x = tapTape.read(ctxt, delayline_, tapePos_);
+    } else if constexpr (M == BackForth) {
+        auto &reverseDist = reverseDist_[tapId];
+        reverseDist += 2 * speed;
+        // reach end of reverse
+        if constexpr (check) {
+            constexpr auto limit = static_cast<int>(TapePosition::Unity);
+            if (reverseDist > limit) {
+                switchTap(BackForth);
+                reverseDist_[tapId_] =
+                    reverseDist - limit + speed * KernelSize * 2;
+                return false;
+            }
+        }
+
+        // read tape
+        x = tapTape.read<TapTape::Reverse>(ctxt, delayline_, tapePos_,
+                                           reverseDist);
+    }
+    return true;
+}
+
+template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
+{
+    contextFor(ctxt)
+    {
+        // smooth speed;
+        speed_ += (targetSpeed_ - speed_) * speedSmooth_;
+
+        // speed modulation
+        speedMod_.step();
+        auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
+
+        // move tape
+        auto speed = static_cast<TapePosition::position_t>(speed_ + mod);
+        tapePos_.move(speed);
+
+        if (!read<M>(c, tapId_, speed)) {
+            return n;
+        }
+    }
+    return ctxt.getBlockSize();
+}
+
 void TapeDelay::process(float **__restrict in, float **__restrict out,
                         int count)
 {
-    int blockSize = std::min(count, MaxBlockSize);
+    int blockSizeOrig = std::min(count, MaxBlockSize);
+    auto ctxt         = dsp::BufferContext(x_, blockSizeOrig, buffer_);
 
-    auto ctxt = dsp::BufferContext(x_, blockSize, buffer_);
     while (count) {
 
-        contextFor(ctxt)
-        {
-            auto &x = c.getIn();
+        auto blockSize = std::min(blockSizeOrig, count);
+        ctxt.setBlockSize(blockSize);
 
-            // smooth speed;
-            speed_ += (targetSpeed_ - speed_) * speedSmooth_;
+        if (fadePos_ < 0) {
+            // blockSize use in tape read part
+            switch (mode_) {
+            case BackForth:
+                blockSize = readBlock<BackForth>(ctxt);
+                break;
+            case Reverse:
+            case Normal:
+            default:
+                blockSize = readBlock<Normal>(ctxt);
+                break;
+            }
 
-            // speed modulation
-            speedMod_.step();
-            auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
+            // update context
+            ctxt.setBlockSize(blockSize);
+        } else {
+            blockSize = std::min(blockSize, fadePos_ + 1);
+            ctxt.setBlockSize(blockSize);
+            contextFor(ctxt)
+            {
+                // smooth speed;
+                speed_ += (targetSpeed_ - speed_) * speedSmooth_;
 
-            // move tape
-            tapePos_.move(static_cast<TapePosition::position_t>(speed_ + mod));
-            x = tapTape_.read(c, delayline_, tapePos_);
+                // speed modulation
+                speedMod_.step();
+                auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
+
+                // move tape
+                auto speed =
+                    static_cast<TapePosition::position_t>(speed_ + mod);
+                tapePos_.move(speed);
+
+                auto &x = c.getIn();
+                switch (mode_) {
+                case BackForth:
+                    read<BackForth, false>(c, tapId_, speed);
+                    break;
+                case Reverse:
+                case Normal:
+                default:
+                    read<Normal, false>(c, tapId_, speed);
+                    break;
+                }
+
+                auto xIn = x;
+                switch (oldMode_) {
+                case BackForth:
+                    read<BackForth, false>(c, tapId_ ^ 1, speed);
+                    break;
+                case Reverse:
+                case Normal:
+                default:
+                    read<Normal, false>(c, tapId_ ^ 1, speed);
+                    break;
+                }
+
+                auto fade = fadeLut[fadePos_];
+                inFor(x, k, i) { x[k][i] += fade * (xIn[k][i] - x[k][i]); }
+                --fadePos_;
+            }
         }
 
         // low pass filter
@@ -94,7 +214,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             }
         }
 
-        contextFor(ctxt.vec())
+        contextFor(ctxt)
         {
             auto &loop = c.getIn();
             decltype(c)::Type xin;
@@ -110,12 +230,14 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
                 *out[i]++ = xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
             }
 
+            dsp::Signal<N>::Scalar inloop;
             inFor(xin, k, i)
             {
-                loop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
+                inloop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
             }
-            delayline_.write(c, loop);
+            delayline_.write(c, inloop);
         }
+        buffer_.setLimits();
 
         ctxt.nextBlock();
         ctxt.save(buffer_);
@@ -168,11 +290,11 @@ void SCTapeDelay_Dtor(SCTapeDelay *unit)
 
 void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples)
 {
-    float *in[2]  = {IN(7), IN(8)};
+    float *in[2]  = {IN(8), IN(9)};
     float *out[2] = {OUT(0), OUT(1)};
 
     unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
-                            IN0(6));
+                            static_cast<TapeDelay::Mode>(IN0(6)), IN0(7));
     unit->tapedelay->process(in, out, inNumSamples);
 }
 

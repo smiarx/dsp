@@ -21,11 +21,40 @@ class TapeDelay
     static constexpr auto speedModFreq    = 0.242f;
     static constexpr auto speedModAmp     = 0.013f;
 
+    static constexpr auto KernelSize = 4;
+
+    // lookup table for cross fading between two taps
+    static constexpr auto FadeSize = 8;
+    class FadeLut : public std::array<float, FadeSize>
+    {
+      public:
+        FadeLut()
+        {
+            for (size_t n = 0; n < size(); ++n) {
+                (*this)[n] =
+                    dsp::window::Hann::generate((n + 1.f) / (FadeSize + 1.f));
+            }
+        }
+    };
+    static FadeLut fadeLut;
+
+    enum Mode {
+        Normal    = 0,
+        BackForth = 1,
+        Reverse   = 2,
+    };
+
     TapeDelay(float sampleRate, int blockSize)
     {
         buffer_.setBuffer(bufferArray_);
         setSampleRate(sampleRate);
         setBlockSize(blockSize);
+
+        inFor(pregain_, k, i)
+        {
+            pregain_[k][i]  = 1.f;
+            postgain_[k][i] = 1.f;
+        }
 
         speedLFO_.setFreq({freqScale_ * speedModFreq});
     }
@@ -48,7 +77,7 @@ class TapeDelay
     }
 
     void update(float delay, float feedback, float cutlp, float cuthp,
-                float saturation, float drift, float drywet);
+                float saturation, float drift, Mode mode, float drywet);
     void process(float **__restrict in, float **__restrict out, int count);
 
   private:
@@ -68,11 +97,27 @@ class TapeDelay
     float targetSpeed_{0};
     float speed_{0};
     float speedSmooth_{0.f};
+
     TapePosition tapePos_;
-    using TapeInterp =
-        dsp::TapKernel<2, dsp::kernel::Sinc<4, dsp::window::Kaiser<140>>, 64>;
-    dsp::TapTape<TapeInterp> tapTape_;
+    using TapeInterp = dsp::TapKernel<
+        2, dsp::kernel::Sinc<KernelSize, dsp::window::Kaiser<140>>, 64>;
+    using TapTape = dsp::TapTape<TapeInterp>;
+    TapTape tapTape_[2];
+    TapePosition::position_t reverseDist_[2]{0, 0};
+    size_t tapId_{0};
+    int fadePos_{-1};
+
+    // read function
+    template <Mode, bool check, class Ctxt>
+    bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
+    template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
+    void switchTap(Mode mode);
+
     dsp::DelayLine<MaxDelay> delayline_;
+
+    // mode
+    Mode mode_{Normal};
+    Mode oldMode_{Normal};
 
     // speed modulation
     float drift_{0.f};
@@ -81,10 +126,8 @@ class TapeDelay
 
     // saturation
     dsp::ControlSmoother<1> saturation_{{0.f}};
-    dsp::Signal<2>::Vector pregain_{
-        {{1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f}}};
-    dsp::Signal<2>::Vector postgain_{
-        {{1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f}, {1.f, 1.f}}};
+    dsp::Signal<2>::Vector pregain_;
+    dsp::Signal<2>::Vector postgain_;
 
     // low pass filter
     float cutlowpass_{0.f};
