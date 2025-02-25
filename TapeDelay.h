@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Context.h"
 #include "Delay.h"
 #include "Utils.h"
 
@@ -57,36 +56,46 @@ template <int L> class TapePosition
 template <class Tap = TapLin<1>> class TapTape
 {
   public:
-    template <class Ctxt, class DL, class TapePos>
-    auto read(Ctxt c, const DL &delayline, const TapePos &tapePos)
+    enum Direction {
+        Normal,
+        Reverse,
+    };
+
+    template <Direction D = Normal, class Ctxt, class DL, class TapePos>
+    auto read(Ctxt c, const DL &delayline, const TapePos &tapePos,
+              typename TapePos::position_t distance = TapePos::Unity)
     {
         // the tape position we need to read
-        auto readPosition = tapePos.get() - TapePos::Unity;
+        auto readPosition = tapePos.get() - distance;
         using position_t  = decltype(readPosition);
 
         // binary search of the position;
         auto nsearch = 2;
         size_t nread = nread_;
         for (position_t searchPosition;
-             searchPosition = tapePos.at(nread + nsearch),
-             TapePos::greaterThan(readPosition, searchPosition);
-             nread += nsearch, nsearch *= 2) {
-
-            // assert(nread + nsearch < tapePos.nwrite_);
+             searchPosition = tapePos.at(add<D>(nread, nsearch)),
+             greaterThan<D, TapePos>(readPosition, searchPosition);
+             nread = add<D>(nread, nsearch), nsearch *= 2) {
         }
 
         while (nsearch > 1) {
             nsearch /= 2;
-            auto searchPosition = tapePos.at(nread + nsearch);
-            if (TapePos::greaterThan(readPosition, searchPosition)) {
-                nread += nsearch;
+            auto nreadnew       = add<D>(nread, nsearch);
+            auto searchPosition = tapePos.at(nreadnew);
+            if (greaterThan<D, TapePos>(readPosition, searchPosition)) {
+                nread = nreadnew;
             }
         }
 
-        nread_ = nread & TapePos::Mask;
+        nread &= TapePos::Mask;
+        nread_ = nread;
 
-        auto foundPos0 = tapePos.at(nread_);
-        auto foundPos1 = tapePos.at(nread_ + 1);
+        if constexpr (D == Reverse) {
+            nread = (nread - 1) & TapePos::Mask;
+        }
+
+        auto foundPos0 = tapePos.at(nread);
+        auto foundPos1 = tapePos.at((nread + 1) & TapePos::Mask);
 
         // determine delay;
         int delay   = (tapePos.getNwrite() - nread_ + 1) & TapePos::Mask;
@@ -95,11 +104,39 @@ template <class Tap = TapLin<1>> class TapTape
 
         Tap tap;
         tap.setDelay({delay}, {fdelay});
+        //(void)fdelay;
+        // tap.setDelay({delay,delay}, {fdelay,fdelay});
         return tap.read(c, delayline);
     }
 
+    template <class TapePos> void reset(TapePos tapePos)
+    {
+        nread_ = tapePos.getNwrite();
+    }
+
   private:
+    template <Direction D> size_t add(size_t n1, size_t n2)
+    {
+        if constexpr (D == Normal) {
+            return n1 + n2;
+        } else {
+            return n1 - n2;
+        }
+    }
+
+    template <Direction D, class TapePos>
+    bool greaterThan(typename TapePos::position_t p1,
+                     typename TapePos::position_t p2)
+    {
+        if constexpr (D == Normal) {
+            return TapePos::greaterThan(p1, p2);
+        } else {
+            return TapePos::greaterThan(p2, p1);
+        }
+    }
+
     // index of last read position
     int nread_{0};
 };
+
 } // namespace dsp
