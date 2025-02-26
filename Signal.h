@@ -3,16 +3,6 @@
 #include "SIMD.h"
 #include <array>
 
-#ifndef SIMDSIZE
-#if defined(__AVX2__)
-#define SIMDSIZE 32
-#elif defined(__SSE__)
-#define SIMDSIZE 16
-#else
-#define SIMDSIZE 4
-#endif
-#endif
-
 namespace dsp
 {
 
@@ -21,9 +11,16 @@ template <typename T = float, int N = 1>
 class alignas(N * sizeof(T)) Data : public std::array<T, N>
 {
   public:
+    // is using a whole simd register
+    static constexpr bool Whole = N % 4 == 0;
+    // data type
     using Type = T;
-    SIMD_t<T, N> toSIMD() { return arrayToSIMD<T, N>(this->data()); }
-    void fromSIMD(SIMD_t<T, N> v) { SIMDtoArray<T, N>(this->data(), v); }
+
+    SIMD_t<T, N> toSIMD() const
+    {
+        return arrayToSIMD<T, N, Whole>(this->data());
+    }
+    void fromSIMD(SIMD_t<T, N> v) { SIMDtoArray<T, N, Whole>(this->data(), v); }
 };
 
 /* N-parallel sample, N should divide VecSize */
@@ -67,8 +64,14 @@ class Signal : public std::array<Sample<T, N>, L>
     static_assert(SIMDSIZE % (Size * sizeof(T)) == 0,
                   "SIMDSIZE must be divisible by signal length");
 
-    SIMD_t<T, Size> toSIMD() { return arrayToSIMD<T, Size>(this->data()); }
-    void fromSIMD(SIMD_t<T, Size> v) { SIMDtoArray<T, Size>(this->data(), v); }
+    SIMD_t<T, Size> toSIMD()
+    {
+        return arrayToSIMD<T, Size>(this->data()->data());
+    }
+    void fromSIMD(SIMD_t<T, Size> v)
+    {
+        SIMDtoArray<T, Size>(this->data()->data(), v);
+    }
 };
 
 template <int N> using fData = Data<float, N>;
