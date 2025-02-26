@@ -11,16 +11,16 @@ template <typename T = float, int N = 1>
 class alignas(N * sizeof(T)) Data : public std::array<T, N>
 {
   public:
-    // is using a whole simd register
-    static constexpr bool Whole = N % 4 == 0;
+    static_assert(SIMDSIZE % (N * sizeof(T)) == 0,
+                  "SIMDSIZE must be divisible by N*sizeof(T)");
     // data type
     using Type = T;
 
     SIMD_t<T, N> toSIMD() const
     {
-        return arrayToSIMD<T, N, Whole>(this->data());
+        return arrayToSIMD<T, N, true>(this->data());
     }
-    void fromSIMD(SIMD_t<T, N> v) { SIMDtoArray<T, N, Whole>(this->data(), v); }
+    void fromSIMD(SIMD_t<T, N> v) { SIMDtoArray<T, N, true>(this->data(), v); }
 };
 
 /* N-parallel sample, N should divide VecSize */

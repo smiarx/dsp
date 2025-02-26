@@ -45,8 +45,8 @@ inline void SIMDtoArray(T *x, SIMD_t<T, Size> v)
 /* SIMD specialization */
 template <typename T> struct SIMD<T, 1> {
     using type = T;
-    static constexpr auto load(T *x) { return *x; }
-    static constexpr auto loadu(T *x) { return load(x); }
+    static constexpr auto load(const T *x) { return *x; }
+    static constexpr auto loadu(const T *x) { return load(x); }
     static constexpr auto set(T x) { return x; }
     static constexpr void store(T *x, T v) { *x = v; }
     static constexpr void storeu(T *x, T v) { store(x, v); }
@@ -61,7 +61,7 @@ struct SIMDint {
 
 template <> struct SIMD<int, 2> {
     using type                   = __m128i;
-    static constexpr auto load   = _mm_load_si128;
+    static constexpr auto load   = _mm_loadu_si64;
     static constexpr auto set    = _mm_set1_epi32;
     static constexpr auto loadu  = _mm_loadu_si64;
     static constexpr auto store  = _mm_storeu_si64;
@@ -77,14 +77,11 @@ template <> struct SIMD<int, 4> {
 };
 
 template <> struct SIMD<float, 2> {
-    using type                  = __m128;
-    static constexpr auto load  = _mm_load_ps;
-    static constexpr auto loadu = _mm_loadu_ps;
-    static constexpr auto set   = _mm_set1_ps;
-    static void store(float *x, __m128 v)
-    {
-        _mm_storel_pi(reinterpret_cast<__m64 *>(x), v);
-    }
+    using type = float __attribute__((__vector_size__(8), __aligned__(8)));
+    static constexpr type load(const float *x) { return *(const type *)x; }
+    static constexpr auto loadu = load;
+    static constexpr type set(float x) { return type{x, x}; }
+    static void store(float *x, type v) { *(type *)x = v; }
     static constexpr auto storeu = store;
 };
 template <> struct SIMD<float, 4> {
