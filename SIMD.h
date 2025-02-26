@@ -108,6 +108,14 @@ template <> struct SIMD<double, 2> {
 
 /* AVX */
 #if defined(__AVX__)
+template <> struct SIMD<int, 8> {
+    using type                   = __m256i;
+    static constexpr auto load   = _mm256_load_epi32;
+    static constexpr auto loadu  = _mm256_loadu_epi32;
+    static constexpr auto set    = _mm256_set1_epi32;
+    static constexpr auto store  = _mm256_store_epi32;
+    static constexpr auto storeu = _mm256_storeu_epi32;
+};
 template <> struct SIMD<float, 8> {
     using type                   = __m256;
     static constexpr auto load   = _mm256_load_ps;
