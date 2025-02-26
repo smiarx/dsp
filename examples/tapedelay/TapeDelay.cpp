@@ -54,7 +54,7 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
                      TapeDelay::TapePosition::position_t speed)
 {
     auto &tapTape = tapTape_[tapId];
-    auto &x       = ctxt.getIn();
+    auto &x       = ctxt.getSignal();
 
     if constexpr (M == Normal) {
         x = tapTape.read(ctxt, delayline_, tapePos_);
@@ -144,7 +144,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
                     static_cast<TapePosition::position_t>(speed_ + mod);
                 tapePos_.move(speed);
 
-                auto &x = c.getIn();
+                auto &x = c.getSignal();
                 switch (mode_) {
                 case BackForth:
                     read<BackForth, false>(c, tapId_, speed);
@@ -190,7 +190,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
                 auto saturation = saturation_.get()[0][0];
                 pregain         = dsp::db2gain(saturation);
                 postgain = dsp::db2gain(-saturation / (saturation > 0 ? 2 : 1));
-                auto &x  = c.getIn();
+                auto &x  = c.getSignal();
                 inFor(x, k, i)
                 {
                     x[k][i] = postgain * dsp::tanh(x[k][i] * pregain);
@@ -204,7 +204,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
         } else {
             contextFor(ctxt.vec())
             {
-                auto &x = c.getIn();
+                auto &x = c.getSignal();
                 inFor(x, k, i)
                 {
                     x[k][i] *= pregain_[k][i];
@@ -216,7 +216,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
 
         contextFor(ctxt)
         {
-            auto &loop = c.getIn();
+            auto &loop = c.getSignal();
             decltype(c)::Type xin;
 
             inFor(xin, k, i) { xin[k][i] = *in[i]++; }
@@ -230,7 +230,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
                 *out[i]++ = xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
             }
 
-            dsp::Signal<N>::Scalar inloop;
+            dsp::fSample<N>::Scalar inloop;
             inFor(xin, k, i)
             {
                 inloop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];

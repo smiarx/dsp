@@ -19,7 +19,7 @@ enum FilterType {
     Notch,
 };
 
-template <int N> static constexpr Signal<N> warpGain(Signal<N> freq)
+template <int N> static constexpr fData<N> warpGain(fData<N> freq)
 {
     arrayFor(freq, i) { freq[i] = tanf(M_PIf * freq[i] * 0.5f); }
     return freq;
@@ -28,16 +28,16 @@ template <int N> static constexpr Signal<N> warpGain(Signal<N> freq)
 template <int N, FilterType FT = LowPass> class OnePole
 {
   public:
-    using State = Signal<N>;
+    using State = fData<N>;
 
-    OnePole(Signal<N> freq)
+    OnePole(fData<N> freq)
     {
         static_assert(FT == LowPass || FT == HighPass || FT == AllPass);
         setFreq(freq);
     }
     OnePole() = default;
 
-    void setFreq(Signal<N> freq)
+    void setFreq(fData<N> freq)
     {
         auto gain = warpGain(freq);
         arrayFor(freq, i) { gain_[i] = gain[i] / (1.f + gain[i]); }
@@ -45,7 +45,7 @@ template <int N, FilterType FT = LowPass> class OnePole
 
     template <class Ctxt> void process(Ctxt c, State &state) const
     {
-        auto &x = c.getIn();
+        auto &x = c.getSignal();
         auto s  = state;
         inFor(x, k, i)
         {
@@ -67,7 +67,7 @@ template <int N, FilterType FT = LowPass> class OnePole
         state = s;
     }
 
-    Signal<N> getGain() const
+    fData<N> getGain() const
     {
         auto gain = gain_;
         if constexpr (FT == LowPass) {
@@ -81,7 +81,7 @@ template <int N, FilterType FT = LowPass> class OnePole
     }
 
   private:
-    Signal<N> gain_;
+    fData<N> gain_;
 };
 
 template <int N, FilterType FT = LowPass> class SVF
@@ -89,26 +89,26 @@ template <int N, FilterType FT = LowPass> class SVF
   public:
     static constexpr bool NormaLizedBandPass =
         FT == BandPass || FT == AllPass || FT == Notch;
-    using State = std::array<Signal<N>, 2>;
+    using State = std::array<fData<N>, 2>;
 
-    SVF(Signal<N> freq, Signal<N> res) { setFreq(freq, res); }
+    SVF(fData<N> freq, fData<N> res) { setFreq(freq, res); }
     SVF() = default;
 
-    void setFreq(Signal<N> freq, Signal<N> res)
+    void setFreq(fData<N> freq, fData<N> res)
     {
         auto gain = warpGain(freq);
         arrayFor(freq, i) { gain_[i] = gain[i]; }
         setRes(res);
     }
-    void setFreq(Signal<N> freq)
+    void setFreq(fData<N> freq)
     {
         static constexpr auto defaultRes = 0.70710677f; // 1/sqrt(2)
-        Signal<N> res;
+        fData<N> res;
         arrayFor(res, i) { res[i] = defaultRes; }
         setFreq(freq, res);
     }
 
-    void setRes(Signal<N> res)
+    void setRes(fData<N> res)
     {
         arrayFor(res, i)
         {
@@ -128,10 +128,10 @@ template <int N, FilterType FT = LowPass> class SVF
     }
 
     /* -3db bandwidth in octave */
-    void setBandWidth(Signal<N> bw)
+    void setBandWidth(fData<N> bw)
     {
         static_assert(FT == BandPass);
-        Signal<N> res;
+        fData<N> res;
         arrayFor(bw, i)
         {
             auto freqbwm = gain_[i] * powf(2.f, -bw[i] * 0.5f);
@@ -147,7 +147,7 @@ template <int N, FilterType FT = LowPass> class SVF
 
     template <class Ctxt> void process(Ctxt c, State &state) const
     {
-        auto &in = c.getIn();
+        auto &in = c.getSignal();
         auto x   = in;
         auto s   = state;
 
@@ -196,14 +196,14 @@ template <int N, FilterType FT = LowPass> class SVF
     }
 
   private:
-    Signal<N> gain_;
-    Signal<N> denominator_;
+    fData<N> gain_;
+    fData<N> denominator_;
 
     class Empty
     {
     };
-    typename std::conditional<FT == HighPass, Signal<N>, Empty>::type gains1_;
-    typename std::conditional<NormaLizedBandPass, Signal<N>, Empty>::type
+    typename std::conditional<FT == HighPass, fData<N>, Empty>::type gains1_;
+    typename std::conditional<NormaLizedBandPass, fData<N>, Empty>::type
         inputGain_;
 };
 
@@ -213,17 +213,14 @@ template <int N, FilterType FT = LowPass> class Ladder
     using OP    = OnePole<N, FT>;
     using State = std::array<typename OP::State, 4>;
 
-    Ladder(Signal<N> freq, Signal<N> res) : onepole_(freq)
-    {
-        setFreq(freq, res);
-    }
+    Ladder(fData<N> freq, fData<N> res) : onepole_(freq) { setFreq(freq, res); }
 
-    void setFreq(Signal<N> freq, Signal<N> res = {0.f})
+    void setFreq(fData<N> freq, fData<N> res = {0.f})
     {
         onepole_.setFreq(freq);
         setRes(res);
     }
-    void setRes(Signal<N> res)
+    void setRes(fData<N> res)
     {
         auto gain = onepole_.getGain();
         arrayFor(res, i)
@@ -236,7 +233,7 @@ template <int N, FilterType FT = LowPass> class Ladder
 
     template <class Ctxt> void process(Ctxt c, State &state)
     {
-        auto &x = c.getIn();
+        auto &x = c.getSignal();
 
         auto gain = onepole_.getGain();
         arrayFor(x, k)
@@ -266,8 +263,8 @@ template <int N, FilterType FT = LowPass> class Ladder
     }
 
   private:
-    Signal<N> res_;
-    Signal<N> denominator_;
+    fData<N> res_;
+    fData<N> denominator_;
     OP onepole_;
 };
 } // namespace dsp::va

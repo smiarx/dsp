@@ -106,7 +106,7 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
     template <class Ctxt> void write(Ctxt c, const typename Ctxt::Type &x)
     {
         constexpr auto vecSize = Ctxt::VecSize;
-        using Type             = typename Ctxt::Type;
+        constexpr auto isVec   = Ctxt::isUsingVector;
         int lastNonVector      = Length % vecSize;
 
         /* first shift non vector aligned float */
@@ -114,10 +114,11 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
 
         /* shift rest */
         for (int j = lastNonVector; j < Length - 1; j += vecSize)
-            mem_[j].template to<Type>() = mem_[j + vecSize].template to<Type>();
+            mem_[j].template toSignal<isVec>() =
+                mem_[j + vecSize].template toSignal<isVec>();
 
         /* copy last value */
-        mem_[Length - vecSize].template to<Type>() = x;
+        mem_[Length - vecSize].template toSignal<isVec>() = x;
     }
 
     template <class Ctxt> const auto &read(Ctxt c, int i) const
@@ -137,7 +138,7 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
     }
 
   private:
-    Signal<N> mem_[Length] = {0};
+    fSample<N> mem_[Length] = {0};
 };
 
 template <class DL, class DLi, int Off = 0>
@@ -239,7 +240,7 @@ template <int N> class TapNoInterp
     /* Tap that can read at any point in de delay line, without interpolation */
   public:
     void setDelay(int i, int id) { id_[i] = id; }
-    void setDelay(iSignal<N> id) { id_ = id; }
+    void setDelay(iData<N> id) { id_ = id; }
 
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
     {
@@ -247,13 +248,13 @@ template <int N> class TapNoInterp
         for (int i = 0; i < N; i++) {
             assert(id_[i] <= DL::Length - Ctxt::VecSize + 1);
             auto &val = delayline.read(c, id_[i]);
-            for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
+            for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
         }
         return x;
     }
 
   protected:
-    iSignal<N> id_;
+    iData<N> id_;
 };
 
 template <int N> class TapLin : public TapNoInterp<N>
@@ -261,9 +262,9 @@ template <int N> class TapLin : public TapNoInterp<N>
     /* Tap that can read at any point in de delay line, with linear
      * interpolation */
   public:
-    void setDelay(Signal<N> d)
+    void setDelay(fData<N> d)
     {
-        iSignal<N> id;
+        iData<N> id;
         for (int i = 0; i < N; ++i) {
             id[i]  = static_cast<int>(d[i]);
             fd_[i] = d[i] - static_cast<float>(id[i]);
@@ -271,9 +272,11 @@ template <int N> class TapLin : public TapNoInterp<N>
         TapNoInterp<N>::setDelay(id);
     };
 
-    void setDelay(iSignal<N> d, Signal<N> fd)
+    void setDelay(iData<N> d, fData<N> fd)
     {
         TapNoInterp<N>::setDelay(d);
+
+        arrayFor(fd, i) { assert(fd[i] <= 1.f && fd[i] >= 0.f); }
         fd_ = fd;
     }
 
@@ -303,7 +306,7 @@ template <int N> class TapLin : public TapNoInterp<N>
     }
 
   protected:
-    Signal<N> fd_;
+    fData<N> fd_;
 };
 
 template <int N> class TapCubic : public TapLin<N>
@@ -333,13 +336,17 @@ template <int N> class TapCubic : public TapLin<N>
             {
                 assert(id[i % N] <= DL::Length - Ctxt::VecSize - 2);
                 auto &valm1 = delayline.read(c, id[i % N] - 1);
-                for (int k = 0; k < Ctxt::VecSize; ++k) xm1[k][i] = valm1[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    xm1[k][i] = valm1[k][i];
                 auto &val0 = delayline.read(c, id[i % N]);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    x0[k][i] = val0[k][i];
                 auto &val1 = delayline.read(c, id[i % N] + 1);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    x1[k][i] = val1[k][i];
                 auto &val2 = delayline.read(c, id[i % N] + 2);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x2[k][i] = val2[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    x2[k][i] = val2[k][i];
             }
         }
 

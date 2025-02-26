@@ -42,7 +42,7 @@ class Springs
         dsp::iNoise<N> noise;
         loopMod_.setPhase(noise.process());
 
-        dsp::Signal<N> freq;
+        dsp::fData<N> freq;
         for (int i = 0; i < N; ++i) {
             freq[i] = loopModFreq[i] * freqScale_;
         }
@@ -86,19 +86,19 @@ class Springs
     using MRs = MR::WithBuffer<BufSize>;
     const MRs::Base *multirate_;
 
-    dsp::Buffer<dsp::Signal<N>, BufSize> buffer_;
-    dsp::Signal<N> bufferArray_[decltype(buffer_)::Size]{{0.f}};
+    dsp::Buffer<dsp::fSample<N>, BufSize> buffer_;
+    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size]{{0.f}};
 
     dsp::DelayLine<LoopLength / 2> predelaydl_;
     dsp::TapNoInterp<N> predelay_;
 
     float loopGain_{0.f};
-    dsp::Signal<N> loopTd_{0.f};
-    dsp::Signal<N> loopModAmp_{0.f};
+    dsp::fData<N> loopTd_{0.f};
+    dsp::fData<N> loopModAmp_{0.f};
     dsp::LFOParabolic<N> loopMod_;
     dsp::Noise<N> loopChaosNoise_;
     dsp::SmootherLin<N> loopChaos_;
-    dsp::Signal<N> loopChaosMod_;
+    dsp::fData<N> loopChaosMod_;
     using LoopType = dsp::TapCubic<N>;
     dsp::DelayLine<LoopLength, nextTo(predelaydl_)> loopdl_;
 
@@ -108,11 +108,11 @@ class Springs
     dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
-    dsp::Buffer<dsp::Signal<N>, BufDecSize> bufferDec_;
-    dsp::Signal<N> bufferDecArray_[decltype(bufferDec_)::Size]{{0.f}};
+    dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;
+    dsp::fSample<N> bufferDecArray_[decltype(bufferDec_)::Size]{{0.f}};
 
-    dsp::Signal<N> x_[MaxBlockSize]{{0.f}};
-    dsp::Signal<N> xdecimate_[MaxBlockSize / 2]{{0.f}};
+    dsp::fSample<N> x_[MaxBlockSize]{{0.f}};
+    dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{{0.f}};
 
     void setSampleRate(float sR)
     {

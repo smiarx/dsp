@@ -55,10 +55,10 @@ template <class In, std::size_t MinSize = 0> class Buffer
     In *buffer_;
 };
 
-template <class In, class Buffer, bool useVec = false>
-class BufferContext : public Context<In, useVec>
+template <class In, class Buffer, bool Vectorize = false>
+class BufferContext : public Context<In, Vectorize>
 {
-    using Parent = Context<In, useVec>;
+    using Parent = Context<In, Vectorize>;
 
   public:
     BufferContext(In *in, int blockSize, const Buffer &buffer) :
@@ -72,13 +72,13 @@ class BufferContext : public Context<In, useVec>
 
     auto vec() const
     {
-        return BufferContext<In, Buffer, true>(Context<In, useVec>::vec(),
+        return BufferContext<In, Buffer, true>(Context<In, Vectorize>::vec(),
                                                buffer_);
     }
     auto scalar() const
     {
-        return BufferContext<In, Buffer, false>(Context<In, useVec>::scalar(),
-                                                buffer_);
+        return BufferContext<In, Buffer, false>(
+            Context<In, Vectorize>::scalar(), buffer_);
     }
 
     Buffer &getBuffer() { return buffer_; }
@@ -100,11 +100,7 @@ class BufferContext : public Context<In, useVec>
     const auto &read(int i) const
     {
         auto &x = buffer_.read(i);
-        if constexpr (useVec) {
-            return x.toVector();
-        } else {
-            return x.toScalar();
-        }
+        return x.template toSignal<Vectorize>();
     }
 
     void save(Buffer &buffer) { buffer = buffer_; }

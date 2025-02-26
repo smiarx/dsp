@@ -17,16 +17,16 @@ template <int N, int Order> class IIRFilter
     {
         /* iir second order section */
       public:
-        template <int N_ = N> using Mem = Signal<N_>[2];
+        template <int N_ = N> using Mem = fData<N_>[2];
 
         template <class Ctxt, class Mem>
         void process(Ctxt ctxt, Mem &mem) const;
 
-        Signal<N> tfAnalog(const float ba[2][3], Signal<N> c, Signal<N> csq);
+        fData<N> tfAnalog(const float ba[2][3], fData<N> c, fData<N> csq);
 
       private:
-        Signal<N> b_[2];
-        Signal<N> a_[2];
+        fData<N> b_[2];
+        fData<N> a_[2];
     };
 
     template <int N_ = N>
@@ -34,7 +34,7 @@ template <int N, int Order> class IIRFilter
 
     template <class Ctxt, class Mem> void process(Ctxt c, Mem &mem) const
     {
-        auto &x = c.getIn();
+        auto &x = c.getSignal();
 
 #pragma omp simd
         inFor(x, k, i) { x[k][i] *= b0_[i % N]; }
@@ -43,13 +43,13 @@ template <int N, int Order> class IIRFilter
         }
     }
 
-    void tfAnalog(const float ba[NSOS][2][3], Signal<N> freq)
+    void tfAnalog(const float ba[NSOS][2][3], fData<N> freq)
     {
         arrayFor(b0_, i) { b0_[i] = 1.f; }
 
         /* bilinear transform */
-        Signal<N> c;
-        Signal<N> csq;
+        fData<N> c;
+        fData<N> csq;
         arrayFor(c, i)
         {
             c[i]   = tanf(M_PIf * 0.5f * freq[i]);
@@ -76,13 +76,13 @@ template <int N, int Order> class IIRFilter
         }
     }
 
-    void butterworthLP(Signal<N> freq)
+    void butterworthLP(fData<N> freq)
     {
         float ba[NSOS][2][3];
         butterworthTF<false>(ba);
         tfAnalog(ba, freq);
     }
-    void butterworthHP(Signal<N> freq)
+    void butterworthHP(fData<N> freq)
     {
         float ba[NSOS][2][3];
         butterworthTF<true>(ba);
@@ -90,7 +90,7 @@ template <int N, int Order> class IIRFilter
     }
 
   private:
-    Signal<N> b0_;
+    fData<N> b0_;
     SOS sos_[NSOS];
 };
 
@@ -99,7 +99,7 @@ template <class Ctxt, class Memory>
 void IIRFilter<N, Order>::SOS::process(Ctxt ctxt, Memory &mem) const
 {
     /* Transposed Direct Form II */
-    auto &in = ctxt.getIn();
+    auto &in = ctxt.getSignal();
 
     arrayFor(in, k)
     {
@@ -127,8 +127,8 @@ void IIRFilter<N, Order>::SOS::process(Ctxt ctxt, Memory &mem) const
 }
 
 template <int N, int Order>
-Signal<N> IIRFilter<N, Order>::SOS::tfAnalog(const float ba[2][3], Signal<N> c,
-                                             Signal<N> csq)
+fData<N> IIRFilter<N, Order>::SOS::tfAnalog(const float ba[2][3], fData<N> c,
+                                             fData<N> csq)
 {
     /* filter params */
     /* we define a filter designed with analog coefficients
@@ -137,7 +137,7 @@ Signal<N> IIRFilter<N, Order>::SOS::tfAnalog(const float ba[2][3], Signal<N> c,
      *
      * we use second order section filters (sos) for stability
      */
-    Signal<N> factor;
+    fData<N> factor;
 
     assert(ba[1][0] == 1.f);
     float a0 = ba[1][2];

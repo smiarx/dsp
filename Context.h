@@ -6,16 +6,16 @@
 
 namespace dsp
 {
-template <typename In, bool useVector = false> class Context
+template <typename In, bool Vectorize = false> class Context
 {
   public:
     Context(In *in, int blockSize = 1) : blockSize_(blockSize), in_(in) {}
     Context(const Context &ctxt) = default;
 
-    static constexpr auto VecSize       = useVector ? In::VectorSize : 1;
-    static constexpr auto isUsingVector = useVector;
+    static constexpr auto VecSize       = Vectorize ? In::VectorSize : 1;
+    static constexpr auto isUsingVector = Vectorize;
     using BaseType                      = In;
-    using Type = typename std::conditional<useVector, typename In::Vector,
+    using Type = typename std::conditional<Vectorize, typename In::Vector,
                                            typename In::Scalar>::type;
 
     auto vec() const { return Context<In, true>(in_, blockSize_); }
@@ -24,47 +24,9 @@ template <typename In, bool useVector = false> class Context
     int vecSize() const { return VecSize; }
     int getStep() const { return VecSize; }
 
-    auto &__restrict getIn()
-    {
-        if constexpr (useVector) {
-            return in_->toVector();
-        } else {
-            return in_->toScalar();
-        }
-    }
+    auto &__restrict getSignal() { return in_->template toSignal<Vectorize>(); }
 
-    template <typename T> void setIn(T &x) { in_ = &x[0]; }
-
-    template <class Ctxts, int Nm>
-    void interleave(std::array<Ctxts, Nm> &&ctxts)
-    {
-        static_assert(BaseType::Size == Ctxts::BaseType::Size * Nm);
-        static_assert(Ctxts::BaseType::Size == 1);
-        static_assert(isUsingVector == Ctxts::isUsingVector);
-
-        for (int k = 0; k < Ctxts::VecSize; ++k) {
-            for (int i = 0; i < Nm; ++i) {
-                getIn()[k][i] = ctxts[i].getIn()[k];
-            }
-            next();
-        }
-        next(-VecSize);
-    }
-    template <class Ctxts, int Nm>
-    void desinterleave(std::array<Ctxts, Nm> &&ctxts)
-    {
-        static_assert(BaseType::Size == Ctxts::BaseType::Size * Nm);
-        static_assert(Ctxts::BaseType::Size == 1);
-        static_assert(isUsingVector == Ctxts::isUsingVector);
-
-        for (int k = 0; k < Ctxts::VecSize; ++k) {
-            for (int i = 0; i < Nm; ++i) {
-                ctxts[i].getIn()[k] = getIn()[k][i];
-            }
-            next();
-        }
-        next(-VecSize);
-    }
+    template <typename T> void setSamples(T &x) { in_ = &x[0]; }
 
     void next(int incr = VecSize) { nextIn(incr); }
 

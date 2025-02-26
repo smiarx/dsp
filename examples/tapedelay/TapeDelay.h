@@ -126,8 +126,8 @@ class TapeDelay
 
     // saturation
     dsp::ControlSmoother<1> saturation_{{0.f}};
-    dsp::Signal<2>::Vector pregain_;
-    dsp::Signal<2>::Vector postgain_;
+    dsp::fSample<2>::Vector pregain_;
+    dsp::fSample<2>::Vector postgain_;
 
     // low pass filter
     float cutlowpass_{0.f};
@@ -140,9 +140,9 @@ class TapeDelay
     decltype(hpf_)::State hpfMem_;
 
     static constexpr auto BufferSize = nextTo(delayline_);
-    dsp::Buffer<dsp::Signal<2>, BufferSize> buffer_;
-    dsp::Signal<N> bufferArray_[decltype(buffer_)::Size] = {{0.f}};
+    dsp::Buffer<dsp::fSample<2>, BufferSize> buffer_;
+    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size] = {{0.f}};
 
     // write tmp buffers
-    dsp::Signal<N> x_[MaxBlockSize] = {{0.f}};
+    dsp::fSample<N> x_[MaxBlockSize] = {{0.f}};
 };

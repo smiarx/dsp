@@ -47,8 +47,8 @@ template <int N, int Order, int MaxM, int Offset, int BufSize>
 class _MultiRate<N, Order, MaxM, Offset, BufSize, 1>
 {
   public:
-    using BufCtxt = BufferContext<Signal<N>, Buffer<Signal<N>, BufSize>>;
-    using Ctxt    = Context<Signal<N>>;
+    using BufCtxt = BufferContext<fSample<N>, Buffer<fSample<N>, BufSize>>;
+    using Ctxt    = Context<fSample<N>>;
     using DLDecimate =
         typename FIRDecimate<N, Order, MaxM>::template DL<Offset>;
     using DLInterpolate =

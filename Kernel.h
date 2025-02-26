@@ -43,7 +43,7 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
     static constexpr auto FilterWidth = A * 2;
 
     // type used in lookup table
-    class KernelType : public std::array<Signal<N>, FilterWidth>
+    class KernelType : public std::array<fData<N>, FilterWidth>
     {
       public:
         KernelType &operator+=(const KernelType &rhs)
@@ -125,7 +125,8 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
         auto kernels = lut.read(fdelay);
 
         constexpr auto VecSize = Ctxt::BaseType::VectorSize;
-        for (int l = 0; l < FilterWidth - FilterWidth % VecSize; l += VecSize) {
+        for (size_t l = 0; l < FilterWidth - FilterWidth % VecSize;
+             l += VecSize) {
             auto points =
                 delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
             inFor(points, k, i) { points[k][i] *= kernels[l + k][i]; }

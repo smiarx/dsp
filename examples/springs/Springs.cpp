@@ -34,8 +34,8 @@ void Springs::setFreq(float R, float freq)
     M               = std::min(M, MaxDecimate);
 
     freqScaled *= M;
-    dsp::Signal<N> freqs;
-    dsp::Signal<N> Rs;
+    dsp::fData<N> freqs;
+    dsp::fData<N> Rs;
     for (int i = 0; i < N; ++i) {
         freqs[i] = freqScaled * freqFactor[i];
         freqs[i] = std::min(0.995f, freqs[i]);
@@ -78,8 +78,8 @@ void Springs::setTd(float Td, float chaos)
 {
     Td_    = Td;
     chaos_ = chaos;
-    dsp::iSignal<N> loopEchoT;
-    dsp::iSignal<N> predelayT;
+    dsp::iData<N> loopEchoT;
+    dsp::iData<N> predelayT;
     float sampleTd = Td * sampleRate_ / M_;
     for (int i = 0; i < N; ++i) {
         loopTd_[i]     = sampleTd * loopTdFactor[i];
@@ -133,7 +133,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxt)
         {
-            auto &x = c.getIn();
+            auto &x = c.getSignal();
             arrayFor(x, k)
             {
                 auto mix = (*(inl++) + *(inr++)) * 0.5f;
@@ -145,7 +145,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec)
         {
-            auto &x = c.getIn();
+            auto &x = c.getSignal();
             predelaydl_.write(c, x);
 
             x = predelay_.read(c, predelaydl_);
@@ -153,7 +153,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec)
         {
-            auto &x = c.getIn();
+            auto &x = c.getSignal();
 
             LoopType looptap;
             auto mod   = loopMod_.process();
@@ -169,7 +169,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             // allpass diff
             {
                 auto apctxt = c;
-                apctxt.setIn(loop);
+                apctxt.setSamples(loop);
                 ap1_.process(apctxt, ap1dl_);
             }
 
@@ -187,7 +187,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxtdec)
         {
-            auto &x = c.getIn();
+            auto &x = c.getSignal();
             inFor(x, k, i)
             {
                 x[k][i] *= NonLinearityGain;
@@ -207,7 +207,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
         contextFor(ctxtdec.vec())
         {
-            auto &x = c.getIn();
+            auto &x = c.getSignal();
             loopdl_.write(c, x);
         }
 
@@ -218,7 +218,7 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
 
         contextFor(ctxt)
         {
-            auto &x      = c.getIn();
+            auto &x      = c.getSignal();
             float mix[2] = {0.f};
             for (auto i = 0; i < N / 2; ++i) {
                 mix[0] += x[0][i];

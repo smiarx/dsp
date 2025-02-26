@@ -27,7 +27,7 @@ namespace dsp
 template <int N, int Order> class FIRFilter
 {
   public:
-    static constexpr auto Pad    = Signal<N>::VectorSize;
+    static constexpr auto Pad    = fSample<N>::VectorSize;
     static constexpr auto NCoeff = Order + 1;
 
     template <int N_ = N>
@@ -38,7 +38,7 @@ template <int N, int Order> class FIRFilter
     static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
 
     FIRFilter() = default;
-    FIRFilter(std::array<Signal<N>, NCoeff> &&b)
+    FIRFilter(std::array<fData<N>, NCoeff> &&b)
     {
         for (size_t k = 0; k < NCoeff; ++k) {
             for (size_t i = 0; i < N; ++i) {
@@ -50,7 +50,7 @@ template <int N, int Order> class FIRFilter
     template <class Ctxt, class DL>
     __attribute__((always_inline)) void process(Ctxt c, DL &delayline) const
     {
-        auto &x = c.getIn();
+        auto &x = c.getSignal();
 
         typename Ctxt::Type sums[Ctxt::VecSize] = {0};
 
@@ -82,13 +82,13 @@ template <int N, int Order> class FIRFilter
     }
 
   private:
-    Signal<N> b_[PaddedLength] = {0};
+    fSample<N> b_[PaddedLength] = {0};
 };
 
 template <int N, int Order, int M> class FIRDecimate
 {
   public:
-    static constexpr auto Pad    = Signal<N>::VectorSize;
+    static constexpr auto Pad    = fSample<N>::VectorSize;
     static constexpr auto NCoeff = (Order + 1) * M;
 
     template <int Offset = 0>
@@ -122,13 +122,13 @@ template <int N, int Order, int M> class FIRDecimate
 
         contextFor(cin)
         {
-            auto x = c.getIn();
+            auto x = c.getSignal();
 
-            auto xOffset = (M - id) % M;
+            size_t xOffset = (M - id) % M;
             while (xOffset < CtxtIn::VecSize) {
                 typename CtxtIn::Type sum = {0};
 
-                for (auto delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
+                for (size_t delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                      delay += CtxtIn::VecSize) {
                     auto &x0 = delay == 0 ? x : delayline.read(c, delay);
                     const auto &b =
@@ -142,7 +142,7 @@ template <int N, int Order, int M> class FIRDecimate
                     }
                 }
 
-                auto &xout = coutCopy.getIn();
+                auto &xout = coutCopy.getSignal();
 #pragma omp simd
                 for (size_t i = 0; i < sum[0].size(); ++i) {
                     xout[0][i] = 0;
@@ -165,7 +165,7 @@ template <int N, int Order, int M> class FIRDecimate
     }
 
   private:
-    Signal<N> b_[PaddedLength] = {0};
+    fSample<N> b_[PaddedLength] = {0};
 };
 
 /*
@@ -184,7 +184,7 @@ template <int N, int Order, int M> class FIRDecimate
 template <int N, int Order, int L> class FIRInterpolate
 {
   public:
-    static constexpr auto Pad    = Signal<N>::VectorSize;
+    static constexpr auto Pad    = fSample<N>::VectorSize;
     static constexpr auto NCoeff = (Order + 1);
 
     template <int N_ = N>
@@ -222,7 +222,7 @@ template <int N, int Order, int L> class FIRInterpolate
         contextFor(cout)
         {
             if (id == 0) {
-                auto x = cin.getIn();
+                auto x = cin.getSignal();
                 delayline.write(cin, x);
                 cin.next();
             }
@@ -247,7 +247,7 @@ template <int N, int Order, int L> class FIRInterpolate
                 }
             }
 
-            auto &xout = c.getIn();
+            auto &xout = c.getSignal();
 #pragma omp simd
             for (size_t i = 0; i < sum[0].size(); ++i) {
                 xout[0][i] = 0.f;
@@ -262,7 +262,7 @@ template <int N, int Order, int L> class FIRInterpolate
     }
 
   private:
-    Signal<N> b_[L][PaddedLength] = {0};
+    fSample<N> b_[L][PaddedLength] = {0};
 };
 
 } // namespace dsp

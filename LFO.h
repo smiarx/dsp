@@ -18,7 +18,7 @@ template <int N> class LFOSine
             cos_[i] = 1.f;
         }
     }
-    void setPhase(Signal<N> phase)
+    void setPhase(fData<N> phase)
     {
         for (int i = 0; i < N; ++i) {
             // TODO modify to real value
@@ -27,14 +27,14 @@ template <int N> class LFOSine
         }
     }
 
-    void setFreq(Signal<N> freq)
+    void setFreq(fData<N> freq)
     {
         for (int i = 0; i < N; ++i) {
             a_[i] = 2.f * sinf(M_PIf / 2.f * freq[i]);
         }
     }
 
-    Signal<N> process()
+    fData<N> process()
     {
         auto y = sin_;
         for (int i = 0; i < N; ++i) {
@@ -45,9 +45,9 @@ template <int N> class LFOSine
     }
 
   private:
-    Signal<N> a_   = {{0.f}};
-    Signal<N> sin_ = {{0.f}};
-    Signal<N> cos_;
+    fData<N> a_   = {{0.f}};
+    fData<N> sin_ = {{0.f}};
+    fData<N> cos_;
 };
 
 /**
@@ -69,16 +69,16 @@ template <int N> class LFOParabolic
     LFOParabolic() = default;
 
     /** @brief Constructor with initial phase */
-    LFOParabolic(iSignal<N> phase) : phase_(phase) {}
+    LFOParabolic(iData<N> phase) : phase_(phase) {}
 
     /** @brief Sets the initial phase for the oscillator. */
     /** @param phase Initial phase to set. */
-    void setPhase(iSignal<N> phase) { phase_ = phase; }
+    void setPhase(iData<N> phase) { phase_ = phase; }
 
     /** @brief Sets the frequency for the oscillator. */
     /** @param freq Frequency from [0,1] where 1 is the Nyquist frequency
      */
-    void setFreq(Signal<N> freq)
+    void setFreq(fData<N> freq)
     {
 #pragma omp simd
         for (int i = 0; i < N; ++i) {
@@ -93,9 +93,9 @@ template <int N> class LFOParabolic
      * frequency.
      * @return Signal<N> Output lfo signal.
      */
-    Signal<N> process()
+    fData<N> process()
     {
-        Signal<N> y;
+        fData<N> y;
 
 #pragma omp simd
         for (int i = 0; i < N; ++i) {
@@ -118,9 +118,9 @@ template <int N> class LFOParabolic
 
   private:
     /* Current phase state for each channel */
-    iSignal<N> phase_{0};
+    iData<N> phase_{0};
     /* Frequency of each channel */
-    iSignal<N> freq_{0};
+    iData<N> freq_{0};
 };
 
 } // namespace dsp

@@ -8,11 +8,11 @@
 namespace dsp
 {
 
-template <int N = 1, bool useVector = false> class ControlSmoother
+template <int N = 1, bool Vectorize = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
-    using Type    = Signal<N>;
-    using OutType = typename std::conditional<useVector, typename Type::Vector,
+    using Type    = fSample<N>;
+    using OutType = typename std::conditional<Vectorize, typename Type::Vector,
                                               typename Type::Scalar>::type;
 
     /* linear smoother for control values */
@@ -84,9 +84,9 @@ template <int N> class SmootherLin
 {
   public:
     SmootherLin() = default;
-    SmootherLin(Signal<N> target) : value_{target} {}
+    SmootherLin(fData<N> target) : value_{target} {}
 
-    void set(Signal<N> target, int count)
+    void set(fData<N> target, int count)
     {
         for (int i = 0; i < N; ++i) {
             step_[i] = (target[i] - value_[i]) / count;
@@ -94,7 +94,7 @@ template <int N> class SmootherLin
         }
     }
 
-    Signal<N> step()
+    fData<N> step()
     {
         if (count_ == 0) {
             step_ = {0.f};
@@ -108,8 +108,8 @@ template <int N> class SmootherLin
     }
 
   private:
-    Signal<N> value_{{0.f}};
-    Signal<N> step_{{0.f}};
+    fData<N> value_{{0.f}};
+    fData<N> step_{{0.f}};
     int count_{0};
 };
 

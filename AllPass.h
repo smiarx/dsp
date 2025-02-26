@@ -23,7 +23,7 @@ template <int N, class Tap = TapTail> class AllPass
   public:
     constexpr AllPass() = default;
     template <class... Args>
-    constexpr AllPass(const Signal<N> &a, Args... args) : a_(a), tap_(args...)
+    constexpr AllPass(const fData<N> &a, Args... args) : a_(a), tap_(args...)
     {
     }
 
@@ -31,7 +31,7 @@ template <int N, class Tap = TapTail> class AllPass
     {
         static_assert(Ctxt::VecSize <= DL::Length);
 
-        auto &x = c.getIn();
+        auto &x = c.getSignal();
         auto sN = tap_.read(c, delayline);
         decltype(sN) s0;
 
@@ -46,15 +46,15 @@ template <int N, class Tap = TapTail> class AllPass
         delayline.write(c, s0);
     }
 
-    void setCoeff(Signal<N> a) { a_ = a; }
-    const auto& getCoeff() const { return a_;}
-    void setDelay(Signal<N> d) { tap_.setDelay(d); }
-    void setDelay(iSignal<N> d) { tap_.setDelay(d); }
+    void setCoeff(fData<N> a) { a_ = a; }
+    const auto &getCoeff() const { return a_; }
+    void setDelay(fData<N> d) { tap_.setDelay(d); }
+    void setDelay(iData<N> d) { tap_.setDelay(d); }
 
-    const auto& getTap() const { return tap_;}
+    const auto &getTap() const { return tap_; }
 
   private:
-    Signal<N> a_;
+    fData<N> a_;
     Tap tap_;
 };
 
@@ -66,17 +66,17 @@ class TapAllPass : public TapOut
 
     constexpr TapAllPass() = default;
     template <class... Args>
-    constexpr TapAllPass(const Signal<N> &a, Args... args) :
+    constexpr TapAllPass(const fData<N> &a, Args... args) :
         TapOut(args...), allpass_(a)
     {
     }
 
-    void setDelay(Signal<N> d)
+    void setDelay(fData<N> d)
     {
-        Signal<N> a;
-        iSignal<N> id;
+        fData<N> a;
+        iData<N> id;
         for (int i = 0; i < N; ++i) {
-            id[i]  = static_cast<int>(d[i] - minfdelay);
+            id[i]    = static_cast<int>(d[i] - minfdelay);
             float fd = d[i] - static_cast<float>(id[i]);
             a[i]     = (1 - fd) / (1 + fd);
         }
@@ -96,28 +96,27 @@ class TapAllPass : public TapOut
     AllPass<N, TapIn> allpass_;
 };
 
-template <int N>
-class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
+template <int N> class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
 {
-public:
+  public:
     static constexpr auto minfdelay = 0.618f;
-    using TapOut = TapNoInterp<N>;
-    using TapIn = TapTail;
+    using TapOut                    = TapNoInterp<N>;
+    using TapIn                     = TapTail;
 
     constexpr TapAllPass() = default;
 
-    void setDelay(Signal<N> d)
+    void setDelay(fData<N> d)
     {
-        Signal<N> a;
-        iSignal<N> id;
+        fData<N> a;
+        iData<N> id;
         for (int i = 0; i < N; ++i) {
-            id[i]  = static_cast<int>(d[i] - minfdelay);
+            id[i] = static_cast<int>(d[i] - minfdelay);
 
             float fd = d[i] - static_cast<float>(id[i]);
             // taylor approximation of (1-fd)/(1+fd)
             // -(fd-1)/2 + (fd-1)²/4 - (fd-1)³/8
-            float z = (fd-1.f)*0.5f;
-            a[i]     = z*(-1.f+z*(1.f-z));
+            float z = (fd - 1.f) * 0.5f;
+            a[i]    = z * (-1.f + z * (1.f - z));
         }
         allpass_.setCoeff(a);
         TapOut::setDelay(id);
@@ -125,7 +124,7 @@ public:
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        static_assert(Ctxt::VecSize==1);
+        static_assert(Ctxt::VecSize == 1);
         typename Ctxt::Type x;
         typename Ctxt::Type x1;
         typename Ctxt::Type y;
@@ -133,27 +132,27 @@ public:
 
         for (int i = 0; i < N; i++) {
             auto id = TapOut::id_[i];
-            assert(id+1 <= DL::Length - Ctxt::VecSize + 1);
+            assert(id + 1 <= DL::Length - Ctxt::VecSize + 1);
 
             auto &val = delayline.read(c, id);
             for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
-            auto &val1 = delayline.read(c, id+1);
+            auto &val1 = delayline.read(c, id + 1);
             for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
         }
 
         y1 = allpass_.getTap().read(c, delayline.getInner());
 
-        const auto& a = allpass_.getCoeff();
-        for (int k = 0; k < Ctxt::VecSize; ++k)
-        {
+        const auto &a = allpass_.getCoeff();
+        for (int k = 0; k < Ctxt::VecSize; ++k) {
             for (int i = 0; i < N; i++) {
-                y[k][i] = a[i]*(x[k][i] - y1[k][i]) + x1[k][i];
+                y[k][i] = a[i] * (x[k][i] - y1[k][i]) + x1[k][i];
             }
         }
         delayline.getInner().write(c, y);
         return y;
     }
-private:
+
+  private:
     AllPass<N, TapIn> allpass_;
 };
 
@@ -166,18 +165,19 @@ template <int N> class AllPass2
     {
     };
 
-   /**
+    /**
      * @brief Set the poles of the allpass filter.
      *
-     * This function sets the poles of the allpass filter based on the given radius
-     * and frequency.
+     * This function sets the poles of the allpass filter based on the given
+     * radius and frequency.
      *
      * @param R A signal representing the radius of the pole in the z-plane.
      *          Must be between -1 and 1.
-     * @param freq A signal representing the frequency of the pole in the z-plane.
-     *             Typically in the range [0, 1], where 1 represents the Nyquist frequency.
+     * @param freq A signal representing the frequency of the pole in the
+     * z-plane. Typically in the range [0, 1], where 1 represents the Nyquist
+     * frequency.
      */
-    void setPole(Signal<N> R, Signal<N> freq)
+    void setPole(fData<N> R, fData<N> freq)
     {
         auto &a1 = a_[1];
         auto &a2 = a_[0];
@@ -196,7 +196,7 @@ template <int N> class AllPass2
         static_assert(Ctxt::VecSize == 1, "Vector size must be 1");
 
         // Input signal
-        auto &x  = c.getIn();
+        auto &x = c.getSignal();
 
         // Direct form II value and its delayed signals
         typename Ctxt::Type s0;
@@ -228,6 +228,6 @@ template <int N> class AllPass2
     }
 
   private:
-    Signal<N> a_[2];
+    fData<N> a_[2];
 };
 } // namespace dsp

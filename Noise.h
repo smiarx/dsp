@@ -30,8 +30,8 @@ template <int N> class iNoise
     }
 
   private:
-    iSignal<N> seed_;
-    iSignal<N> state_{0};
+    iData<N> seed_;
+    iData<N> state_{0};
 };
 
 template <int N> class Noise : public iNoise<N>
@@ -39,9 +39,9 @@ template <int N> class Noise : public iNoise<N>
   public:
     auto process()
     {
-        using type  = typename Signal<N>::Type;
-        using itype = typename iSignal<N>::Type;
-        Signal<N> y;
+        using type  = typename fData<N>::Type;
+        using itype = typename iData<N>::Type;
+        fData<N> y;
 
         auto iy = iNoise<N>::process();
         for (int i = 0; i < N; ++i) {
