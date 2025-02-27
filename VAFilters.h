@@ -149,50 +149,51 @@ template <int N, FilterType FT = LowPass> class SVF
     {
         auto &in = c.getSignal();
         auto x   = in;
-        auto s   = state;
 
         if constexpr (NormaLizedBandPass) {
-            inFor(x, k, i) { x[k][i] *= inputGain_[i]; }
+            x.fromSIMD(x.toSIMD() * inputGain_.toSIMD());
         }
 
-        inFor(x, k, i)
+        auto gain        = gain_.toSIMD();
+        auto denominator = denominator_.toSIMD();
+        auto s1          = state[0].toSIMD();
+        auto s2          = state[1].toSIMD();
+        arrayFor(x, k)
         {
-            auto s1 = s[0][i], s2 = s[1][i];
+            auto xk = x[k].toSIMD();
             if constexpr (FT == HighPass) {
-                auto hp  = (x[k][i] - gains1_[i] * s1 - s2) * denominator_[i];
-                auto v1  = gain_[i] * hp;
-                auto bp  = v1 + s1;
-                s1       = bp + v1; // first integrator
-                auto v2  = gain_[i] * bp;
-                auto lp  = v2 + s2;
-                s2       = lp + v2; // second integrator
-                in[k][i] = hp;
+                auto hp = (xk - gains1_.toSIMD() * s1 - s2) * denominator;
+                auto v1 = gain * hp;
+                auto bp = v1 + s1;
+                s1      = bp + v1; // first integrator
+                auto v2 = gain * bp;
+                auto lp = v2 + s2;
+                s2      = lp + v2; // second integrator
+                in[k].fromSIMD(hp);
             } else {
-                auto bp = (gain_[i] * (x[k][i] - s2) + s1) * denominator_[i];
+                auto bp = (gain * (xk - s2) + s1) * denominator;
                 if constexpr (NormaLizedBandPass) {
                     auto bp2 = bp + bp; // first integrator;
                     s1       = bp2 - s1;
-                    auto v22 = gain_[i] * bp2; // second integrator
+                    auto v22 = gain * bp2; // second integrator
                     s2       = v22 + s2;
                     if constexpr (FT == BandPass) {
-                        in[k][i] = bp;
+                        in[k].fromSIMD(bp);
                     } else if constexpr (FT == AllPass || FT == Notch) {
-                        in[k][i] -= bp;
+                        in[k].fromSIMD(in[k].toSIMD() - bp);
                     }
                 } else if (FT == LowPass) {
-                    auto v1  = bp - s1; // first integrator
-                    s1       = bp + v1;
-                    auto v2  = gain_[i] * bp; // secondintegrator
-                    auto lp  = v2 + s2;
-                    s2       = lp + v2;
-                    in[k][i] = lp;
+                    auto v1 = bp - s1; // first integrator
+                    s1      = bp + v1;
+                    auto v2 = gain * bp; // secondintegrator
+                    auto lp = v2 + s2;
+                    s2      = lp + v2;
+                    in[k].fromSIMD(lp);
                 }
             }
-
-            s[0][i] = s1;
-            s[1][i] = s2;
         }
-        state = s;
+        state[0].fromSIMD(s1);
+        state[1].fromSIMD(s2);
     }
 
   private:
