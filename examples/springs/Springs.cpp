@@ -259,11 +259,13 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
             }
             mix[0] *= 2.f / N;
             mix[1] *= 2.f / N;
-            mix[0] = widthcos_ * mix[0] + widthsin_ * mix[1];
-            mix[1] = widthcos_ * mix[1] + widthsin_ * mix[0];
 
-            *outl = *inl2 + drywet_ * (mix[0] - *inl2);
-            *outr = *inr2 + drywet_ * (mix[1] - *inr2);
+            float wet[2];
+            wet[0] = widthcos_ * mix[0] + widthsin_ * mix[1];
+            wet[1] = widthcos_ * mix[1] + widthsin_ * mix[0];
+
+            *outl = *inl2 + drywet_ * (wet[0] - *inl2);
+            *outr = *inr2 + drywet_ * (wet[1] - *inr2);
             ++outl, ++inl2;
             ++outr, ++inr2;
         }
