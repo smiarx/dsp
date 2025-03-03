@@ -38,7 +38,7 @@ template <int N, int Order> class FIRFilter
     static constexpr auto PaddedLength = NCoeff + Pad * 2 - 1;
 
     FIRFilter() = default;
-    FIRFilter(std::array<fData<N>, NCoeff> &&b)
+    FIRFilter(const std::array<fData<N>, NCoeff> b)
     {
         for (size_t k = 0; k < NCoeff; ++k) {
             for (size_t i = 0; i < N; ++i) {

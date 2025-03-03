@@ -43,10 +43,10 @@ template <typename In, bool Vectorize = false> class Context
 };
 
 template <class Ctxt, class... Ctxts>
-void _ctxtInfos(int &blockSize, int &incr, Ctxt c, Ctxts... cs)
+void _ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
 {
     blockSize = c.getBlockSize();
-    incr      = c.getIncr();
+    step      = c.getStep();
     /* check if blockSize and incr are the same */
     (
         [&] {
@@ -56,8 +56,8 @@ void _ctxtInfos(int &blockSize, int &incr, Ctxt c, Ctxts... cs)
         ...);
     (
         [&] {
-            auto _incr = cs.getIncr();
-            assert(incr == _incr);
+            auto _step = cs.getStep();
+            assert(step == _step);
         }(),
         ...);
 }

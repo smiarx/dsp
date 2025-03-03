@@ -26,12 +26,9 @@ template <typename T, int Size> using SIMD_t = typename SIMD<T, Size>::type;
 template <typename T, int Size, bool Aligned = false>
 inline SIMD_t<T, Size> arrayToSIMD(const T *x)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
     if constexpr (Aligned) return SIMD<T, Size>::load(x);
     else
         return SIMD<T, Size>::loadu(x);
-#pragma GCC diagnostic pop
 }
 // store a simd variable into an array
 template <typename T, int Size, bool Aligned = false>
@@ -69,11 +66,11 @@ template <> struct SIMD<int, 2> {
 };
 template <> struct SIMD<int, 4> {
     using type                   = __m128i;
-    static constexpr auto load   = _mm_load_si128;
+    static auto load(const int* x) { return _mm_load_si128((const __m128i*) x);}
     static constexpr auto set    = _mm_set1_epi32;
-    static constexpr auto loadu  = _mm_loadu_si128;
-    static constexpr auto store  = _mm_store_si128;
-    static constexpr auto storeu = _mm_storeu_si128;
+    static auto loadu(const int* x) { return _mm_loadu_si128((const __m128i_u*) x);}
+    static void store(int* x, type v) { _mm_store_si128((__m128i*) x, v);}
+    static void storeu(int* x, type v) { _mm_storeu_si128((__m128i_u*) x, v);}
 };
 
 template <> struct SIMD<float, 2> {
@@ -97,7 +94,7 @@ template <> struct SIMD<double, 2> {
     using type                   = __m128d;
     static constexpr auto load   = _mm_load_pd;
     static constexpr auto loadu  = _mm_loadu_pd;
-    static constexpr auto set    = _mm_set1_ps;
+    static constexpr auto set    = _mm_set1_pd;
     static constexpr auto store  = _mm_store_pd;
     static constexpr auto storeu = _mm_storeu_pd;
 };
