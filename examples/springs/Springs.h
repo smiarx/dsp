@@ -15,7 +15,7 @@ class Springs
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
     static constexpr int LoopLength    = 0.25 * 48000;
-    static constexpr auto CascadeL     = 100;
+    static constexpr auto CascadeL     = 120;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
     static constexpr auto DCBlockFreq     = 10.f;
@@ -31,6 +31,18 @@ class Springs
     static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
     static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
     static constexpr float loopRippleGain  = 0.016f;
+
+    // use simd to improve all pass chain
+    // for example
+    //  [x1,x2,x3,x4] -----> AP[4]*L -----> [y1,y2,y3,y4]
+    // becomes
+    //  [x1,x2,x3,x4,y1,y2,y3,y4] --> AP[8]*L/2 --> [y1,y2,y3,y4,z1,z2,z3,z4]
+    // with y as intermediary values and z as final values
+    // reducing the number of computation by 2
+    // introduce a delay in chain of size APChainSize
+    static constexpr auto APChainSize = SIMDSIZE / sizeof(float) / N;
+    static constexpr auto NAP         = N * APChainSize;
+    static constexpr auto APCascadeL  = CascadeL / APChainSize;
 
     Springs(float sampleRate)
     {
@@ -64,8 +76,9 @@ class Springs
 
     float widthcos_{1.f}, widthsin_{0.f};
 
-    dsp::va::SVF<N, dsp::va::AllPass> allpass_;
-    typename decltype(allpass_)::State allpassState_[CascadeL]{{{{0.f}}}};
+    dsp::va::SVF<NAP, dsp::va::AllPass> allpass_;
+    dsp::fSample<NAP> allpassIntermediary_{0.f};
+    typename decltype(allpass_)::State allpassState_[APCascadeL]{{{{0.f}}}};
 
     dsp::va::SVF<N, dsp::va::LowPass> lowpass_;
     typename decltype(lowpass_)::State lowpassState_;

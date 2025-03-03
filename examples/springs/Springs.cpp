@@ -35,12 +35,18 @@ void Springs::setFreq(float R, float freq)
 
     freqScaled *= M;
     dsp::fData<N> freqs;
-    dsp::fData<N> Rs;
+    dsp::fData<NAP> freqsAP;
+    dsp::fData<NAP> Rs;
     for (int i = 0; i < N; ++i) {
-        freqs[i] = freqScaled * freqFactor[i];
-        freqs[i] = std::min(0.995f, freqs[i]);
-        freqs[i] = std::max(0.005f, freqs[i]);
-        Rs[i]    = std::abs(R) * freqFactor[i];
+        freqs[i]   = freqScaled * freqFactor[i];
+        freqs[i]   = std::min(0.995f, freqs[i]);
+        freqs[i]   = std::max(0.005f, freqs[i]);
+        freqsAP[i] = freqs[i];
+        Rs[i]      = std::abs(R) * freqFactor[i];
+    }
+    for (size_t i = N; i < NAP; ++i) {
+        freqsAP[i] = freqs[i % N];
+        Rs[i]      = Rs[i % N];
     }
 
     if (R < 0) {
@@ -48,7 +54,7 @@ void Springs::setFreq(float R, float freq)
             freqs[i] = 1.f - freqs[i];
         }
     }
-    allpass_.setFreq(freqs, Rs);
+    allpass_.setFreq(freqsAP, Rs);
 
     multirate_  = multirates.get(M);
     decimateId_ = 0;
@@ -197,12 +203,37 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
         }
         contextFor(ctxtdec) { dcblocker_.process(c, dcblockerState_); }
 
+        // allpass cascade
+        auto allpassIntermediary = allpassIntermediary_;
         contextFor(ctxtdec)
         {
-            for (int j = 0; j < CascadeL; ++j) {
-                allpass_.process(c, allpassState_[j]);
+            auto &x = c.getSignal();
+
+            // shift intermediary values
+            for (int j = APChainSize - 1; j > 0; --j) {
+                for (int i = 0; i < N; ++i) {
+                    allpassIntermediary[j * N + i] =
+                        allpassIntermediary[(j - 1) * N + i];
+                }
+            }
+            // set value as first entries of intermediary values
+            for (int i = 0; i < N; ++i) {
+                allpassIntermediary[i] = x[0][i];
+            }
+
+            // compute allpass filters
+            for (size_t j = 0; j < APCascadeL; ++j) {
+                dsp::Context c1(&allpassIntermediary);
+                allpass_.process(c1, allpassState_[j]);
+            }
+
+            // outout is last intermediary value
+            for (int i = 0; i < N; ++i) {
+                x[0][i] = allpassIntermediary[i];
             }
         }
+        // save intermediary values
+        allpassIntermediary_ = allpassIntermediary;
 
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
         contextFor(ctxtdec.vec())
