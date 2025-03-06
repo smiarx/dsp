@@ -2,5 +2,12 @@ cmake_minimum_required(VERSION 3.15)
 
 project(dsp VERSION 0.0.1)
 
-add_subdirectory(tests/)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
 add_subdirectory(processors/)
