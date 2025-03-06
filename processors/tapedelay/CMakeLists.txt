@@ -1,22 +1,19 @@
-cmake_minimum_required(VERSION 3.15)
-
-project(Test VERSION 0.0.1)
-
-set(sources
+set(tapedelay_sources
     TapeDelay.cpp)
 
-add_library(SCTapeDelay MODULE ${sources})
+add_library(SCTapeDelay MODULE ${tapedelay_sources})
 
 target_include_directories(SCTapeDelay PRIVATE
     /usr/include/SuperCollider/common
     /usr/include/SuperCollider/server
     /usr/include/SuperCollider/plugin_interface
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 target_compile_options(SCTapeDelay PRIVATE
        -Wall -Werror -fopenmp-simd
-       $<$<CONFIG:RELEASE>:-Ofast -g -march=native -mtune=native -ffast-math>
-       $<$<CONFIG:DEBUG>:-Og>
+       $<$<CONFIG:RELEASE>:-Ofast -march=native -mtune=native -ffast-math -funroll-loops>
+       $<$<CONFIG:DEBUG>:-O0>         
        $<$<CONFIG:DEBUG>:-g>
    )
 

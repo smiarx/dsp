@@ -1,4 +1,4 @@
-#include "../Signal.h"
+#include "dsp/Signal.h"
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib> // for std::aligned_alloc and std::free
 

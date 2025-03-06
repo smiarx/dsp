@@ -1,5 +1,5 @@
-#include "../Context.h"
-#include "../Signal.h"
+#include "dsp/Context.h"
+#include "dsp/Signal.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 

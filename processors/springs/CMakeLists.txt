@@ -1,19 +1,16 @@
-cmake_minimum_required(VERSION 3.15)
+set(springs_sources
+    Springs.cpp)
 
-project(Filters VERSION 0.0.1)
+add_library(SCSprings MODULE ${springs_sources})
 
-set(sources
-    Filters.cpp)
-
-add_library(Filters MODULE ${sources})
-
-target_include_directories(Filters PRIVATE
+target_include_directories(SCSprings PRIVATE
     /usr/include/SuperCollider/common
     /usr/include/SuperCollider/server
     /usr/include/SuperCollider/plugin_interface
+    ${CMAKE_SOURCE_DIR}/include
 )
 
-target_compile_options(Filters PRIVATE
+target_compile_options(SCSprings PRIVATE
        -Wall -Werror -fopenmp-simd
        $<$<CONFIG:RELEASE>:-Ofast -march=native -mtune=native -ffast-math>
        $<$<CONFIG:DEBUG>:-O0>

@@ -1,5 +1,5 @@
 #include "TapeDelay.h"
-#include "../../Utils.h"
+#include "dsp/Utils.h"
 #include "SC_Unit.h"
 
 TapeDelay::FadeLut TapeDelay::fadeLut;

@@ -9,7 +9,7 @@ namespace dsp
 
 template <int N> class iNoise
 {
-    static constexpr int generator[] = {1736462733, 1487623987, 848278349,
+    static constexpr int generator[] = {1296462733, 1487623987, 848278349,
                                         1987647829, 1837654627, 963782763,
                                         1492758273, 1746273223};
 

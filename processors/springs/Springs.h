@@ -1,11 +1,11 @@
+#pragma once
 
-
-#include "../../AllPass.h"
-#include "../../LFO.h"
-#include "../../MultiRate.h"
-#include "../../Noise.h"
-#include "../../Smoother.h"
-#include "../../VAFilters.h"
+#include "dsp/AllPass.h"
+#include "dsp/LFO.h"
+#include "dsp/MultiRate.h"
+#include "dsp/Noise.h"
+#include "dsp/Smoother.h"
+#include "dsp/VAFilters.h"
 
 static constexpr auto N = 4;
 

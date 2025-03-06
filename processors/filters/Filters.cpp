@@ -1,5 +1,5 @@
-#include "../../Context.h"
-#include "../../VAFilters.h"
+#include "dsp/Context.h"
+#include "dsp/VAFilters.h"
 #include "SC_PlugIn.h"
 #include "SC_Unit.h"
 

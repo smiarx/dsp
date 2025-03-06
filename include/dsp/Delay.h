@@ -245,8 +245,8 @@ template <int N> class TapNoInterp
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
     {
         typename Ctxt::Type x;
-        for (int i = 0; i < N; i++) {
-            assert(id_[i] <= DL::Length - Ctxt::VecSize + 1);
+        for (size_t i = 0; i < N; i++) {
+            assert(id_[i] + Ctxt::VecSize <= DL::Length +  1);
             auto &val = delayline.read(c, id_[i]);
             for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
         }
@@ -334,7 +334,7 @@ template <int N> class TapCubic : public TapLin<N>
         } else {
             arrayFor(x0[0], i)
             {
-                assert(id[i % N] <= DL::Length - Ctxt::VecSize - 2);
+                assert(id[i % N] + Ctxt::VecSize + 2 <= DL::Length);
                 auto &valm1 = delayline.read(c, id[i % N] - 1);
                 for (size_t k = 0; k < Ctxt::VecSize; ++k)
                     xm1[k][i] = valm1[k][i];

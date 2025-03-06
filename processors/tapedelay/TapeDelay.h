@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../Buffer.h"
-#include "../../Delay.h"
-#include "../../Kernel.h"
-#include "../../LFO.h"
-#include "../../Smoother.h"
-#include "../../TapeDelay.h"
-#include "../../VAFilters.h"
-#include "../../Window.h"
+#include "dsp/Buffer.h"
+#include "dsp/Delay.h"
+#include "dsp/Kernel.h"
+#include "dsp/LFO.h"
+#include "dsp/Smoother.h"
+#include "dsp/TapeDelay.h"
+#include "dsp/VAFilters.h"
+#include "dsp/Window.h"
 
 static constexpr auto N = 2;
 

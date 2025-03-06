@@ -1,4 +1,4 @@
-#include "../FIRFilter.h"
+#include "dsp/FIRFilter.h"
 #include <catch2/catch_test_macros.hpp>
 
 template <int N, int Order, bool Vec = false> void test_fir()
