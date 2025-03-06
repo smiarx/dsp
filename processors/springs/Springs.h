@@ -7,6 +7,8 @@
 #include "dsp/Smoother.h"
 #include "dsp/VAFilters.h"
 
+namespace processors
+{
 static constexpr auto N = 4;
 
 class Springs
@@ -141,3 +143,4 @@ class Springs
                 float chaos, float width, float drywet);
     void process(float **__restrict in, float **__restrict out, int num);
 };
+} // namespace processors

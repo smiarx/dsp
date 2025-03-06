@@ -1,9 +1,9 @@
-#include "dsp/Context.h"
-#include "dsp/VAFilters.h"
 #include "SC_PlugIn.h"
 #include "SC_Unit.h"
+#include "dsp/Context.h"
+#include "dsp/VAFilters.h"
 
-static InterfaceTable *ft;
+extern InterfaceTable *ft;
 
 template <class Base, bool hasRes = false> struct Filter : public Unit {
     Base filter;
@@ -119,9 +119,8 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
 #define DefineFilterUnit(name, Base, hasRes)                \
     (*ft->fDefineUnit)(#name, sizeof(Filter<Base, hasRes>), \
                        (UnitCtorFunc) & Filter_Ctor<Base, hasRes>, 0, 0);
-PluginLoad(SCTapeDelay)
+void LoadFilters()
 {
-    ft = inTable; // store pointer to InterfaceTable
     DefineFilterUnit(OnePoleLP, dsp::va::OnePole<1 CMA dsp::va::LowPass>,
                      false);
     DefineFilterUnit(OnePoleHP, dsp::va::OnePole<1 CMA dsp::va::HighPass>,

@@ -1,7 +1,8 @@
 #include "TapeDelay.h"
 #include "dsp/Utils.h"
-#include "SC_Unit.h"
 
+namespace processors
+{
 TapeDelay::FadeLut TapeDelay::fadeLut;
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
@@ -258,48 +259,4 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
         }
     }
 }
-
-#include "SC_PlugIn.h"
-
-static InterfaceTable *ft;
-
-struct SCTapeDelay : public Unit {
-    TapeDelay *tapedelay;
-};
-
-void SCTapeDelay_Ctor(SCTapeDelay *unit);
-void SCTapeDelay_Dtor(SCTapeDelay *unit);
-void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples);
-
-void SCTapeDelay_Ctor(SCTapeDelay *unit)
-{
-    SETCALC(SCTapeDelay_next);
-
-    unit->tapedelay = (TapeDelay *)RTAlloc(unit->mWorld, sizeof(TapeDelay));
-    ClearUnitIfMemFailed(unit->tapedelay);
-    new (unit->tapedelay) TapeDelay(SAMPLERATE, BUFLENGTH);
-
-    ZOUT0(0) = 0.f;
-    ZOUT0(1) = 0.f;
-}
-
-void SCTapeDelay_Dtor(SCTapeDelay *unit)
-{
-    RTFree(unit->mWorld, unit->tapedelay);
-}
-
-void SCTapeDelay_next(SCTapeDelay *unit, int inNumSamples)
-{
-    float *in[2]  = {IN(8), IN(9)};
-    float *out[2] = {OUT(0), OUT(1)};
-
-    unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
-                            static_cast<TapeDelay::Mode>(IN0(6)), IN0(7));
-    unit->tapedelay->process(in, out, inNumSamples);
-}
-
-PluginLoad(SCTapeDelay)
-{
-    ft = inTable; // store pointer to InterfaceTable
-    DefineDtorUnit(SCTapeDelay);
-}
+} // namespace processors

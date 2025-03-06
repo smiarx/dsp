@@ -1,6 +1,8 @@
 #include "Springs.h"
 #include "SC_Unit.h"
 
+namespace processors
+{
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
@@ -278,45 +280,4 @@ void Springs::process(float **__restrict in, float **__restrict out, int count)
     ctxt.save(buffer_);
     ctxtdec.save(bufferDec_);
 }
-
-#include "SC_PlugIn.h"
-
-static InterfaceTable *ft;
-
-struct SCSprings : public Unit {
-    Springs *springs;
-};
-
-void SCSprings_Ctor(SCSprings *unit);
-void SCSprings_Dtor(SCSprings *unit);
-void SCSprings_next(SCSprings *unit, int inNumSamples);
-
-void SCSprings_Ctor(SCSprings *unit)
-{
-    SETCALC(SCSprings_next);
-
-    unit->springs = (Springs *)RTAlloc(unit->mWorld, sizeof(Springs));
-    ClearUnitIfMemFailed(unit->springs);
-    new (unit->springs) Springs(SAMPLERATE);
-
-    ZOUT0(0) = 0.f;
-    ZOUT0(1) = 0.f;
-}
-
-void SCSprings_Dtor(SCSprings *unit) { RTFree(unit->mWorld, unit->springs); }
-
-void SCSprings_next(SCSprings *unit, int inNumSamples)
-{
-    float *in[2]  = {IN(8), IN(9)};
-    float *out[2] = {OUT(0), OUT(1)};
-
-    unit->springs->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
-                          IN0(6), IN0(7));
-    unit->springs->process(in, out, inNumSamples);
-}
-
-PluginLoad(SCSprings)
-{
-    ft = inTable; // store pointer to InterfaceTable
-    DefineDtorUnit(SCSprings);
-}
+} // namespace processors

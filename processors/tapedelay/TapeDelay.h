@@ -9,6 +9,8 @@
 #include "dsp/VAFilters.h"
 #include "dsp/Window.h"
 
+namespace processors
+{
 static constexpr auto N = 2;
 
 class TapeDelay
@@ -146,3 +148,4 @@ class TapeDelay
     // write tmp buffers
     dsp::fSample<N> x_[MaxBlockSize] = {{0.f}};
 };
+} // namespace processors

@@ -1,19 +1,10 @@
 set(springs_sources
     Springs.cpp)
+set(springs_sc_sources
+    Springs_SC.cpp)
 
-add_library(SCSprings MODULE ${springs_sources})
-
-target_include_directories(SCSprings PRIVATE
-    /usr/include/SuperCollider/common
-    /usr/include/SuperCollider/server
-    /usr/include/SuperCollider/plugin_interface
-    ${CMAKE_SOURCE_DIR}/include
-)
-
-target_compile_options(SCSprings PRIVATE
-       -Wall -Werror -fopenmp-simd
-       $<$<CONFIG:RELEASE>:-Ofast -march=native -mtune=native -ffast-math>
-       $<$<CONFIG:DEBUG>:-O0>
-       $<$<CONFIG:DEBUG>:-g>
-   )
-
+if(BUILD_SC)
+target_sources(SCProcessors PRIVATE
+    ${springs_sources}
+    ${springs_sc_sources})
+endif()
