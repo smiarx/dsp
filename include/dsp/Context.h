@@ -61,19 +61,6 @@ void _ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
         }(),
         ...);
 }
-template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
-{
-    int blockSize, incr;
-    _ctxtInfos(blockSize, incr, cs...);
-    for (int n = 0; n < blockSize; n += incr) {
-        process(cs...);
-        (
-            [&] {
-                cs.next();
-            }(),
-            ...);
-    }
-}
 
 #define contextFor(ctxt)                                          \
     for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \
@@ -85,10 +72,4 @@ template <typename P, class... Ctxt> void _processBlock(P process, Ctxt... cs)
 #define inFor(x, k, i)                    \
     for (size_t k = 0; k < x.size(); ++k) \
         for (size_t i = 0; i < x[0].size(); ++i)
-
-// macro to easily redefine
-#define COMMA                 ,
-#define processBlock(c, func) _processBlock([&](decltype(c) c) func, c)
-#define processBlock2(c1, c2, func) \
-    _processBlock([&](decltype(c1) c1, decltype(c2) c2) func, c1, c2)
 } // namespace dsp

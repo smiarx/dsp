@@ -1,5 +1,4 @@
 #include "Springs.h"
-#include "SC_Unit.h"
 
 namespace processors
 {
@@ -135,7 +134,8 @@ void Springs::setWidth(float width)
     widthsin_  = sinf(theta);
 }
 
-void Springs::process(float **__restrict in, float **__restrict out, int count)
+void Springs::process(const float *const *__restrict in,
+                      float *const *__restrict out, int count)
 {
     auto *inl  = in[0];
     auto *inr  = in[1];

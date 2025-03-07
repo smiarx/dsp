@@ -62,7 +62,7 @@ void TapeDelay::setSaturation(float saturation)
 {
     saturation_.set({saturation}, invBlockSize_);
 }
-void TapeDelay::setFeedback(float feedback) 
+void TapeDelay::setFeedback(float feedback)
 {
     feedback_.set({feedback, feedback}, invBlockSize_);
 }
@@ -137,11 +137,14 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
     return ctxt.getBlockSize();
 }
 
-void TapeDelay::process(float **__restrict in, float **__restrict out,
-                        int count)
+void TapeDelay::process(const float *const *__restrict in,
+                        float *const *__restrict out, int count)
 {
     int blockSizeOrig = std::min(count, MaxBlockSize);
     auto ctxt         = dsp::BufferContext(x_, blockSizeOrig, buffer_);
+
+    const float *localin[] = {in[0], in[1]};
+    float *localout[]      = {out[0], out[1]};
 
     while (count) {
 
@@ -255,7 +258,7 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             auto &loop = c.getSignal();
             decltype(c)::Type xin;
 
-            inFor(xin, k, i) { xin[k][i] = *in[i]++; }
+            inFor(xin, k, i) { xin[k][i] = *localin[i]++; }
 
             drywet_.step();
             feedback_.step();
@@ -263,7 +266,8 @@ void TapeDelay::process(float **__restrict in, float **__restrict out,
             auto feedback = feedback_.get();
             inFor(xin, k, i)
             {
-                *out[i]++ = xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
+                *localout[i]++ =
+                    xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
             }
 
             dsp::fSample<N>::Scalar inloop;

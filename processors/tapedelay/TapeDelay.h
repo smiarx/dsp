@@ -11,11 +11,12 @@
 
 namespace processors
 {
-static constexpr auto N = 2;
 
 class TapeDelay
 {
   public:
+    static constexpr auto N = 2;
+
     static constexpr auto MaxBlockSize = 512;
     static constexpr int MaxDelay      = 48000 * 1.0;
 
@@ -99,7 +100,8 @@ class TapeDelay
 
     void update(float delay, float feedback, float cutlp, float cuthp,
                 float saturation, float drift, Mode mode, float drywet);
-    void process(float **__restrict in, float **__restrict out, int count);
+    void process(const float *const *__restrict in,
+                 float *const *__restrict out, int count);
 
   private:
     float sampleRate_{48000.f};

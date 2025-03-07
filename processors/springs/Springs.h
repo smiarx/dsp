@@ -9,11 +9,12 @@
 
 namespace processors
 {
-static constexpr auto N = 4;
 
 class Springs
 {
   public:
+    static constexpr auto N = 4;
+
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
     static constexpr int LoopLength    = 0.25 * 48000;
@@ -82,7 +83,8 @@ class Springs
                 float chaos, float width, float drywet);
 
     // main process
-    void process(float **__restrict in, float **__restrict out, int num);
+    void process(const float *const *__restrict in,
+                 float *const *__restrict out, int num);
 
   private:
     int M_{1};
