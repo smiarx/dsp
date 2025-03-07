@@ -65,12 +65,18 @@ template <> struct SIMD<int, 2> {
     static constexpr auto storeu = _mm_storeu_si64;
 };
 template <> struct SIMD<int, 4> {
-    using type                   = __m128i;
-    static auto load(const int* x) { return _mm_load_si128((const __m128i*) x);}
-    static constexpr auto set    = _mm_set1_epi32;
-    static auto loadu(const int* x) { return _mm_loadu_si128((const __m128i_u*) x);}
-    static void store(int* x, type v) { _mm_store_si128((__m128i*) x, v);}
-    static void storeu(int* x, type v) { _mm_storeu_si128((__m128i_u*) x, v);}
+    using type = __m128i;
+    static auto load(const int *x)
+    {
+        return _mm_load_si128((const __m128i *)x);
+    }
+    static constexpr auto set = _mm_set1_epi32;
+    static auto loadu(const int *x)
+    {
+        return _mm_loadu_si128((const __m128i_u *)x);
+    }
+    static void store(int *x, type v) { _mm_store_si128((__m128i *)x, v); }
+    static void storeu(int *x, type v) { _mm_storeu_si128((__m128i_u *)x, v); }
 };
 
 template <> struct SIMD<float, 2> {
@@ -103,12 +109,21 @@ template <> struct SIMD<double, 2> {
 /* AVX */
 #if defined(__AVX__)
 template <> struct SIMD<int, 8> {
-    using type                   = __m256i;
-    static constexpr auto load   = _mm256_load_epi32;
-    static constexpr auto loadu  = _mm256_loadu_epi32;
-    static constexpr auto set    = _mm256_set1_epi32;
-    static constexpr auto store  = _mm256_store_epi32;
-    static constexpr auto storeu = _mm256_storeu_epi32;
+    using type = __m256i;
+    static type load(const int *x)
+    {
+        return _mm256_load_si256((const type *)x);
+    }
+    static type loadu(const int *x)
+    {
+        return _mm256_loadu_si256((const __m256i_u *)x);
+    }
+    static constexpr auto set = _mm256_set1_epi32;
+    static void store(int *x, type v) { _mm256_store_si256((type *)x, v); }
+    static void storeu(int *x, type v)
+    {
+        _mm256_storeu_si256((__m256i_u *)x, v);
+    }
 };
 template <> struct SIMD<float, 8> {
     using type                   = __m256;

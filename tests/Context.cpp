@@ -20,14 +20,11 @@ TEST_CASE("Context Class", "[context]")
 
     SECTION("Vectorized Mode")
     {
-        dsp::Sample<float, 4> data;
-        dsp::Context<dsp::Sample<float, 4>, true> ctx(&data);
-        REQUIRE(ctx.getStep() == 1);
-        REQUIRE(ctx.vecSize() == 1);
-
-        // Vectorized mode should still have step size of 1 for simplicity
-        REQUIRE(ctx.vec().getStep() == 1);
-        REQUIRE(ctx.vec().vecSize() == 1);
+        constexpr auto N = 2;
+        dsp::Sample<float, N> data;
+        dsp::Context<dsp::Sample<float, N>, true> ctx(&data);
+        REQUIRE(ctx.getStep() == SIMDSIZE / sizeof(float) / N);
+        REQUIRE(ctx.vecSize() == SIMDSIZE / sizeof(float) / N);
     }
 
     SECTION("Block Size and Increment Operations")

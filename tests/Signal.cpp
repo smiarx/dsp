@@ -109,7 +109,7 @@ TEST_CASE("Signal Class", "[signal]")
 
         auto v = s.toSIMD();
         float result[8];
-        SIMDtoArray<float, 8, true>(result, v);
+        dsp::SIMDtoArray<float, 8, true>(result, v);
         REQUIRE(result[0] == 1.0f);
         REQUIRE(result[1] == 2.0f);
         REQUIRE(result[2] == 3.0f);
@@ -125,7 +125,7 @@ TEST_CASE("Signal Class", "[signal]")
         dsp::Signal<float, 4, 2> s_aligned;
         std::copy(aligned_data, aligned_data + 8, s_aligned.data()->data());
         v = s_aligned.toSIMD();
-        SIMDtoArray<float, 8, true>(aligned_data, v);
+        dsp::SIMDtoArray<float, 8, true>(aligned_data, v);
         REQUIRE(aligned_data[0] == 1.0f);
         REQUIRE(aligned_data[1] == 2.0f);
         REQUIRE(aligned_data[2] == 3.0f);
@@ -145,7 +145,7 @@ TEST_CASE("Signal Class", "[signal]")
 
         auto v = s.toSIMD();
         int result[8];
-        SIMDtoArray<int, 8, true>(result, v);
+        dsp::SIMDtoArray<int, 8, true>(result, v);
         REQUIRE(result[0] == 1);
         REQUIRE(result[1] == 2);
         REQUIRE(result[2] == 3);
@@ -161,7 +161,7 @@ TEST_CASE("Signal Class", "[signal]")
         dsp::Signal<int, 4, 2> s_aligned;
         std::copy(aligned_data, aligned_data + 8, s_aligned.data()->data());
         v = s_aligned.toSIMD();
-        SIMDtoArray<int, 8, true>(aligned_data, v);
+        dsp::SIMDtoArray<int, 8, true>(aligned_data, v);
         REQUIRE(aligned_data[0] == 1);
         REQUIRE(aligned_data[1] == 2);
         REQUIRE(aligned_data[2] == 3);
