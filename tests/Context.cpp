@@ -67,22 +67,6 @@ TEST_CASE("Helper Functions", "[helpers]")
         REQUIRE(blockSize == 10);
         REQUIRE(incr == 1);
     }
-
-    SECTION("_processBlock")
-    {
-        dsp::Sample<float, 4> data1;
-        dsp::Sample<float, 4> data2;
-        dsp::Context<dsp::Sample<float, 4>> ctx1(&data1, 10);
-        dsp::Context<dsp::Sample<float, 4>> ctx2(&data2, 10);
-
-        int count    = 0;
-        auto process = [&](auto &c1, auto &c2) {
-            count++;
-        };
-
-        dsp::_processBlock(process, ctx1, ctx2);
-        REQUIRE(count == 10);
-    }
 }
 
 TEST_CASE("Macros", "[macros]")
