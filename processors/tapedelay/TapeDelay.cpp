@@ -9,30 +9,65 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
                        float cuthighpass, float saturation, float drift,
                        Mode mode, float drywet)
 {
-    if (delay != delay_ || drift_ != drift) {
-        delay_ = delay;
-        // set new target speed
-        targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
-
-        drift_ = drift;
-        speedMod_.set({targetSpeed_ * drift * speedModAmp}, invBlockSize_);
+    if (delay != delay_) {
+        setDelay(delay);
+    }
+    if (drift != drift_) {
+        setDrift(drift);
     }
     if (cutlowpass != cutlowpass_) {
-        cutlowpass_ = cutlowpass;
-        auto freq   = cutlowpass_ * freqScale_;
-        lpf_.setFreq({freq, freq});
+        setCutLowPass(cutlowpass);
     }
     if (cuthighpass != cuthighpass_) {
-        cuthighpass_ = cuthighpass;
-        auto freq    = cuthighpass_ * freqScale_;
-        hpf_.setFreq({freq, freq});
+        setCutHiPass(cuthighpass);
     }
     if (mode != mode_) {
         switchTap(mode);
     }
+    setSaturation(saturation);
+    setFeedback(feedback);
+    setDryWet(drywet);
+}
 
+void TapeDelay::setDelay(float delay)
+{
+    delay_ = delay;
+    // set new target speed
+    targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
+
+    setDrift(getDrift());
+}
+
+void TapeDelay::setDrift(float drift)
+{
+    drift_ = drift;
+    speedMod_.set({targetSpeed_ * drift * speedModAmp}, invBlockSize_);
+}
+
+void TapeDelay::setCutLowPass(float cutlowpass)
+{
+    cutlowpass_ = cutlowpass;
+    auto freq   = cutlowpass_ * freqScale_;
+    lpf_.setFreq({freq, freq});
+}
+
+void TapeDelay::setCutHiPass(float cuthighpass)
+{
+    cuthighpass_ = cuthighpass;
+    auto freq    = cuthighpass_ * freqScale_;
+    hpf_.setFreq({freq, freq});
+}
+
+void TapeDelay::setSaturation(float saturation)
+{
     saturation_.set({saturation}, invBlockSize_);
+}
+void TapeDelay::setFeedback(float feedback) 
+{
     feedback_.set({feedback, feedback}, invBlockSize_);
+}
+void TapeDelay::setDryWet(float drywet)
+{
     drywet_.set({drywet, drywet}, invBlockSize_);
 }
 

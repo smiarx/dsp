@@ -39,6 +39,7 @@ template <int N = 1, bool Vectorize = false> class ControlSmoother
     }
 
     auto get() const { return value_; }
+    auto getTarget() const { return target_;}
 
     bool isActive() { return active_; }
 

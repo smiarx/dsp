@@ -46,23 +46,45 @@ class Springs
     static constexpr auto NAP         = N * APChainSize;
     static constexpr auto APCascadeL  = CascadeL / APChainSize;
 
-    Springs(float sampleRate)
+    Springs()
     {
         buffer_.setBuffer(bufferArray_);
         bufferDec_.setBuffer(bufferDecArray_);
-        setSampleRate(sampleRate);
 
         /* loop modulation */
         dsp::iNoise<N> noise;
         loopMod_.setPhase(noise.process());
-
-        dsp::fData<N> freq;
-        for (int i = 0; i < N; ++i) {
-            freq[i] = loopModFreq[i] * freqScale_;
-        }
-        loopMod_.setFreq(freq);
     }
 
+    // set processor samplerate
+    void setSampleRate(float sR);
+
+    // getters
+    float getDryWet() const { return drywet_; }
+    float getWidth() const { return width_; }
+    float getFreq() const { return freq_; }
+    float getR() const { return R_; }
+    float getTd() const { return Td_; }
+    float getChaos() const { return chaos_; }
+    float getT60() const { return T60_; }
+    float getDiffusion() const { return diffusion_; }
+
+    // setters
+    void setFreq(float R, float freq);
+    void setTd(float Td, float chaos);
+    void setT60(float T60);
+    void setDiffusion(float dif);
+    void setDryWet(float drywet) { drywet_ = drywet; }
+    void setWidth(float width);
+
+    // update
+    void update(float R, float freq, float Td, float T60, float diffusion,
+                float chaos, float width, float drywet);
+
+    // main process
+    void process(float **__restrict in, float **__restrict out, int num);
+
+  private:
     int M_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
@@ -91,6 +113,7 @@ class Springs
     dsp::va::OnePole<N, dsp::va::HighPass> dcblocker_;
     typename decltype(dcblocker_)::State dcblockerState_{{0.f}};
 
+    /* decimate and interpolate memory lines */
     using MR = dsp::MultiRate<N, 15, MaxDecimate>;
     MR::DLDecimate dldecimate_;
     MR::DLInterpolate dlinterpolate_;
@@ -98,7 +121,11 @@ class Springs
 
     static constexpr auto BufSize = nextTo(dldecimate_) + MaxBlockSize;
 
+    // multirate pointer
+  public:
     using MRs = MR::WithBuffer<BufSize>;
+
+  private:
     const MRs::Base *multirate_;
 
     dsp::Buffer<dsp::fSample<N>, BufSize> buffer_;
@@ -128,19 +155,5 @@ class Springs
 
     dsp::fSample<N> x_[MaxBlockSize]{{0.f}};
     dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{{0.f}};
-
-    void setSampleRate(float sR)
-    {
-        sampleRate_ = sR;
-        freqScale_  = 2.f / sR;
-    }
-
-    void setFreq(float R, float freq);
-    void setTd(float Td, float chaos);
-    void setT60(float T60);
-    void setDiffusion(float dif);
-    void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos, float width, float drywet);
-    void process(float **__restrict in, float **__restrict out, int num);
 };
 } // namespace processors

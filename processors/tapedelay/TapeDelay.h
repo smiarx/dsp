@@ -46,19 +46,15 @@ class TapeDelay
         Reverse   = 2,
     };
 
-    TapeDelay(float sampleRate, int blockSize)
+    TapeDelay()
     {
         buffer_.setBuffer(bufferArray_);
-        setSampleRate(sampleRate);
-        setBlockSize(blockSize);
 
         inFor(pregain_, k, i)
         {
             pregain_[k][i]  = 1.f;
             postgain_[k][i] = 1.f;
         }
-
-        speedLFO_.setFreq({freqScale_ * speedModFreq});
     }
 
     void setSampleRate(float sR)
@@ -69,6 +65,8 @@ class TapeDelay
 
         speedSmooth_ =
             1.f - powf(0.001, 1.f / speedSmoothTime * invSampleRate_);
+
+        speedLFO_.setFreq({freqScale_ * speedModFreq});
     }
 
     void setBlockSize(int blockSize)
@@ -77,6 +75,27 @@ class TapeDelay
         invBlockSize_ = 1.f / blockSize;
         blockRate_    = sampleRate_ * invBlockSize_;
     }
+
+    // getters
+    float getDelay() const { return delay_; }
+    float getDrift() const { return drift_; }
+    float getCutLowPass() const { return cutlowpass_; }
+    float getCutHiPass() const { return cuthighpass_; }
+    float getSaturation() const { return saturation_.getTarget()[0]; }
+    float getFeedback() const { return feedback_.getTarget()[0]; }
+    float getDryWet() const { return drywet_.getTarget()[0]; }
+
+    // setters
+    void setDelay(float delay);
+    void setDrift(float drift);
+    void setCutLowPass(float cutlowpass);
+    void setCutHiPass(float cuthipass);
+    void setSaturation(float saturation);
+    void setFeedback(float feedback);
+    void setDryWet(float drywet);
+
+    // switch tape width mode
+    void switchTap(Mode mode);
 
     void update(float delay, float feedback, float cutlp, float cuthp,
                 float saturation, float drift, Mode mode, float drywet);
@@ -113,7 +132,6 @@ class TapeDelay
     template <Mode, bool check, class Ctxt>
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
-    void switchTap(Mode mode);
 
     dsp::DelayLine<MaxDelay> delayline_;
 

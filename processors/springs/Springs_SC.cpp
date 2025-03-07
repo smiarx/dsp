@@ -18,7 +18,9 @@ void Springs_Ctor(Springs *unit)
     unit->springs = (processors::Springs *)RTAlloc(unit->mWorld,
                                                    sizeof(processors::Springs));
     ClearUnitIfMemFailed(unit->springs);
-    new (unit->springs) processors::Springs(SAMPLERATE);
+    new (unit->springs) processors::Springs();
+
+    unit->springs->setSampleRate(SAMPLERATE);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;

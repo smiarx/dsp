@@ -20,7 +20,10 @@ void TapeDelay_Ctor(TapeDelay *unit)
     unit->tapedelay = (processors::TapeDelay *)RTAlloc(
         unit->mWorld, sizeof(processors::TapeDelay));
     ClearUnitIfMemFailed(unit->tapedelay);
-    new (unit->tapedelay) processors::TapeDelay(SAMPLERATE, BUFLENGTH);
+    new (unit->tapedelay) processors::TapeDelay();
+
+    unit->tapedelay->setSampleRate(SAMPLERATE);
+    unit->tapedelay->setBlockSize(BUFLENGTH);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;

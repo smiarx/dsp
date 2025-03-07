@@ -3,7 +3,20 @@
 
 namespace processors
 {
+// multirate converter
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
+
+void Springs::setSampleRate(float sR)
+{
+    sampleRate_ = sR;
+    freqScale_  = 2.f / sR;
+
+    dsp::fData<N> freq;
+    for (int i = 0; i < N; ++i) {
+        freq[i] = loopModFreq[i] * freqScale_;
+    }
+    loopMod_.setFreq(freq);
+}
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
                      float chaos, float width, float drywet)
@@ -21,12 +34,9 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
         setDiffusion(diffusion);
     }
     if (width != width_) {
-        width_     = width;
-        auto theta = M_PIf / 4.f * (1.f - width_);
-        widthcos_  = cosf(theta);
-        widthsin_  = sinf(theta);
+        setWidth(width);
     }
-    drywet_ = drywet;
+    setDryWet(drywet);
 }
 
 void Springs::setFreq(float R, float freq)
@@ -115,6 +125,14 @@ void Springs::setT60(float T60)
 {
     T60_      = T60;
     loopGain_ = -powf(0.001, Td_ / T60_);
+}
+
+void Springs::setWidth(float width)
+{
+    width_     = width;
+    auto theta = M_PIf / 4.f * (1.f - width_);
+    widthcos_  = cosf(theta);
+    widthsin_  = sinf(theta);
 }
 
 void Springs::process(float **__restrict in, float **__restrict out, int count)
