@@ -25,7 +25,7 @@ class BufferOffset
 
 static BufferOffset bufferOffset;
 
-template <int L = 0, int Off = 0> class DelayLine;
+template <size_t L = 0, int Off = 0> class DelayLine;
 
 template <> class DelayLine<>
 {
@@ -37,8 +37,8 @@ template <> class DelayLine<>
      *      Length: maximum length of the delay line
      */
 
-    static constexpr int Length     = 10000000;
-    static constexpr int NextOffset = 0;
+    static constexpr size_t Length     = 10000000;
+    static constexpr size_t NextOffset = 0;
 
     template <int> using WithOffset = DelayLine;
 
@@ -61,7 +61,7 @@ template <> class DelayLine<>
 };
 
 /* delayline with compile time length */
-template <int L, int Off> class DelayLine
+template <size_t L, int Off> class DelayLine
 {
     /* find the next vector aligned offset */
   public:
@@ -93,7 +93,7 @@ template <int L, int Off> class DelayLine
     }
 };
 
-template <int N, int L = 1, int Off = 0> class CopyDelayLine
+template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
 {
     /* */
   public:
@@ -105,15 +105,17 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
 
     template <class Ctxt> void write(Ctxt c, const typename Ctxt::Type &x)
     {
+        (void)c;
+
         constexpr auto vecSize = Ctxt::VecSize;
         constexpr auto isVec   = Ctxt::isUsingVector;
-        int lastNonVector      = Length % vecSize;
+        auto lastNonVector     = Length % vecSize;
 
         /* first shift non vector aligned float */
-        for (int j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + vecSize];
+        for (size_t j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + vecSize];
 
         /* shift rest */
-        for (int j = lastNonVector; j < Length - 1; j += vecSize)
+        for (size_t j = lastNonVector; j < Length - 1; j += vecSize)
             mem_[j].template toSignal<isVec>() =
                 mem_[j + vecSize].template toSignal<isVec>();
 
@@ -123,8 +125,11 @@ template <int N, int L = 1, int Off = 0> class CopyDelayLine
 
     template <class Ctxt> const auto &read(Ctxt c, int i) const
     {
-        assert(i <= Length);
-        const auto &x = mem_[Length - i];
+        (void)c;
+        auto si = static_cast<size_t>(i);
+
+        assert(si <= Length);
+        const auto &x = mem_[Length - si];
         if constexpr (Ctxt::isUsingVector) {
             return x.toVector();
         } else {
@@ -163,7 +168,7 @@ class NestedDelayLine : public DL::template WithOffset<Off>
     Inner inner_;
 };
 
-template <class DL, int Nm, int Off = 0>
+template <class DL, size_t Nm, int Off = 0>
 class ArrayDelayLine
     : protected std::array<typename DL::template WithOffset<Off>, Nm>
 {
@@ -213,7 +218,7 @@ void _fixread(Ctxt c, const DL &delayline, T &x, int i)
     static_assert(D <= DL::Length - Ctxt::VecSize + 1,
                   "tap delay length is bigger than delay line");
     auto &val = delayline.read(c, D);
-    for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
+    for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
     _fixread<Ctxt, DL, T, Ds...>(c, delayline, x, ++i);
 }
 template <int D = 1, int... Ds> struct TapFix : public TapFix<Ds...> {
@@ -235,7 +240,7 @@ template <int D> struct TapFix<D> {
         return delayline.read(c, D);
     }
 };
-template <int N> class TapNoInterp
+template <size_t N> class TapNoInterp
 {
     /* Tap that can read at any point in de delay line, without interpolation */
   public:
@@ -246,7 +251,7 @@ template <int N> class TapNoInterp
     {
         typename Ctxt::Type x;
         for (size_t i = 0; i < N; i++) {
-            assert(id_[i] + Ctxt::VecSize <= DL::Length +  1);
+            assert(id_[i] <= static_cast<int>(DL::Length - Ctxt::VecSize + 1));
             auto &val = delayline.read(c, id_[i]);
             for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
         }
@@ -257,7 +262,7 @@ template <int N> class TapNoInterp
     iData<N> id_;
 };
 
-template <int N> class TapLin : public TapNoInterp<N>
+template <size_t N> class TapLin : public TapNoInterp<N>
 {
     /* Tap that can read at any point in de delay line, with linear
      * interpolation */
@@ -265,7 +270,7 @@ template <int N> class TapLin : public TapNoInterp<N>
     void setDelay(fData<N> d)
     {
         iData<N> id;
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             id[i]  = static_cast<int>(d[i]);
             fd_[i] = d[i] - static_cast<float>(id[i]);
         }
@@ -287,7 +292,7 @@ template <int N> class TapLin : public TapNoInterp<N>
         auto id = TapNoInterp<N>::id_;
 
         if constexpr (N == 1) {
-            assert(id[0] <= DL::Length - Ctxt::VecSize - 1);
+            assert(id[0] <= static_cast<int>(DL::Length - Ctxt::VecSize - 1));
             x0 = delayline.read(c, id[0]);
             x1 = delayline.read(c, id[0] + 1);
         } else {
@@ -295,9 +300,11 @@ template <int N> class TapLin : public TapNoInterp<N>
             {
                 assert(id[i % N] <= DL::Length - Ctxt::VecSize - 1);
                 auto &val0 = delayline.read(c, id[i % N]);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x0[k][i] = val0[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    x0[k][i] = val0[k][i];
                 auto &val1 = delayline.read(c, id[i % N] + 1);
-                for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
+                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                    x1[k][i] = val1[k][i];
             }
         }
 
@@ -309,7 +316,7 @@ template <int N> class TapLin : public TapNoInterp<N>
     fData<N> fd_;
 };
 
-template <int N> class TapCubic : public TapLin<N>
+template <size_t N> class TapCubic : public TapLin<N>
 {
     /* Tap that can read at any point in the delay line, with cubic
      * interpolation */
@@ -334,7 +341,8 @@ template <int N> class TapCubic : public TapLin<N>
         } else {
             arrayFor(x0[0], i)
             {
-                assert(id[i % N] + Ctxt::VecSize + 2 <= DL::Length);
+                assert(id[i % N] <=
+                       static_cast<int>(DL::Length - 2 - Ctxt::VecSize));
                 auto &valm1 = delayline.read(c, id[i % N] - 1);
                 for (size_t k = 0; k < Ctxt::VecSize; ++k)
                     xm1[k][i] = valm1[k][i];

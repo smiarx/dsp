@@ -207,7 +207,7 @@ void TapeDelay::process(const float *const *__restrict in,
                     break;
                 }
 
-                auto fade = fadeLut[fadePos_];
+                auto fade = fadeLut[static_cast<size_t>(fadePos_)];
                 inFor(x, k, i) { x[k][i] += fade * (xIn[k][i] - x[k][i]); }
                 --fadePos_;
             }

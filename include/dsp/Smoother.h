@@ -8,7 +8,7 @@
 namespace dsp
 {
 
-template <int N = 1, bool Vectorize = false> class ControlSmoother
+template <size_t N = 1, bool Vectorize = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
     using Type    = fSample<N>;
@@ -39,7 +39,7 @@ template <int N = 1, bool Vectorize = false> class ControlSmoother
     }
 
     auto get() const { return value_; }
-    auto getTarget() const { return target_;}
+    auto getTarget() const { return target_; }
 
     bool isActive() { return active_; }
 
@@ -81,7 +81,7 @@ class SmootherExp
     float coef_{0.f};
 };
 
-template <int N> class SmootherLin
+template <size_t N> class SmootherLin
 {
   public:
     SmootherLin() = default;
@@ -89,7 +89,7 @@ template <int N> class SmootherLin
 
     void set(fData<N> target, int count)
     {
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             step_[i] = (target[i] - value_[i]) / count;
             count_   = count;
         }
@@ -100,7 +100,7 @@ template <int N> class SmootherLin
         if (count_ == 0) {
             step_ = {0.f};
         } else {
-            for (int i = 0; i < N; ++i) {
+            for (size_t i = 0; i < N; ++i) {
                 value_[i] += step_[i];
             }
             --count_;

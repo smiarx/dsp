@@ -6,7 +6,7 @@
 namespace dsp
 {
 
-template <int N> class LFOSine
+template <size_t N> class LFOSine
 {
     /* second midified coupled-form oscillator as seen in dattorro effect design
      * part.3
@@ -14,13 +14,13 @@ template <int N> class LFOSine
   public:
     LFOSine()
     {
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             cos_[i] = 1.f;
         }
     }
     void setPhase(fData<N> phase)
     {
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             // TODO modify to real value
             sin_[i] = sinf(2.f * M_PIf * phase[i]);
             cos_[i] = cosf(2.f * M_PIf * phase[i]);
@@ -29,7 +29,7 @@ template <int N> class LFOSine
 
     void setFreq(fData<N> freq)
     {
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             a_[i] = 2.f * sinf(M_PIf / 2.f * freq[i]);
         }
     }
@@ -37,7 +37,7 @@ template <int N> class LFOSine
     fData<N> process()
     {
         auto y = sin_;
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             cos_[i] -= a_[i] * sin_[i];
             sin_[i] += a_[i] * cos_[i];
         }
@@ -57,7 +57,7 @@ template <int N> class LFOSine
  * Computation use Q30 fixed point representation for phase x on 32bits
  * integers. Thus phase automaticaly wraps around 2 to -2.
  */
-template <int N> class LFOParabolic
+template <size_t N> class LFOParabolic
 {
   public:
     // Number of fractional bits for fixed-point arithmetic
@@ -81,7 +81,7 @@ template <int N> class LFOParabolic
     void setFreq(fData<N> freq)
     {
 #pragma omp simd
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             assert(freq_[i] >= 0.f && freq_[i] <= 1.f);
             // Scale frequency for fixed-point accumulation
             freq_[i] = freq[i] * 4 * Unity;
@@ -98,7 +98,7 @@ template <int N> class LFOParabolic
         fData<N> y;
 
 #pragma omp simd
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
 
             // Compute parabolic function
             int x        = phase_[i];

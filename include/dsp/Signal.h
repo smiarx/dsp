@@ -7,7 +7,7 @@ namespace dsp
 {
 
 /* memory aligned parallel data */
-template <typename T = float, int N = 1>
+template <typename T = float, size_t N = 1>
 class alignas(N * sizeof(T)) Data : public std::array<T, N>
 {
   public:
@@ -24,12 +24,12 @@ class alignas(N * sizeof(T)) Data : public std::array<T, N>
 };
 
 /* N-parallel sample, N should divide VecSize */
-template <typename T = float, int N = 1> class Sample;
+template <typename T = float, size_t N = 1> class Sample;
 
 /* L processable N-parallel sample */
-template <typename T = float, int N = 1, int L = 1> class Signal;
+template <typename T = float, size_t N = 1, size_t L = 1> class Signal;
 
-template <typename T, int N> class Sample : public Data<T, N>
+template <typename T, size_t N> class Sample : public Data<T, N>
 {
   public:
     // Ensure that SIMD vectorization is possible
@@ -56,7 +56,7 @@ template <typename T, int N> class Sample : public Data<T, N>
     const auto &toScalar() const { return toSignal(); }
 };
 
-template <typename T, int N, int L>
+template <typename T, size_t N, size_t L>
 class Signal : public std::array<Sample<T, N>, L>
 {
   public:
@@ -74,16 +74,16 @@ class Signal : public std::array<Sample<T, N>, L>
     }
 };
 
-template <int N> using fData = Data<float, N>;
-template <int N> using dData = Data<double, N>;
-template <int N> using iData = Data<int, N>;
+template <size_t N> using fData = Data<float, N>;
+template <size_t N> using dData = Data<double, N>;
+template <size_t N> using iData = Data<int, N>;
 
-template <int N> using fSample = Sample<float, N>;
-template <int N> using dSample = Sample<double, N>;
-template <int N> using iSample = Sample<int, N>;
+template <size_t N> using fSample = Sample<float, N>;
+template <size_t N> using dSample = Sample<double, N>;
+template <size_t N> using iSample = Sample<int, N>;
 
-template <int N, int L> using fSignal = Signal<float, N, L>;
-template <int N, int L> using dSignal = Signal<double, N, L>;
-template <int N, int L> using iSignal = Signal<int, N, L>;
+template <size_t N, size_t L> using fSignal = Signal<float, N, L>;
+template <size_t N, size_t L> using dSignal = Signal<double, N, L>;
+template <size_t N, size_t L> using iSignal = Signal<int, N, L>;
 
 } // namespace dsp

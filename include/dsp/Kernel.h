@@ -36,7 +36,8 @@ template <int A> class Lanczos
 };
 } // namespace kernel
 
-template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
+template <size_t N, class Kernel, size_t LutSize>
+class TapKernel : public TapLin<1>
 {
   private:
     static constexpr auto A           = Kernel::Size;
@@ -48,22 +49,22 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
       public:
         KernelType &operator+=(const KernelType &rhs)
         {
-            for (int k = 0; k < FilterWidth; ++k) {
-                for (int i = 0; i < N; ++i) (*this)[k][i] += rhs[k][i];
+            for (size_t k = 0; k < FilterWidth; ++k) {
+                for (size_t i = 0; i < N; ++i) (*this)[k][i] += rhs[k][i];
             }
             return *this;
         }
         friend auto operator-(KernelType lhs, const KernelType &rhs)
         {
-            for (int k = 0; k < FilterWidth; ++k) {
-                for (int i = 0; i < N; ++i) lhs[k][i] -= rhs[k][i];
+            for (size_t k = 0; k < FilterWidth; ++k) {
+                for (size_t i = 0; i < N; ++i) lhs[k][i] -= rhs[k][i];
             }
             return lhs;
         }
         friend auto operator*(KernelType lhs, const float rhs)
         {
-            for (int k = 0; k < FilterWidth; ++k) {
-                for (int i = 0; i < N; ++i) lhs[k][i] *= rhs;
+            for (size_t k = 0; k < FilterWidth; ++k) {
+                for (size_t i = 0; i < N; ++i) lhs[k][i] *= rhs;
             }
             return lhs;
         }
@@ -79,18 +80,18 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
             Lut<KernelType, LutSize>::fill([](float x) -> auto {
                 KernelType kernels = {{0.f}};
                 if (fabs(x) < 1e-7) {
-                    for (int i = 0; i < N; ++i) {
+                    for (size_t i = 0; i < N; ++i) {
                         kernels[idFromKernel(0)][i] = 1.f;
                     }
                 } else if (fabs(x - 1.f) < 1e-7) {
-                    for (int i = 0; i < N; ++i) {
+                    for (size_t i = 0; i < N; ++i) {
                         kernels[idFromKernel(-1)][i] = 1.f;
                     }
                 } else {
-                    for (int id = 0; id < FilterWidth; ++id) {
+                    for (size_t id = 0; id < FilterWidth; ++id) {
                         auto k     = kernelFromId(id);
                         auto value = Kernel::generate(-k - x);
-                        for (int i = 0; i < N; ++i) {
+                        for (size_t i = 0; i < N; ++i) {
                             kernels[id][i] = value;
                         }
                     }
@@ -132,7 +133,7 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
             inFor(points, k, i) { points[k][i] *= kernels[l + k][i]; }
             inFor(points, k, i) { x[0][i] += points[k][i]; }
         }
-        for (int l = FilterWidth - FilterWidth % VecSize; l < FilterWidth;
+        for (size_t l = FilterWidth - FilterWidth % VecSize; l < FilterWidth;
              ++l) {
             auto point =
                 delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
@@ -166,7 +167,7 @@ template <int N, class Kernel, int LutSize> class TapKernel : public TapLin<1>
 };
 
 // define static variable
-template <int N, class Kernel, int LutSize>
+template <size_t N, class Kernel, size_t LutSize>
 typename TapKernel<N, Kernel, LutSize>::LutType
     TapKernel<N, Kernel, LutSize>::lut;
 } // namespace dsp

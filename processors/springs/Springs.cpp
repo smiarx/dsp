@@ -11,7 +11,7 @@ void Springs::setSampleRate(float sR)
     freqScale_  = 2.f / sR;
 
     dsp::fData<N> freq;
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
         freq[i] = loopModFreq[i] * freqScale_;
     }
     loopMod_.setFreq(freq);
@@ -48,7 +48,7 @@ void Springs::setFreq(float R, float freq)
     dsp::fData<N> freqs;
     dsp::fData<NAP> freqsAP;
     dsp::fData<NAP> Rs;
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
         freqs[i]   = freqScaled * freqFactor[i];
         freqs[i]   = std::min(0.995f, freqs[i]);
         freqs[i]   = std::max(0.005f, freqs[i]);
@@ -61,7 +61,7 @@ void Springs::setFreq(float R, float freq)
     }
 
     if (R < 0) {
-        for (int i = 0; i < N; ++i) {
+        for (size_t i = 0; i < N; ++i) {
             freqs[i] = 1.f - freqs[i];
         }
     }
@@ -98,7 +98,7 @@ void Springs::setTd(float Td, float chaos)
     dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
     float sampleTd = Td * sampleRate_ / M_;
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
         loopTd_[i]     = sampleTd * loopTdFactor[i];
         loopModAmp_[i] = loopTd_[i] * loopModFactor[i];
         loopEchoT[i]   = loopTd_[i] / 5.f;
@@ -150,7 +150,7 @@ void Springs::process(const float *const *__restrict in,
     auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
 
     auto noise = loopChaosNoise_.process();
-    for (int i = 0; i < N; ++i) {
+    for (size_t i = 0; i < N; ++i) {
         noise[i] *= loopChaosMod_[i];
     }
     loopChaos_.set(noise, sampleRate_ * 0.05f);
@@ -185,7 +185,7 @@ void Springs::process(const float *const *__restrict in,
             auto mod   = loopMod_.process();
             auto chaos = loopChaos_.step();
             auto delay = loopTd_;
-            for (int i = 0; i < N; ++i) {
+            for (size_t i = 0; i < N; ++i) {
                 delay[i] += mod[i] * loopModAmp_[i] + chaos[i];
             }
             looptap.setDelay(delay);
@@ -230,14 +230,14 @@ void Springs::process(const float *const *__restrict in,
             auto &x = c.getSignal();
 
             // shift intermediary values
-            for (int j = APChainSize - 1; j > 0; --j) {
-                for (int i = 0; i < N; ++i) {
+            for (size_t j = APChainSize - 1; j > 0; --j) {
+                for (size_t i = 0; i < N; ++i) {
                     allpassIntermediary[j * N + i] =
                         allpassIntermediary[(j - 1) * N + i];
                 }
             }
             // set value as first entries of intermediary values
-            for (int i = 0; i < N; ++i) {
+            for (size_t i = 0; i < N; ++i) {
                 allpassIntermediary[i] = x[0][i];
             }
 
@@ -248,7 +248,7 @@ void Springs::process(const float *const *__restrict in,
             }
 
             // outout is last intermediary value
-            for (int i = 0; i < N; ++i) {
+            for (size_t i = 0; i < N; ++i) {
                 x[0][i] = allpassIntermediary[i];
             }
         }
@@ -271,10 +271,10 @@ void Springs::process(const float *const *__restrict in,
         {
             auto &x      = c.getSignal();
             float mix[2] = {0.f};
-            for (auto i = 0; i < N / 2; ++i) {
+            for (size_t i = 0; i < N / 2; ++i) {
                 mix[0] += x[0][i];
             }
-            for (auto i = N / 2; i < N; ++i) {
+            for (size_t i = N / 2; i < N; ++i) {
                 mix[1] += x[0][i];
             }
             mix[0] *= 2.f / N;

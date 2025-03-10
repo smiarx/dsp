@@ -13,7 +13,7 @@ template <class In, std::size_t MinSize = 0> class Buffer
      * we can always retrieve Vec */
     static constexpr auto Offset   = In::VectorSize;
     static constexpr auto BaseSize = nextPow2(MinSize);
-    static constexpr auto Mask     = BaseSize - 1;
+    static constexpr int Mask      = BaseSize - 1;
     static constexpr auto Size     = BaseSize + Offset;
 
     using Type = In;
@@ -39,9 +39,9 @@ template <class In, std::size_t MinSize = 0> class Buffer
     {
         buffer_[(bufId_ - i) & Mask].toScalar() = x;
     }
-    const In &read(size_t i) const
+    const In &read(int i) const
     {
-        assert(i <= MinSize);
+        assert(i <= static_cast<int>(MinSize));
         return buffer_[(bufId_ - i) & Mask];
     }
 

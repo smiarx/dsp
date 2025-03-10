@@ -19,13 +19,13 @@ enum FilterType {
     Notch,
 };
 
-template <int N> static constexpr fData<N> warpGain(fData<N> freq)
+template <size_t N> static constexpr fData<N> warpGain(fData<N> freq)
 {
     arrayFor(freq, i) { freq[i] = tanf(M_PIf * freq[i] * 0.5f); }
     return freq;
 }
 
-template <int N, FilterType FT = LowPass> class OnePole
+template <size_t N, FilterType FT = LowPass> class OnePole
 {
   public:
     using State = fData<N>;
@@ -84,7 +84,7 @@ template <int N, FilterType FT = LowPass> class OnePole
     fData<N> gain_;
 };
 
-template <int N, FilterType FT = LowPass> class SVF
+template <size_t N, FilterType FT = LowPass> class SVF
 {
   public:
     static constexpr bool NormaLizedBandPass =
@@ -208,7 +208,7 @@ template <int N, FilterType FT = LowPass> class SVF
         inputGain_;
 };
 
-template <int N, FilterType FT = LowPass> class Ladder
+template <size_t N, FilterType FT = LowPass> class Ladder
 {
   public:
     using OP    = OnePole<N, FT>;
@@ -256,7 +256,7 @@ template <int N, FilterType FT = LowPass> class Ladder
                 }
                 u[i] = (x[k][i] - res_[i] * S) * denominator_[i];
             }
-            for (int j = 0; j < 4; ++j) {
+            for (size_t j = 0; j < 4; ++j) {
                 onepole_.process(Context{&u}, state[j]);
             }
             arrayFor(x[k], i) { x[k][i] = u[i]; }

@@ -24,13 +24,13 @@
 namespace dsp
 {
 
-template <int N, int Order> class FIRFilter
+template <size_t N, size_t Order> class FIRFilter
 {
   public:
     static constexpr auto Pad    = fSample<N>::VectorSize;
     static constexpr auto NCoeff = Order + 1;
 
-    template <int N_ = N>
+    template <size_t N_ = N>
     class DL : public CopyDelayLine<N_, nextAlignedOffset(Order, Pad)>
     {
     };
@@ -85,7 +85,7 @@ template <int N, int Order> class FIRFilter
     fSample<N> b_[PaddedLength] = {0};
 };
 
-template <int N, int Order, int M> class FIRDecimate
+template <size_t N, size_t Order, size_t M> class FIRDecimate
 {
   public:
     static constexpr auto Pad    = fSample<N>::VectorSize;
@@ -100,8 +100,8 @@ template <int N, int Order, int M> class FIRDecimate
 
     FIRDecimate(float cutoff = 1.0f)
     {
-        for (auto n = 0; n < NCoeff; ++n) {
-            for (auto i = 0; i < N; ++i) {
+        for (size_t n = 0; n < NCoeff; ++n) {
+            for (size_t i = 0; i < N; ++i) {
                 auto mid  = NCoeff / 2.f;
                 auto freq = cutoff / M;
                 b_[PaddedLength - Pad - n][i] =
@@ -117,7 +117,7 @@ template <int N, int Order, int M> class FIRDecimate
     {
         static_assert(CtxtOut::VecSize == 1);
         auto decimatedBlockSize = 0;
-        auto id                 = decimateId;
+        auto id                 = static_cast<size_t>(decimateId);
         auto coutCopy           = cout;
 
         contextFor(cin)
@@ -161,7 +161,7 @@ template <int N, int Order, int M> class FIRDecimate
         }
 
         cout.setBlockSize(decimatedBlockSize);
-        return id;
+        return static_cast<int>(id);
     }
 
   private:
@@ -181,13 +181,13 @@ template <int N, int Order, int M> class FIRDecimate
 
 
  */
-template <int N, int Order, int L> class FIRInterpolate
+template <size_t N, size_t Order, size_t L> class FIRInterpolate
 {
   public:
     static constexpr auto Pad    = fSample<N>::VectorSize;
     static constexpr auto NCoeff = (Order + 1);
 
-    template <int N_ = N>
+    template <size_t N_ = N>
     class DL : public CopyDelayLine<N_, nextAlignedOffset(NCoeff, Pad)>
     {
     };
@@ -217,7 +217,7 @@ template <int N, int Order, int L> class FIRInterpolate
     {
         static_assert(CtxtIn::VecSize == 1);
         static_assert(CtxtOut::VecSize == 1);
-        auto id = interpolateId;
+        auto id = static_cast<size_t>(interpolateId);
 
         contextFor(cout)
         {
@@ -258,7 +258,7 @@ template <int N, int Order, int L> class FIRInterpolate
 
             id = (id + 1) % L;
         }
-        return id;
+        return static_cast<int>(id);
     }
 
   private:

@@ -4,7 +4,7 @@
 
 namespace dsp
 {
-template <typename T, int Size> class Lut
+template <typename T, size_t Size> class Lut
 {
     enum {
         valueId = 0,
@@ -16,7 +16,7 @@ template <typename T, int Size> class Lut
     {
         /* func take one float input and return Signal<N> */
         auto x0 = table_[0][valueId] = func(0);
-        for (int n = 1; n < Size; ++n) {
+        for (size_t n = 1; n < Size; ++n) {
             auto x1 = table_[n][valueId] = func(static_cast<float>(n) / Size);
             table_[n - 1][deltaId]       = x1 - x0;
             x0                           = x1;

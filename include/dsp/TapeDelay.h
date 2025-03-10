@@ -8,7 +8,7 @@ namespace dsp
 
 // https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_9.pdf
 
-template <int L> class TapePosition
+template <size_t L> class TapePosition
 {
   public:
     TapePosition() : tapePosBuf_{0, Unity} {}
@@ -34,20 +34,21 @@ template <int L> class TapePosition
         nwrite_              = (nwrite_ + 1) & Mask;
     }
 
-    int getNwrite() const { return nwrite_; }
+    size_t getNwrite() const { return nwrite_; }
     position_t get() const { return tapePos_; }
 
-    position_t at(int index) const { return tapePosBuf_[index & Mask]; }
+    position_t at(size_t index) const { return tapePosBuf_[index & Mask]; }
 
     static bool greaterThan(position_t x1, position_t x2)
     {
-        unsigned int tmp = -x2;
-        position_t diff  = x1 + tmp;
+        auto tmp = static_cast<unsigned int>(-x2);
+        auto diff =
+            static_cast<position_t>(static_cast<unsigned int>(x1) + tmp);
         return diff > 0;
     }
 
   private:
-    int nwrite_{2};
+    size_t nwrite_{2};
     int count_{0};
     position_t tapePos_{Unity};
     position_t tapePosBuf_[Size];
@@ -70,8 +71,8 @@ template <class Tap = TapLin<1>> class TapTape
         using position_t  = decltype(readPosition);
 
         // binary search of the position;
-        auto nsearch = 2;
-        size_t nread = nread_;
+        size_t nsearch = 2;
+        size_t nread   = nread_;
         for (position_t searchPosition;
              searchPosition = tapePos.at(add<D>(nread, nsearch)),
              greaterThan<D, TapePos>(readPosition, searchPosition);
@@ -136,7 +137,7 @@ template <class Tap = TapLin<1>> class TapTape
     }
 
     // index of last read position
-    int nread_{0};
+    size_t nread_{0};
 };
 
 } // namespace dsp

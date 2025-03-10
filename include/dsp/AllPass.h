@@ -10,7 +10,7 @@ template <class... T> class List
 {
 };
 
-template <int N, class Tap = TapTail> class AllPass
+template <size_t N, class Tap = TapTail> class AllPass
 {
     /* Implement a Allpass filter with coeff a
      * template:
@@ -58,7 +58,7 @@ template <int N, class Tap = TapTail> class AllPass
     Tap tap_;
 };
 
-template <int N, class TapOut = TapTail, class TapIn = TapTail>
+template <size_t N, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
@@ -96,7 +96,8 @@ class TapAllPass : public TapOut
     AllPass<N, TapIn> allpass_;
 };
 
-template <int N> class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
+template <size_t N>
+class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
 {
   public:
     static constexpr auto minfdelay = 0.618f;
@@ -156,7 +157,7 @@ template <int N> class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
     AllPass<N, TapIn> allpass_;
 };
 
-template <int N> class AllPass2
+template <size_t N> class AllPass2
 {
     /* 2nd order allpass */
 
