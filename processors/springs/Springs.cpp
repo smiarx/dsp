@@ -18,7 +18,7 @@ void Springs::setSampleRate(float sR)
 }
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
-                     float chaos, float width, float drywet)
+                     float chaos, float spread, float width, float drywet)
 {
     if (R != R_ || freq != freq_) {
         setFreq(R, freq);
@@ -34,6 +34,9 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
     }
     if (width != width_) {
         setWidth(width);
+    }
+    if (spread != spread_) {
+        setSpread(spread);
     }
     setDryWet(drywet);
 }
@@ -132,6 +135,16 @@ void Springs::setWidth(float width)
     auto theta = M_PIf / 4.f * (1.f - width_);
     widthcos_  = cosf(theta);
     widthsin_  = sinf(theta);
+}
+
+void Springs::setSpread(float spread)
+{
+    spread_ = spread;
+
+    apNStages_ = APCascadeL * spread;
+    apNStages_ = std::max(apNStages_, static_cast<decltype(apNStages_)>(0));
+    apNStages_ =
+        std::min(apNStages_, static_cast<decltype(apNStages_)>(APCascadeL));
 }
 
 void Springs::process(const float *const *__restrict in,
@@ -242,7 +255,7 @@ void Springs::process(const float *const *__restrict in,
             }
 
             // compute allpass filters
-            for (size_t j = 0; j < APCascadeL; ++j) {
+            for (size_t j = 0; j < apNStages_; ++j) {
                 dsp::Context c1(&allpassIntermediary);
                 allpass_.process(c1, allpassState_[j]);
             }

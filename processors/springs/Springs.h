@@ -18,7 +18,7 @@ class Springs
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
     static constexpr int LoopLength    = 0.25 * 48000;
-    static constexpr auto CascadeL     = 120;
+    static constexpr auto CascadeL     = 160;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
     static constexpr auto DCBlockFreq     = 10.f;
@@ -75,12 +75,13 @@ class Springs
     void setTd(float Td, float chaos);
     void setT60(float T60);
     void setDiffusion(float dif);
+    void setSpread(float spread);
     void setDryWet(float drywet) { drywet_ = drywet; }
     void setWidth(float width);
 
     // update
     void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos, float width, float drywet);
+                float chaos, float spread, float width, float drywet);
 
     // main process
     void process(const float *const *__restrict in,
@@ -99,12 +100,15 @@ class Springs
     float T60_{0.f};
     float diffusion_{0.f};
     float chaos_{0.f};
+    float spread_{1.f};
 
     float widthcos_{1.f}, widthsin_{0.f};
 
+    // allpass
     dsp::va::SVF<NAP, dsp::va::AllPass> allpass_;
     dsp::fSample<NAP> allpassIntermediary_{0.f};
     typename decltype(allpass_)::State allpassState_[APCascadeL]{{{{0.f}}}};
+    unsigned int apNStages_{APCascadeL};
 
     dsp::va::SVF<N, dsp::va::LowPass> lowpass_;
     typename decltype(lowpass_)::State lowpassState_;
