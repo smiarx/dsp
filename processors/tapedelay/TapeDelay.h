@@ -83,7 +83,7 @@ class TapeDelay
     float getCutLowPass() const { return cutlowpass_; }
     float getCutHiPass() const { return cuthighpass_; }
     float getSaturation() const { return saturation_.getTarget()[0]; }
-    float getFeedback() const { return feedback_.getTarget()[0]; }
+    float getFeedback() const { return feedback_; }
     float getDryWet() const { return drywet_.getTarget()[0]; }
 
     // setters
@@ -112,7 +112,8 @@ class TapeDelay
     float blockRate_{0.f};
 
     float delay_{0.f};
-    dsp::ControlSmoother<2, true> feedback_{{0.f, 0.f}};
+    float feedback_{0.f};
+    dsp::ControlSmoother<2, true> feedbackCompensated_{{0.f, 0.f}};
     dsp::ControlSmoother<2, true> drywet_{{0.f, 0.f}};
 
     // tape movement

@@ -61,10 +61,24 @@ void TapeDelay::setCutHiPass(float cuthighpass)
 void TapeDelay::setSaturation(float saturation)
 {
     saturation_.set({saturation}, invBlockSize_);
+
+    // update feedback
+    setFeedback(getFeedback());
 }
 void TapeDelay::setFeedback(float feedback)
 {
-    feedback_.set({feedback, feedback}, invBlockSize_);
+    feedback_ = feedback;
+
+    // compensate saturation
+    const auto saturation = saturation_.getTarget()[0];
+    if (saturation >= 0.f) {
+        feedback *= dsp::db2gain(-saturation / 2);
+    } else // no increasing feedback if no saturation
+    {
+        feedback = std::min(feedback, 1.f);
+    }
+
+    feedbackCompensated_.set({feedback, feedback}, invBlockSize_);
 }
 void TapeDelay::setDryWet(float drywet)
 {
@@ -261,9 +275,9 @@ void TapeDelay::process(const float *const *__restrict in,
             inFor(xin, k, i) { xin[k][i] = *localin[i]++; }
 
             drywet_.step();
-            feedback_.step();
+            feedbackCompensated_.step();
             auto drywet   = drywet_.get();
-            auto feedback = feedback_.get();
+            auto feedback = feedbackCompensated_.get();
             inFor(xin, k, i)
             {
                 *localout[i]++ =
@@ -286,7 +300,7 @@ void TapeDelay::process(const float *const *__restrict in,
     }
 
     drywet_.reset();
-    feedback_.reset();
+    feedbackCompensated_.reset();
     speedMod_.reset();
     if (saturation_.isActive()) {
         saturation_.reset();
