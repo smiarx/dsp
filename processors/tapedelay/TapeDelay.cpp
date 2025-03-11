@@ -22,7 +22,7 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
         setCutHiPass(cuthighpass);
     }
     if (mode != mode_) {
-        switchTap(mode);
+        setMode(mode);
     }
     setSaturation(saturation);
     setFeedback(feedback);
@@ -85,6 +85,14 @@ void TapeDelay::setDryWet(float drywet)
     drywet_.set({drywet, drywet}, invBlockSize_);
 }
 
+void TapeDelay::setMode(Mode mode)
+{
+    if (mode == Reverse) {
+        tapReverse_.search(tapePos_);
+    }
+    switchTap(mode);
+}
+
 void TapeDelay::switchTap(Mode mode)
 {
     oldMode_ = mode_;
@@ -93,7 +101,8 @@ void TapeDelay::switchTap(Mode mode)
     tapId_ ^= 1;
 
     if (mode_ == Normal) {
-    } else if (mode_ == BackForth) {
+        tapTape_[tapId_].search(tapePos_);
+    } else if (mode_ == BackForth || mode == Reverse) {
         reverseDist_[tapId_] = 0;
         tapTape_[tapId_].reset(tapePos_);
     }
@@ -108,14 +117,23 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
 
     if constexpr (M == Normal) {
         x = tapTape.read(ctxt, delayline_, tapePos_);
-    } else if constexpr (M == BackForth) {
+    } else if constexpr (M == BackForth || M == Reverse) {
         auto &reverseDist = reverseDist_[tapId];
+
         reverseDist += 2 * speed;
         // reach end of reverse
         if constexpr (check) {
-            constexpr auto limit = static_cast<int>(TapePosition::Unity);
+
+            /* get reverse distance limit */
+            constexpr auto limit = [] {
+                if constexpr (M == BackForth)
+                    return static_cast<int>(TapePosition::Unity);
+                else if constexpr (M == Reverse)
+                    return static_cast<int>(TapePosition::Unity * 2);
+            }();
+
             if (reverseDist > limit) {
-                switchTap(BackForth);
+                switchTap(M);
                 reverseDist_[tapId_] =
                     reverseDist - limit + speed * KernelSize * 2;
                 return false;
@@ -125,6 +143,11 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
         // read tape
         x = tapTape.read<TapTape::Reverse>(ctxt, delayline_, tapePos_,
                                            reverseDist);
+
+        if constexpr (M == Reverse) {
+            auto xreverse = tapReverse_.read(ctxt, delaylineReverse_, tapePos_);
+            inFor(x, k, i) { x[k][i] += xreverse[k][i]; }
+        }
     }
     return true;
 }
@@ -172,6 +195,8 @@ void TapeDelay::process(const float *const *__restrict in,
                 blockSize = readBlock<BackForth>(ctxt);
                 break;
             case Reverse:
+                blockSize = readBlock<Reverse>(ctxt);
+                break;
             case Normal:
             default:
                 blockSize = readBlock<Normal>(ctxt);
@@ -203,6 +228,8 @@ void TapeDelay::process(const float *const *__restrict in,
                     read<BackForth, false>(c, tapId_, speed);
                     break;
                 case Reverse:
+                    read<Reverse, false>(c, tapId_, speed);
+                    break;
                 case Normal:
                 default:
                     read<Normal, false>(c, tapId_, speed);
@@ -215,6 +242,8 @@ void TapeDelay::process(const float *const *__restrict in,
                     read<BackForth, false>(c, tapId_ ^ 1, speed);
                     break;
                 case Reverse:
+                    read<Reverse, false>(c, tapId_ ^ 1, speed);
+                    break;
                 case Normal:
                 default:
                     read<Normal, false>(c, tapId_ ^ 1, speed);
@@ -267,6 +296,7 @@ void TapeDelay::process(const float *const *__restrict in,
             }
         }
 
+        auto mode = mode_;
         contextFor(ctxt)
         {
             auto &loop = c.getSignal();
@@ -275,21 +305,28 @@ void TapeDelay::process(const float *const *__restrict in,
             inFor(xin, k, i) { xin[k][i] = *localin[i]++; }
 
             drywet_.step();
-            feedbackCompensated_.step();
-            auto drywet   = drywet_.get();
-            auto feedback = feedbackCompensated_.get();
+            auto drywet = drywet_.get();
             inFor(xin, k, i)
             {
                 *localout[i]++ =
                     xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
             }
 
-            dsp::fSample<N>::Scalar inloop;
-            inFor(xin, k, i)
-            {
-                inloop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
+            feedbackCompensated_.step();
+            auto feedback = feedbackCompensated_.get();
+            decltype(c)::Type inloop;
+
+            if (mode == Reverse) {
+                delayline_.write(c, xin);
+                inFor(xin, k, i) { inloop[k][i] = loop[k][i] * feedback[k][i]; }
+                delaylineReverse_.write(c, inloop);
+            } else {
+                inFor(xin, k, i)
+                {
+                    inloop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
+                }
+                delayline_.write(c, inloop);
             }
-            delayline_.write(c, inloop);
         }
         buffer_.setLimits();
 

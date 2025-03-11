@@ -94,9 +94,7 @@ class TapeDelay
     void setSaturation(float saturation);
     void setFeedback(float feedback);
     void setDryWet(float drywet);
-
-    // switch tape width mode
-    void switchTap(Mode mode);
+    void setMode(Mode mode);
 
     void update(float delay, float feedback, float cutlp, float cuthp,
                 float saturation, float drift, Mode mode, float drywet);
@@ -127,16 +125,20 @@ class TapeDelay
         2, dsp::kernel::Sinc<KernelSize, dsp::window::Kaiser<140>>, 64>;
     using TapTape = dsp::TapTape<TapeInterp>;
     TapTape tapTape_[2];
+    TapTape tapReverse_;
     TapePosition::position_t reverseDist_[2]{0, 0};
     size_t tapId_{0};
     int fadePos_{-1};
 
+    // switch tape width mode
+    void switchTap(Mode mode);
     // read function
     template <Mode, bool check, class Ctxt>
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
 
-    dsp::DelayLine<MaxDelay> delayline_;
+    dsp::DelayLine<MaxDelay / 2> delaylineReverse_;
+    dsp::DelayLine<MaxDelay, nextTo(delaylineReverse_)> delayline_;
 
     // mode
     Mode mode_{Normal};

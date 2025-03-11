@@ -18,7 +18,7 @@ template <size_t L> class TapePosition
     static constexpr auto Size    = nextPow2(MinSize);
     static constexpr auto Mask    = Size - 1;
 
-    static constexpr auto Q           = 30;
+    static constexpr auto Q           = 29;
     static constexpr position_t Unity = (1 << Q);
 
     static constexpr position_t convertSpeed(float speed)
@@ -61,6 +61,38 @@ template <class Tap = TapLin<1>> class TapTape
         Normal,
         Reverse,
     };
+
+    // search given position in tape
+    template <class TapePos>
+    auto search(const TapePos &tapePos,
+                typename TapePos::position_t distance = TapePos::Unity)
+    {
+        // the tape position we need to read
+        auto readPosition = tapePos.get() - distance;
+        using position_t  = decltype(readPosition);
+
+        // binary search of the position;
+        constexpr Direction D = Reverse;
+        size_t nsearch        = 2;
+        auto nread            = static_cast<size_t>(tapePos.getNwrite());
+        for (position_t searchPosition;
+             searchPosition = tapePos.at(add<D>(nread, nsearch)),
+             greaterThan<D, TapePos>(readPosition, searchPosition);
+             nread = add<D>(nread, nsearch), nsearch *= 2) {
+        }
+
+        while (nsearch > 1) {
+            nsearch /= 2;
+            auto nreadnew       = add<D>(nread, nsearch);
+            auto searchPosition = tapePos.at(nreadnew);
+            if (greaterThan<D, TapePos>(readPosition, searchPosition)) {
+                nread = nreadnew;
+            }
+        }
+
+        nread &= TapePos::Mask;
+        nread_ = nread - 1;
+    }
 
     template <Direction D = Normal, class Ctxt, class DL, class TapePos>
     auto read(Ctxt c, const DL &delayline, const TapePos &tapePos,
