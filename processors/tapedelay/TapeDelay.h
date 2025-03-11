@@ -17,14 +17,17 @@ class TapeDelay
   public:
     static constexpr auto N = 2;
 
-    static constexpr auto MaxBlockSize = 512;
-    static constexpr int MaxDelay      = 48000 * 1.0;
+    static constexpr auto MaxBlockSize      = 512;
+    static constexpr auto DefaultSampleRate = 48000.f;
+    static constexpr int MaxDelay           = 2.f;
 
     static constexpr auto speedSmoothTime = 0.7f;
     static constexpr auto speedModFreq    = 0.242f;
     static constexpr auto speedModAmp     = 0.013f;
 
     static constexpr auto KernelSize = 4;
+
+    static constexpr size_t DelayBufSize = DefaultSampleRate * MaxDelay;
 
     // lookup table for cross fading between two taps
     static constexpr auto FadeSize = 8;
@@ -115,7 +118,7 @@ class TapeDelay
     dsp::ControlSmoother<2, true> drywet_{{0.f, 0.f}};
 
     // tape movement
-    using TapePosition = dsp::TapePosition<MaxDelay>;
+    using TapePosition = dsp::TapePosition<DelayBufSize>;
     float targetSpeed_{0};
     float speed_{0};
     float speedSmooth_{0.f};
@@ -137,8 +140,8 @@ class TapeDelay
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
 
-    dsp::DelayLine<MaxDelay / 2> delaylineReverse_;
-    dsp::DelayLine<MaxDelay, nextTo(delaylineReverse_)> delayline_;
+    dsp::DelayLine<DelayBufSize / 3> delaylineReverse_;
+    dsp::DelayLine<DelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;
 
     // mode
     Mode mode_{Normal};

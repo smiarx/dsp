@@ -32,6 +32,15 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
 void TapeDelay::setDelay(float delay)
 {
     delay_ = delay;
+
+    // limits;
+    delay = std::max(delay, 0.f);
+    if (mode_ == Reverse) {
+        delay = std::min(delay,
+                         MaxDelay * DefaultSampleRate * invSampleRate_ / 3.f);
+    } else {
+        delay = std::min(delay, MaxDelay * DefaultSampleRate * invSampleRate_);
+    }
     // set new target speed
     targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
 
@@ -120,7 +129,7 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
     } else if constexpr (M == BackForth || M == Reverse) {
         auto &reverseDist = reverseDist_[tapId];
 
-        reverseDist += 2 * speed;
+        reverseDist += speed + speed; // 2*speed
         // reach end of reverse
         if constexpr (check) {
 
