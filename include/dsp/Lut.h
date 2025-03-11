@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Signal.h"
+#include "Utils.h"
 
 namespace dsp
 {
@@ -10,6 +11,9 @@ template <typename T, size_t Size> class Lut
         valueId = 0,
         deltaId = 1,
     };
+
+    static_assert(isPow2(Size), "Size must be power of 2");
+    static constexpr auto Mask = Size - 1;
 
   public:
     template <typename F> void fill(F func)
@@ -31,6 +35,9 @@ template <typename T, size_t Size> class Lut
         auto ipos = static_cast<int>(pos);
         auto fpos = pos - ipos;
 
+        // ipos between 0 and Size
+        ipos &= static_cast<int>(Mask);
+
         auto x         = table_[ipos][valueId][i];
         const auto &dx = table_[ipos][deltaId][i];
 
@@ -43,6 +50,9 @@ template <typename T, size_t Size> class Lut
         pos *= Size;
         auto ipos = static_cast<int>(pos);
         auto fpos = pos - ipos;
+
+        // ipos between 0 and Size
+        ipos &= static_cast<int>(Mask);
 
         auto x         = table_[ipos][valueId];
         const auto &dx = table_[ipos][deltaId];
