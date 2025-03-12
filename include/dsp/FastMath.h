@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Signal.h"
+#include "Utils.h"
 #include <cmath>
 
 namespace dsp
@@ -53,6 +55,39 @@ template <typename F> static constexpr auto zerothOrderBessel(F x)
     }
 
     return bessel;
+}
+
+template <typename F, size_t N, size_t H = ilog2(N)>
+Sample<F, N> hadamard(Sample<F, N> x)
+{
+    static constexpr auto L = 1 << H;
+
+    // first we multiply values by power normalization
+    if constexpr (N == L) {
+        constexpr F powerNorm = std::pow(F(1) / F(2), F(H) / F(2));
+        for (size_t i = 0; i < N; ++i) {
+            x[i] *= powerNorm;
+        }
+    }
+
+    if constexpr (H == 0) {
+        return x;
+    } else {
+        static_assert(N % L == 0, "N must be divisible by L");
+        constexpr auto L2 = L / 2;
+
+        decltype(x) y;
+
+#pragma omp simd
+        for (size_t i = 0; i < N; i += L) {
+            for (size_t j = 0; j < L2; ++j) {
+                auto n    = i + j;
+                y[n]      = x[n] + x[n + L2];
+                y[n + L2] = x[n] - x[n + L2];
+            }
+        }
+        return hadamard<F, N, H - 1>(y);
+    }
 }
 
 } // namespace dsp

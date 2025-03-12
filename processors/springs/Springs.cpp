@@ -205,7 +205,13 @@ void Springs::process(const float *const *__restrict in,
 
             auto loop = looptap.read(c, loopdl_);
 
-            // allpass diff
+            // mixing matrix (hadamard);
+            arrayFor(loop,k)
+            {
+                loop[k] = hadamard(loop[k]);
+            }
+
+            // allpass diffusion
             {
                 auto apctxt = c;
                 apctxt.setSamples(loop);

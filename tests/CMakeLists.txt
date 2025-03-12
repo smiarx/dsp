@@ -5,6 +5,7 @@ set(test_sources
     Signal.cpp
     Context.cpp
     FIRFilter.cpp
+    FastMath.cpp
 )
 
 add_executable(tests ${test_sources})
