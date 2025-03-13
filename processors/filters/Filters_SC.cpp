@@ -12,8 +12,8 @@ template <class Base, bool hasRes = false> struct Filter : public Unit {
 };
 
 template <class Base> struct Filter<Base, true> : public Unit {
-    Base filter;
-    typename Base::State state{0.f};
+    Base filter{};
+    typename Base::State state{};
     float freq{0};
     float res{0};
 };
