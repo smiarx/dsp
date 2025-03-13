@@ -6,6 +6,7 @@ set(test_sources
     Context.cpp
     FIRFilter.cpp
     FastMath.cpp
+    VAFilters.cpp
 )
 
 add_executable(tests ${test_sources})

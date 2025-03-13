@@ -13,7 +13,7 @@ template <class Base, bool hasRes = false> struct Filter : public Unit {
 
 template <class Base> struct Filter<Base, true> : public Unit {
     Base filter;
-    typename Base::State state;
+    typename Base::State state{0.f};
     float freq{0};
     float res{0};
 };
@@ -42,7 +42,6 @@ template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit)
     } else {
         unit->filter = Base({freq});
     }
-    unit->state = {{{0.f}}};
 
     OUT0(0) = 0.f;
 }

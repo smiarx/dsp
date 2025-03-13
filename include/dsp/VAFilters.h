@@ -28,7 +28,9 @@ template <size_t N> static constexpr fData<N> warpGain(fData<N> freq)
 template <size_t N, FilterType FT = LowPass> class OnePole
 {
   public:
-    using State = fData<N>;
+    struct State : public fData<N> {
+        State() : fData<N>{} {}
+    };
 
     OnePole(fData<N> freq)
     {
@@ -67,6 +69,8 @@ template <size_t N, FilterType FT = LowPass> class OnePole
         state = s;
     }
 
+    __PROCESSBLOCK__;
+
     fData<N> getGain() const
     {
         auto gain = gain_;
@@ -89,7 +93,10 @@ template <size_t N, FilterType FT = LowPass> class SVF
   public:
     static constexpr bool NormaLizedBandPass =
         FT == BandPass || FT == AllPass || FT == Notch;
-    using State = std::array<fData<N>, 2>;
+
+    struct State : public std::array<fData<N>, 2> {
+        State() : std::array<fData<N>, 2>{} {}
+    };
 
     SVF(fData<N> freq, fData<N> res) { setFreq(freq, res); }
     SVF() = default;
@@ -196,6 +203,8 @@ template <size_t N, FilterType FT = LowPass> class SVF
         state[1].fromSIMD(s2);
     }
 
+    __PROCESSBLOCK__;
+
   private:
     fData<N> gain_;
     fData<N> denominator_;
@@ -214,6 +223,7 @@ template <size_t N, FilterType FT = LowPass> class Ladder
     using OP    = OnePole<N, FT>;
     using State = std::array<typename OP::State, 4>;
 
+    Ladder() = default;
     Ladder(fData<N> freq, fData<N> res) : onepole_(freq) { setFreq(freq, res); }
 
     void setFreq(fData<N> freq, fData<N> res = {0.f})
@@ -232,7 +242,7 @@ template <size_t N, FilterType FT = LowPass> class Ladder
         }
     }
 
-    template <class Ctxt> void process(Ctxt c, State &state)
+    template <class Ctxt> void process(Ctxt c, State &state) const
     {
         auto &x = c.getSignal();
 
@@ -262,6 +272,8 @@ template <size_t N, FilterType FT = LowPass> class Ladder
             arrayFor(x[k], i) { x[k][i] = u[i]; }
         }
     }
+
+    __PROCESSBLOCK__;
 
   private:
     fData<N> res_;

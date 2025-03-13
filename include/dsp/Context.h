@@ -72,4 +72,12 @@ void _ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
 #define inFor(x, k, i)                    \
     for (size_t k = 0; k < x.size(); ++k) \
         for (size_t i = 0; i < x[0].size(); ++i)
+
+#define __PROCESSBLOCK__                             \
+    template <class Ctxt, class State>               \
+    void processBlock(Ctxt ctxt, State &state) const \
+    {                                                \
+        contextFor(ctxt) { process(c, state); }      \
+    }
+
 } // namespace dsp
