@@ -95,8 +95,8 @@ template <size_t L, int Off> class DelayLine
 
 template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
 {
-    /* */
   public:
+    static_assert(L > 0, "Length must be bigger than 0");
     static constexpr auto Length     = L;
     static constexpr auto Offset     = Off;
     static constexpr auto NextOffset = Offset;
@@ -143,7 +143,7 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
     }
 
   private:
-    fSample<N> mem_[Length] = {0};
+    fSample<N> mem_[Length]{};
 };
 
 template <class DL, class DLi, int Off = 0>
