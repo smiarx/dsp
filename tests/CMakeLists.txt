@@ -8,6 +8,7 @@ set(test_sources
     FastMath.cpp
     VAFilters.cpp
     RMS.cpp
+    LinAlg.cpp
 )
 
 add_executable(tests ${test_sources})
