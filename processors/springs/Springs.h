@@ -144,7 +144,7 @@ class Springs
     const MRs::Base *multirate_;
 
     dsp::Buffer<dsp::fSample<N>, BufSize> buffer_;
-    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size]{{0.f}};
+    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size]{};
 
     dsp::DelayLine<LoopLength / 2> predelaydl_;
     dsp::TapNoInterp<N> predelay_;
@@ -153,24 +153,24 @@ class Springs
     static constexpr auto defaultTd = LoopLength * 0.1f;
     dsp::ControlSmoother<N> loopTd_{
         {defaultTd, defaultTd, defaultTd, defaultTd}};
-    dsp::fData<N> loopModAmp_{0.f};
-    dsp::LFOParabolic<N> loopMod_;
-    dsp::Noise<N> loopChaosNoise_;
-    dsp::SmootherLin<N> loopChaos_;
-    dsp::fData<N> loopChaosMod_;
+    dsp::fData<N> loopModAmp_{};
+    dsp::LFOParabolic<N> loopMod_{};
+    dsp::Noise<N> loopChaosNoise_{};
+    dsp::SmootherLin<N> loopChaos_{};
+    dsp::fData<N> loopChaosMod_{};
     using LoopType = dsp::TapCubic<N>;
     dsp::DelayLine<LoopLength, nextTo(predelaydl_)> loopdl_;
 
     dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
-    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{0.f, 0.f, 0.f, 0.f}};
+    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{}};
     dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;
-    dsp::fSample<N> bufferDecArray_[decltype(bufferDec_)::Size]{{0.f}};
+    dsp::fSample<N> bufferDecArray_[decltype(bufferDec_)::Size]{};
 
-    dsp::fSample<N> x_[MaxBlockSize]{{0.f}};
-    dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{{0.f}};
+    dsp::fSample<N> x_[MaxBlockSize]{};
+    dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{};
 };
 } // namespace processors
