@@ -101,18 +101,21 @@ void Springs::setTd(float Td, float chaos)
     chaos_ = chaos;
     dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
+    dsp::fSample<N> loopTd;
     float sampleTd = Td * sampleRate_ / M_;
     for (size_t i = 0; i < N; ++i) {
-        loopTd_[i] = sampleTd * (1.f + (loopTdFactor[i] - 1.f) * (scatter_));
+        loopTd[i] = sampleTd * (1.f + (loopTdFactor[i] - 1.f) * (scatter_));
 
-        loopModAmp_[i]   = loopTd_[i] * loopModFactor[i];
-        loopEchoT[i]     = loopTd_[i] / 5.f;
-        loopChaosMod_[i] = loopTd_[i] * 0.07f * std::pow(chaos, 2.5f);
+        loopModAmp_[i]   = loopTd[i] * loopModFactor[i];
+        loopEchoT[i]     = loopTd[i] / 5.f;
+        loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos, 2.5f);
 
-        predelayT[i] = loopTd_[i] * 0.5f;
+        predelayT[i] = loopTd[i] * 0.5f;
 
-        loopTd_[i] -= loopEchoT[i];
+        loopTd[i] -= loopEchoT[i];
     }
+
+    loopTd_.set(loopTd, invBlockSize_ * M_);
 
     predelay_.setDelay(predelayT);
     ap1_.setDelay(loopEchoT);
@@ -196,7 +199,10 @@ void Springs::process(const float *const *__restrict in,
             LoopType looptap;
             auto mod   = loopMod_.process();
             auto chaos = loopChaos_.step();
-            auto delay = loopTd_;
+
+            loopTd_.step();
+            auto delay = loopTd_.get()[0];
+
             for (size_t i = 0; i < N; ++i) {
                 delay[i] += mod[i] * loopModAmp_[i] + chaos[i];
             }
@@ -312,5 +318,7 @@ void Springs::process(const float *const *__restrict in,
     }
     ctxt.save(buffer_);
     ctxtdec.save(bufferDec_);
+
+    loopTd_.reset();
 }
 } // namespace processors

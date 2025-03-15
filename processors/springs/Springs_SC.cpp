@@ -21,6 +21,7 @@ void Springs_Ctor(Springs *unit)
     new (unit->springs) processors::Springs();
 
     unit->springs->setSampleRate(SAMPLERATE);
+    unit->springs->setBlockSize(BUFLENGTH);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;

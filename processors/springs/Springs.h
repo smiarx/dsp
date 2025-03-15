@@ -60,6 +60,12 @@ class Springs
 
     // set processor samplerate
     void setSampleRate(float sR);
+    // set processor blocksize
+    void setBlockSize(int blockSize)
+    {
+        blockSize_    = blockSize;
+        invBlockSize_ = 1.f / blockSize;
+    }
 
     // getters
     float getDryWet() const { return drywet_; }
@@ -92,6 +98,8 @@ class Springs
     int M_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
+    int blockSize_{0};
+    float invBlockSize_{0.f};
 
     float drywet_{1.f};
     float width_{1.f};
@@ -142,7 +150,9 @@ class Springs
     dsp::TapNoInterp<N> predelay_;
 
     float loopGain_{0.f};
-    dsp::fData<N> loopTd_{0.f};
+    static constexpr auto defaultTd = LoopLength * 0.1f;
+    dsp::ControlSmoother<N> loopTd_{
+        {defaultTd, defaultTd, defaultTd, defaultTd}};
     dsp::fData<N> loopModAmp_{0.f};
     dsp::LFOParabolic<N> loopMod_;
     dsp::Noise<N> loopChaosNoise_;
