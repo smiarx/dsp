@@ -68,7 +68,7 @@ class Springs
     }
 
     // getters
-    float getDryWet() const { return drywet_; }
+    float getDryWet() const { return drywet_.getTarget()[0]; }
     float getWidth() const { return width_; }
     float getFreq() const { return freq_; }
     float getR() const { return R_; }
@@ -83,7 +83,7 @@ class Springs
     void setT60(float T60);
     void setDiffusion(float dif);
     void setScatter(float scatter);
-    void setDryWet(float drywet) { drywet_ = drywet; }
+    void setDryWet(float drywet) { drywet_.set({drywet}, invBlockSize_); }
     void setWidth(float width);
 
     // update
@@ -101,7 +101,7 @@ class Springs
     int blockSize_{0};
     float invBlockSize_{0.f};
 
-    float drywet_{1.f};
+    dsp::ControlSmoother<1> drywet_{{1.f}};
     float width_{1.f};
     float R_{0.f};
     float freq_{0.f};

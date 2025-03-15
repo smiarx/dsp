@@ -305,8 +305,10 @@ void Springs::process(const float *const *__restrict in,
             wet[0] = widthcos_ * mix[0] + widthsin_ * mix[1];
             wet[1] = widthcos_ * mix[1] + widthsin_ * mix[0];
 
-            *outl = *inl2 + drywet_ * (wet[0] - *inl2);
-            *outr = *inr2 + drywet_ * (wet[1] - *inr2);
+            drywet_.step();
+            auto drywet = drywet_.get()[0][0];
+            *outl       = *inl2 + drywet * (wet[0] - *inl2);
+            *outr       = *inr2 + drywet * (wet[1] - *inr2);
             ++outl, ++inl2;
             ++outr, ++inr2;
         }
@@ -319,6 +321,7 @@ void Springs::process(const float *const *__restrict in,
     ctxt.save(buffer_);
     ctxtdec.save(bufferDec_);
 
+    drywet_.reset();
     loopTd_.reset();
 }
 } // namespace processors
