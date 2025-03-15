@@ -1,4 +1,5 @@
 #include "Springs.h"
+#include "dsp/Hadamard.h"
 
 namespace processors
 {

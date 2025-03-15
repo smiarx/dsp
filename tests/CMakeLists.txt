@@ -5,7 +5,6 @@ set(test_sources
     Signal.cpp
     Context.cpp
     FIRFilter.cpp
-    FastMath.cpp
     VAFilters.cpp
     RMS.cpp
     LinAlg.cpp
