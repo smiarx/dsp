@@ -9,6 +9,7 @@ set(test_sources
     VAFilters.cpp
     RMS.cpp
     LinAlg.cpp
+    Hadamard.cpp
 )
 
 add_executable(tests ${test_sources})
