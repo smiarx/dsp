@@ -1,5 +1,8 @@
 #include "dsp/LinAlg.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <catch2/generators/catch_generators_adapters.hpp>
+#include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -117,5 +120,23 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
                      Catch::Matchers::WithinAbs(expect[3][2], 1e-6));
         REQUIRE_THAT(result[3][3],
                      Catch::Matchers::WithinAbs(expect[3][3], 1e-6));
+    }
+
+    SECTION("identity")
+    {
+        constexpr auto N = 4;
+        auto id          = dsp::linalg::identity<float, N>();
+        auto x           = dsp::fSample<N>{};
+        x[0]             = GENERATE(take(2, random(0, 1)));
+        x[1]             = GENERATE(take(2, random(0, 1)));
+        x[2]             = GENERATE(take(2, random(0, 1)));
+        x[3]             = GENERATE(take(2, random(0, 1)));
+
+        auto r = id.mult(x);
+
+        REQUIRE_THAT(r[0], Catch::Matchers::WithinAbs(x[0], 1e-6));
+        REQUIRE_THAT(r[1], Catch::Matchers::WithinAbs(x[1], 1e-6));
+        REQUIRE_THAT(r[2], Catch::Matchers::WithinAbs(x[2], 1e-6));
+        REQUIRE_THAT(r[3], Catch::Matchers::WithinAbs(x[3], 1e-6));
     }
 }

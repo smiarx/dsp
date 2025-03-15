@@ -36,6 +36,15 @@ class Matrix : public std::array<Sample<F, N>, N>
     }
 };
 
+template <typename T, size_t N> constexpr Matrix<T, N> identity()
+{
+    Matrix<T, N> m{};
+    for (size_t i = 0; i < N; ++i) {
+        m[i][i] = T(1);
+    }
+    return m;
+}
+
 template <size_t N> using fMatrix = Matrix<float, N>;
 
 } // namespace dsp::linalg
