@@ -19,7 +19,7 @@ void Springs::setSampleRate(float sR)
 }
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
-                     float chaos, float spread, float width, float drywet)
+                     float chaos, float scatter, float width, float drywet)
 {
     if (R != R_ || freq != freq_) {
         setFreq(R, freq);
@@ -36,8 +36,8 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
     if (width != width_) {
         setWidth(width);
     }
-    if (spread != spread_) {
-        setSpread(spread);
+    if (scatter_ != scatter) {
+        setScatter(scatter);
     }
     setDryWet(drywet);
 }
@@ -103,13 +103,15 @@ void Springs::setTd(float Td, float chaos)
     dsp::iData<N> predelayT;
     float sampleTd = Td * sampleRate_ / M_;
     for (size_t i = 0; i < N; ++i) {
-        loopTd_[i]     = sampleTd * loopTdFactor[i];
-        loopModAmp_[i] = loopTd_[i] * loopModFactor[i];
-        loopEchoT[i]   = loopTd_[i] / 5.f;
-        loopTd_[i] -= loopEchoT[i];
+        loopTd_[i] = sampleTd * (1.f + (loopTdFactor[i] - 1.f) * (scatter_));
+
+        loopModAmp_[i]   = loopTd_[i] * loopModFactor[i];
+        loopEchoT[i]     = loopTd_[i] / 5.f;
         loopChaosMod_[i] = loopTd_[i] * 0.07f * std::pow(chaos, 2.5f);
 
         predelayT[i] = loopTd_[i] * 0.5f;
+
+        loopTd_[i] -= loopEchoT[i];
     }
 
     predelay_.setDelay(predelayT);
@@ -138,14 +140,10 @@ void Springs::setWidth(float width)
     widthsin_  = sinf(theta);
 }
 
-void Springs::setSpread(float spread)
+void Springs::setScatter(float scatter)
 {
-    spread_ = spread;
-
-    apNStages_ = APCascadeL * spread;
-    apNStages_ = std::max(apNStages_, static_cast<decltype(apNStages_)>(0));
-    apNStages_ =
-        std::min(apNStages_, static_cast<decltype(apNStages_)>(APCascadeL));
+    scatter_ = scatter;
+    setTd(Td_, chaos_);
 }
 
 void Springs::process(const float *const *__restrict in,
@@ -207,10 +205,7 @@ void Springs::process(const float *const *__restrict in,
             auto loop = looptap.read(c, loopdl_);
 
             // mixing matrix (hadamard);
-            arrayFor(loop,k)
-            {
-                loop[k] = hadamard(loop[k]);
-            }
+            arrayFor(loop, k) { loop[k] = hadamard(loop[k]); }
 
             // allpass diffusion
             {

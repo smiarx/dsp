@@ -28,9 +28,10 @@ class Springs
 
     static constexpr auto NonLinearityGain = 0.2f;
 
-    static constexpr float freqFactor[]    = {0.98f, 1.02f, 0.97f, 1.03f};
-    static constexpr float RFactor[]       = {1.03f, 0.97f, 1.05f, 0.98f};
-    static constexpr float loopTdFactor[]  = {0.979f, 1.0f, 1.035f, 1.05f};
+    static constexpr float freqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
+    static constexpr float RFactor[]      = {1.03f, 0.97f, 1.05f, 0.98f};
+    static constexpr float loopTdFactor[] = {
+        0.8293183583208989, 1.1876863056468745, 0.94273342, 1.1232815625000004};
     static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
     static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
     static constexpr float loopRippleGain  = 0.016f;
@@ -75,13 +76,13 @@ class Springs
     void setTd(float Td, float chaos);
     void setT60(float T60);
     void setDiffusion(float dif);
-    void setSpread(float spread);
+    void setScatter(float scatter);
     void setDryWet(float drywet) { drywet_ = drywet; }
     void setWidth(float width);
 
     // update
     void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos, float spread, float width, float drywet);
+                float chaos, float scatter, float width, float drywet);
 
     // main process
     void process(const float *const *__restrict in,
@@ -100,7 +101,7 @@ class Springs
     float T60_{0.f};
     float diffusion_{0.f};
     float chaos_{0.f};
-    float spread_{1.f};
+    float scatter_{1.f};
 
     float widthcos_{1.f}, widthsin_{0.f};
 
