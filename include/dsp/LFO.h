@@ -2,6 +2,7 @@
 
 #include "Signal.h"
 #include <cmath>
+#include <cassert>
 
 namespace dsp
 {

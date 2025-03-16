@@ -53,11 +53,13 @@ void Springs::setFreq(float R, float freq)
     dsp::fData<NAP> freqsAP;
     dsp::fData<NAP> Rs;
     for (size_t i = 0; i < N; ++i) {
-        freqs[i]   = freqScaled * freqFactor[i];
-        freqs[i]   = std::min(0.995f, freqs[i]);
-        freqs[i]   = std::max(0.005f, freqs[i]);
-        freqsAP[i] = freqs[i];
-        Rs[i]      = std::abs(R) * freqFactor[i];
+        auto fFactor = 1.f + (freqFactor[i] - 1.f) * getScatterFactor();
+        auto rFactor = 1.f + (RFactor[i] - 1.f) * getScatterFactor();
+        freqs[i]     = freqScaled * fFactor;
+        freqs[i]     = std::min(0.995f, freqs[i]);
+        freqs[i]     = std::max(0.005f, freqs[i]);
+        freqsAP[i]   = freqs[i];
+        Rs[i]        = std::abs(R) * rFactor;
     }
 
     if (R < 0) {
@@ -105,11 +107,13 @@ void Springs::setTd(float Td, float chaos)
     dsp::fSample<N> loopTd;
     float sampleTd = Td * sampleRate_ / M_;
     for (size_t i = 0; i < N; ++i) {
-        loopTd[i] = sampleTd * (1.f + (loopTdFactor[i] - 1.f) * (scatter_));
+        auto loopFactor = 1.f + (loopTdFactor[i] - 1.f) * getScatterFactor();
+        loopTd[i]       = sampleTd * loopFactor;
 
         loopModAmp_[i]   = loopTd[i] * loopModFactor[i];
-        loopEchoT[i]     = loopTd[i] / 5.f;
         loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos, 2.5f);
+
+        loopEchoT[i] = loopTd[i] / 5.f;
 
         predelayT[i] = loopTd[i] * 0.5f;
 
@@ -127,7 +131,13 @@ void Springs::setTd(float Td, float chaos)
 void Springs::setDiffusion(float dif)
 {
     diffusion_ = dif;
-    ap1_.setCoeff({-dif, -dif, -dif, -dif});
+
+    auto apdif = APDiffMin + dif * (APDiffMax - APDiffMin);
+    ap1_.setCoeff({-apdif, -apdif, -apdif, -apdif});
+
+    mixMatrix_ = dsp::hadamardInterpolMatrix<N>(dif);
+    setTd(Td_, chaos_);
+    setFreq(R_, freq_);
 }
 
 void Springs::setT60(float T60)
@@ -148,6 +158,7 @@ void Springs::setScatter(float scatter)
 {
     scatter_ = scatter;
     setTd(Td_, chaos_);
+    setFreq(R_, freq_);
 }
 
 void Springs::process(const float *const *__restrict in,
@@ -211,15 +222,15 @@ void Springs::process(const float *const *__restrict in,
 
             auto loop = looptap.read(c, loopdl_);
 
-            // mixing matrix (hadamard);
-            arrayFor(loop, k) { loop[k] = hadamard(loop[k]); }
-
             // allpass diffusion
             {
                 auto apctxt = c;
                 apctxt.setSamples(loop);
                 ap1_.process(apctxt, ap1dl_);
             }
+
+            // mixing matrix (hadamard);
+            arrayFor(loop, k) { loop[k] = mixMatrix_.mult(loop[k]); }
 
             loopRippleDL_.write(c, loop);
             auto loopRipple = dsp::TapTail{}.read(c, loopRippleDL_);

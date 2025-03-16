@@ -2,6 +2,7 @@
 
 #include "dsp/AllPass.h"
 #include "dsp/LFO.h"
+#include "dsp/LinAlg.h"
 #include "dsp/MultiRate.h"
 #include "dsp/Noise.h"
 #include "dsp/Smoother.h"
@@ -27,6 +28,9 @@ class Springs
     static constexpr auto EQBandWidth = 5.f;
 
     static constexpr auto NonLinearityGain = 0.2f;
+
+    static constexpr auto APDiffMax = 0.5f;
+    static constexpr auto APDiffMin = 0.08f;
 
     static constexpr float freqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr float RFactor[]      = {1.03f, 0.97f, 1.05f, 0.98f};
@@ -113,6 +117,14 @@ class Springs
 
     float widthcos_{1.f}, widthsin_{0.f};
 
+    static constexpr auto diffScatterFactor = 0.22f;
+    static constexpr auto minScatter        = 0.1f;
+    auto getScatterFactor() const
+    {
+        return minScatter + scatter_ +
+               (diffusion_ * diffScatterFactor) * (1 - scatter_);
+    }
+
     // allpass
     dsp::va::SVF<NAP, dsp::va::AllPass> allpass_{};
     dsp::fSample<NAP> allpassIntermediary_{};
@@ -165,6 +177,8 @@ class Springs
 
     dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{}};
     dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
+
+    dsp::linalg::fMatrix<N> mixMatrix_;
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;
