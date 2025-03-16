@@ -8,18 +8,10 @@ namespace dsp
 {
 
 template <typename F, size_t N, size_t H = ilog2(N)>
-Sample<F, N> hadamard(Sample<F, N> x)
+Sample<F, N> _hadamard(Sample<F, N> x)
 {
-    /* compute hadamard transform of sample */
+    /* compute hadamard transform of sample (without power normalization) */
     static constexpr auto L = 1 << H;
-
-    // first we multiply values by power normalization
-    if constexpr (N == L) {
-        constexpr F powerNorm = std::pow(F(1) / F(2), F(H) / F(2));
-        for (size_t i = 0; i < N; ++i) {
-            x[i] *= powerNorm;
-        }
-    }
 
     if constexpr (H == 0) {
         return x;
@@ -37,8 +29,23 @@ Sample<F, N> hadamard(Sample<F, N> x)
                 y[n + L2] = x[n] - x[n + L2];
             }
         }
-        return hadamard<F, N, H - 1>(y);
+        return _hadamard<F, N, H - 1>(y);
     }
+}
+
+template <typename F, size_t N, size_t H = ilog2(N)>
+Sample<F, N> hadamard(Sample<F, N> x)
+{
+    /* hadamard transform with power normalization */
+
+    // first we multiply values by power normalization
+    constexpr F powerNorm = std::pow(F(1) / F(2), F(H) / F(2));
+    for (size_t i = 0; i < N; ++i) {
+        x[i] *= powerNorm;
+    }
+
+    return _hadamard<F,N,H>(x);
+
 }
 
 template <size_t N>
