@@ -29,6 +29,8 @@ class Springs
 
     static constexpr auto LowPassRes = 0.6f;
 
+    static constexpr auto MinRWithMaxCascadeL = 0.1f;
+
     static constexpr auto NonLinearityGain = 0.2f;
 
     static constexpr auto APDiffMax = 0.5f;

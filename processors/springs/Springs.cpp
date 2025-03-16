@@ -80,6 +80,14 @@ void Springs::setFreq(float R, float freq)
                                 LowPassRes,
                             });
 
+    /* if abs(R) smaller than a certain value, reduce the cascade size
+     * this helps to avoid long ringing around allpass phasing frequency */
+    if (std::abs(R) < MinRWithMaxCascadeL) {
+        apNStages_ = std::abs(R) / MinRWithMaxCascadeL * APCascadeL;
+    } else {
+        apNStages_ = APCascadeL;
+    }
+
     multirate_  = multirates.get(M);
     decimateId_ = 0;
 
