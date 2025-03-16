@@ -73,11 +73,15 @@ void Springs::setFreq(float R, float freq)
     }
 
     allpass_.setFreq(freqsAP, Rs);
+    lowpass_.setFreq(freqs, {
+                                LowPassRes,
+                                LowPassRes,
+                                LowPassRes,
+                                LowPassRes,
+                            });
 
     multirate_  = multirates.get(M);
     decimateId_ = 0;
-
-    lowpass_.setFreq(freqs);
 
     int oldM = M_;
     M_       = M;
