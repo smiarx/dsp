@@ -26,10 +26,10 @@ static constexpr std::size_t nextPow2(std::size_t size)
 
 static constexpr bool isPow2(int v) { return v && ((v & (v - 1)) == 0); }
 
-static constexpr int32_t ilog2(unsigned int v)
+static constexpr unsigned int ilog2(unsigned int v)
 {
     unsigned int c = 32; // c will be the number of zero bits on the right
-    v &= -signed(v);
+    v &= static_cast<unsigned int>(-signed(v));
     if (v) c--;
     if (v & 0x0000FFFF) c -= 16;
     if (v & 0x00FF00FF) c -= 8;
