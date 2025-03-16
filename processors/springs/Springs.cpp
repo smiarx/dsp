@@ -59,16 +59,17 @@ void Springs::setFreq(float R, float freq)
         freqsAP[i] = freqs[i];
         Rs[i]      = std::abs(R) * freqFactor[i];
     }
-    for (size_t i = N; i < NAP; ++i) {
-        freqsAP[i] = freqs[i % N];
-        Rs[i]      = Rs[i % N];
-    }
 
     if (R < 0) {
         for (size_t i = 0; i < N; ++i) {
-            freqs[i] = 1.f - freqs[i];
+            freqsAP[i] = 1.f - freqsAP[i];
         }
     }
+    for (size_t i = N; i < NAP; ++i) {
+        freqsAP[i] = freqsAP[i % N];
+        Rs[i]      = Rs[i % N];
+    }
+
     allpass_.setFreq(freqsAP, Rs);
 
     multirate_  = multirates.get(M);
