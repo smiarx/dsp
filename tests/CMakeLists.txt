@@ -9,6 +9,7 @@ set(test_sources
     RMS.cpp
     LinAlg.cpp
     Hadamard.cpp
+    AllPass.cpp
 )
 
 add_executable(tests ${test_sources})

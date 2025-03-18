@@ -162,73 +162,225 @@ template <size_t N> class AllPass2
     /* 2nd order allpass */
 
   public:
-    class DL : public CopyDelayLine<N, 2>
-    {
+    struct State : std::array<fData<N>, 2> {
+        State() : std::array<fData<N>, 2>{} {}
     };
 
-    /**
-     * @brief Set the poles of the allpass filter.
-     *
-     * This function sets the poles of the allpass filter based on the given
-     * radius and frequency.
-     *
-     * @param R A signal representing the radius of the pole in the z-plane.
-     *          Must be between -1 and 1.
-     * @param freq A signal representing the frequency of the pole in the
-     * z-plane. Typically in the range [0, 1], where 1 represents the Nyquist
-     * frequency.
-     */
-    void setPole(fData<N> R, fData<N> freq)
+    void setFreq(fData<N> freq)
     {
-        auto &a1 = a_[1];
-        auto &a2 = a_[0];
-        for (int i = 0; i < N; ++i) {
-            assert(R[i] >= -1 && R[i] <= 1);
-            a2[i] = R[i] * R[i];
-            a1[i] = -2 * R[i] * cos(M_PIf * freq[i]);
+        for (size_t i = 0; i < N; ++i) {
+            a_[1][i] = -cos(M_PIf * freq[i]);
         }
     }
 
-    template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
+    void setRes(fData<N> R)
     {
-        // const auto &a1 = a_[1];
-        const auto &a2 = a_[0];
+        for (size_t i = 0; i < N; ++i) {
+            assert(R[i] >= 0);
+            a_[0][i] = (1.f - R[i]) / (1.f + R[i]);
+        }
+    }
 
-        static_assert(Ctxt::VecSize == 1, "Vector size must be 1");
+    void setFreq(fData<N> freq, fData<N> R)
+    {
+        setFreq(freq);
+        setRes(R);
+    }
 
-        // Input signal
+    void setCoeffs(fData<N> a0, fData<N> a1)
+    {
+        a_[0] = a0;
+        a_[1] = a1;
+    }
+
+    template <class Ctxt, class State> void process(Ctxt c, State &state) const
+    {
         auto &x = c.getSignal();
-
-        // Direct form II value and its delayed signals
-        typename Ctxt::Type s0;
-        auto &sN = delayline.read(c, 2)[0].toVector();
-        // auto &s1 = sN[1];
-        auto &s2 = sN[0];
-
-        /* intermadiate values */
-        typename Ctxt::BaseType sNa[2];
-
-        // Apply the filter coefficients to the delayed signals.
-        // Doing in a loop like this allows for compiler vectorization.
+        auto s  = state;
+        arrayFor(x, k)
+        {
 #pragma omp simd
-        for (size_t k = 0; k < 2; ++k) {
-            for (size_t i = 0; i < x[0].size(); ++i) {
-                sNa[k][i] = sN[k][i] * a_[k][i];
+            arrayFor(x[k], i)
+            {
+                auto &x0 = x[k][i];
+                auto &s0 = s[0][i];
+                auto &s1 = s[1][i];
+                auto &a0 = a_[0][i];
+                auto &a1 = a_[1][i];
+
+                auto v0 = a0 * (x0 - s0);
+                auto y0 = v0 + s0;
+                auto x1 = v0 + x0;
+
+                auto v1 = a1 * (x1 - s1);
+                s0      = v1 + s1;
+                s1      = v1 + x1;
+
+                x[k][i] = y0;
             }
         }
-
-        // Compute output using direct form II
-#pragma omp simd
-        for (size_t i = 0; i < x[0].size(); ++i) {
-            s0[0][i] = x[0][i] - sNa[1][i] - sNa[0][i];
-            x[0][i]  = a2[i] * s0[0][i] + sNa[1][i] + s2[i];
-        }
-
-        // Update the delay line with the new value
-        delayline.write(c, s0);
+        state = s;
     }
 
+    __PROCESSBLOCK__;
+
   private:
-    fData<N> a_[2];
+    fData<N> a_[2]; // allpass coeffs
 };
+
+// template <size_t N, bool EnergyPreserving = false> class AllPass2
+//{
+//     /* 2nd order allpass */
+//
+//   public:
+//     struct State : std::array<fData<N>, 2> {
+//         State() : std::array<fData<N>, 2>{} {}
+//     };
+//
+//     void setFreq(fData<N> freq)
+//     {
+//         for (int i = 0; i < N; ++i) {
+//             a_[1][i] = -cos(M_PIf * freq[i]);
+//
+//             if constexpr (EnergyPreserving) {
+//                 //postgains_[1][i] = tan(M_PIf * freq[i] * 0.5f);
+//                 postgains_[1][i] = sqrt((1.f+a_[1][i])/(1.f-a_[1][i]));
+//                 //postgains_[1][i] = sqrt(1.f - a_[1][i]*a_[1][i]);
+//             }
+//         }
+//         computeGains();
+//     }
+//
+//     void setRes(fData<N> R)
+//     {
+//         for (int i = 0; i < N; ++i) {
+//             assert(R[i] >= 0);
+//             a_[0][i] = (1.f - R[i]) / (1.f + R[i]);
+//
+//             if constexpr (EnergyPreserving) {
+//                 //postgains_[0][i] = sqrtf(R[i]);
+//                 //postgains_[0][i] = sqrt((1.f+a_[0][i])/(1.f-a_[0][i]));
+//                 postgains_[0][i] = sqrt(1.f - a_[0][i]*a_[0][i]);
+//             }
+//         }
+//         computeGains();
+//     }
+//
+//     void setFreq(fData<N> freq, fData<N> R)
+//     {
+//         setFreq(freq);
+//         setRes(R);
+//     }
+//
+//     void setCoeffs(fData<N> a0, fData<N> a1)
+//     {
+//         a_[0] = a0;
+//         a_[1] = a1;
+//     }
+//
+//     template <class Ctxt, class State> void process(Ctxt c, State &state)
+//     //const
+//     {
+//         auto &x = c.getSignal();
+//         auto s  = state;
+//         arrayFor(x, k)
+//         {
+//             arrayFor(x[k], i)
+//             {
+//                 auto &x0 = x[k][i];
+//                 auto &s0 = s[0][i];
+//                 auto &s1 = s[1][i];
+//                 auto &a0 = a_[0][i];
+//                 auto &a1 = a_[1][i];
+//
+//                 auto g0 = sqrt((1.f-a0)/(1.f+a0));
+//                 auto g1 = sqrt((1.f-a1)/(1.f+a1));
+//                 //g0 = 1.f/g0;
+//                 //g1 = 1.f/g1;
+//
+//                 x0 *= g0*g1;
+//
+//                 //auto v0 = a0 * (x0 - s0);
+//                 auto v0 = a0 * (x0 - s0*g1/g1save);
+//                 //auto y0 = v0 + s0;
+//                 auto y0 = g1save/g1*v0 + s0;
+//                 auto x1 = v0 + x0;
+//
+//                 //auto v0 = a0 * (x0 + s0);
+//                 ////auto v0 = a0 * (x0 + s0*g1/g1save);
+//                 //auto y0 = v0 + s0;
+//                 ////auto y0 = g1save/g1*v0 + s0;
+//                 //auto x1 = - v0 + x0;
+//
+//                 y0 /= g0*g1save;
+//
+//
+//                 auto v1 = a1 * (x1 - s1);
+//                 s0      = v1 + s1;
+//                 s1      = v1 + x1;
+//                 //auto v1 = a1 * (x1 + s1);
+//                 //s0      = v1 + s1;
+//                 //s1      = -v1 + x1;
+//
+//
+//                 x[k][i] = y0;
+//
+//                 g1save = g1;
+//
+//
+//             }
+//         }
+//         state = s;
+//     }
+//
+//     __PROCESSBLOCK__;
+//
+//     template <class Ctxt> void pregain(Ctxt c) const
+//     {
+//         if constexpr (EnergyPreserving) {
+//             auto &x = c.getSignal();
+//             inFor(x, k, i) { x[k][i] *= pregain_[i]; }
+//         }
+//     }
+//
+//     template <class Ctxt> void postgain(Ctxt c) const
+//     {
+//         if constexpr (EnergyPreserving) {
+//             auto &x = c.getSignal();
+//             inFor(x, k, i) { x[k][i] *= postgain_[i]; }
+//         }
+//     }
+//
+//   private:
+//     void computeGains()
+//     {
+//         // see
+//         //
+//         https://dafx2020.mdw.ac.at/proceedings/papers/DAFx2020_paper_59.pdf
+//         // allow for energy preserving all pass
+//
+//         if constexpr (EnergyPreserving) {
+//             for (size_t i = 0; i < N; ++i) {
+//                 //postgain_[i] =
+//                 sqrtf((1.f+a_[0][i])/(1.f-a_[0][i])*(1.f+a_[1][i])/(1.f-a_[1][i]));//postgains_[0][i]
+//                 * postgains_[1][i]; postgain_[i] = postgains_[0][i] *
+//                 postgains_[1][i]; pregain_[i]  = 1.f / postgain_[i];
+//             }
+//         }
+//     }
+//
+//     // dummy empty element
+//     struct Empty {
+//     };
+//
+//     fData<N> a_[2]; // allpass coeffs
+//     std::conditional_t<EnergyPreserving, fData<N>, Empty>
+//         postgains_[2]; // post gain of each allpass
+//     std::conditional_t<EnergyPreserving, fData<N>, Empty>
+//         pregain_; // pre gain of nested all pass filter
+//     std::conditional_t<EnergyPreserving, fData<N>, Empty>
+//         postgain_; // post gain of nested all pass filter
+//
+//     float g1save{1.f};
+// };
 } // namespace dsp
