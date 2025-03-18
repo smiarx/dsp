@@ -5,7 +5,9 @@
 #include "dsp/LinAlg.h"
 #include "dsp/MultiRate.h"
 #include "dsp/Noise.h"
+#include "dsp/RMS.h"
 #include "dsp/Smoother.h"
+#include "dsp/Stack.h"
 #include "dsp/VAFilters.h"
 
 namespace processors
@@ -190,5 +192,23 @@ class Springs
 
     dsp::fSample<N> x_[MaxBlockSize]{};
     dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{};
+
+// section for rms output of springs
+#ifdef SPRINGS_RMS
+  public:
+    static constexpr auto RMSSize      = 128;
+    static constexpr auto RMSOverlap   = RMSSize - 32;
+    static constexpr auto RMSStackSize = 64;
+
+    const dsp::fSample<N> *getRMSStack() const
+    {
+        return rmsStack_.getSamples();
+    }
+    const size_t *getRMSStackPos() const { return rmsStack_.getPos(); }
+
+  private:
+    dsp::RMS<N, RMSSize, RMSOverlap> rms_;
+    dsp::Stack<N, RMSStackSize> rmsStack_;
+#endif
 };
 } // namespace processors

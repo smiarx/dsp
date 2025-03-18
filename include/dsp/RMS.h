@@ -9,7 +9,7 @@ namespace dsp
 template <size_t N, size_t Size, size_t Overlap = 0> class RMS
 {
   public:
-    static constexpr auto Shift           = Size - Overlap;
+    static constexpr size_t Shift         = Size - Overlap;
     static constexpr bool ShiftDivideSize = Size % Shift == 0;
     static constexpr auto NOverlaps = ShiftDivideSize ? Size / Shift : Size;
 
@@ -53,13 +53,18 @@ template <size_t N, size_t Size, size_t Overlap = 0> class RMS
 
         auto &lastOverlap = overlaps_.tail(c)[0];
 
-        arrayFor(sumsq_, i) { sumsq_[i] += firstOverlap_[i] - lastOverlap[i]; }
+        arrayFor(sumsq_, i)
+        {
+            sumsq_[i] += firstOverlap_[i] - lastOverlap[i];
+            sumsq_[i] = std::max(
+                0.f, sumsq_[i]); // protect from really small negative numbers
+        }
 
         overlaps_.write(c, firstOverlap_.toSignal());
         firstOverlap_ = {};
     }
 
-    int n_ = 0;
+    size_t n_ = 0;
     fSample<N> firstOverlap_{};
     CopyDelayLine<N, NOverlaps> overlaps_{};
     fSample<N> sumsq_{};
@@ -97,7 +102,7 @@ template <size_t N, size_t Size> class RMS<N, Size>
     }
 
   private:
-    int n_ = 0;
+    size_t n_ = 0;
     fSample<N> sumsq_{};
 };
 } // namespace dsp

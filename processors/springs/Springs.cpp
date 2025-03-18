@@ -337,6 +337,10 @@ void Springs::process(const float *const *__restrict in,
             ++outr, ++inr2;
         }
 
+#ifdef SPRINGS_RMS
+        rms_.processBlock(ctxt, rmsStack_);
+#endif
+
         ctxt.nextBlock();
         ctxtdec.nextBlock();
 
