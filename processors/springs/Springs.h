@@ -128,7 +128,7 @@ class Springs
     }
 
     // allpass
-    dsp::va::SVF<NAP, dsp::va::AllPass> allpass_{};
+    dsp::AllPass2<NAP> allpass_{};
     dsp::fSample<NAP> allpassIntermediary_{};
     typename decltype(allpass_)::State allpassState_[APCascadeL]{};
     unsigned int apNStages_{APCascadeL};
