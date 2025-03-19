@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Signal.h"
-#include <cmath>
 #include <cassert>
+#include <cmath>
 
 namespace dsp
 {
@@ -83,7 +83,7 @@ template <size_t N> class LFOParabolic
     {
 #pragma omp simd
         for (size_t i = 0; i < N; ++i) {
-            assert(freq_[i] >= 0.f && freq_[i] <= 1.f);
+            assert(freq[i] >= 0.f && freq[i] <= 1.f);
             // Scale frequency for fixed-point accumulation
             freq_[i] = freq[i] * 4 * Unity;
         }
