@@ -272,7 +272,9 @@ void TapeDelay::process(const float *const *__restrict in,
         contextFor(ctxt) { hpf_.process(c, hpfMem_); }
 
         // distortion
-        if (saturation_.isActive()) {
+        if (saturation_.isActive() ||
+            // check if its possible to vectorize given blocksize
+            static_cast<size_t>(blockSize) % dsp::fSample<N>::VectorSize != 0) {
             float pregain  = 1.f;
             float postgain = 1.f;
             contextFor(ctxt)
