@@ -30,7 +30,6 @@ template <typename In, bool Vectorize = false> class Context
 
     void next(int incr = VecSize) { nextIn(incr); }
 
-    void nextBlock() { next(blockSize_); }
     int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 

@@ -37,18 +37,15 @@ TEST_CASE("Context Class", "[context]")
 
         ctx.next();
         REQUIRE(ctx.getBlockSize() == 5);
-        ctx.nextBlock();
-        REQUIRE(ctx.getBlockSize() == 5);
     }
 
-    SECTION("Next and NextBlock Methods")
+    SECTION("Next Method")
     {
         dsp::Sample<float, 4> data;
         dsp::Context<dsp::Sample<float, 4>> ctx(&data, 10);
         REQUIRE(ctx.getBlockSize() == 10);
         ctx.next(5);
         REQUIRE(ctx.getBlockSize() == 10);
-        ctx.nextBlock();
         REQUIRE(ctx.getBlockSize() == 10);
     }
 }

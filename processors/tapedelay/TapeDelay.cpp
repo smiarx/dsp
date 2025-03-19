@@ -194,16 +194,15 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 void TapeDelay::process(const float *const *__restrict in,
                         float *const *__restrict out, int count)
 {
-    int blockSizeOrig = std::min(count, MaxBlockSize);
-    auto ctxt         = dsp::BufferContext(x_, blockSizeOrig, buffer_);
+    int blockSize = MaxBlockSize;
 
     const float *localin[] = {in[0], in[1]};
     float *localout[]      = {out[0], out[1]};
 
     while (count) {
 
-        auto blockSize = std::min(blockSizeOrig, count);
-        ctxt.setBlockSize(blockSize);
+        blockSize = std::min(blockSize, count);
+        auto ctxt = dsp::BufferContext(x_, blockSize, buffer_);
 
         if (fadePos_ < 0) {
             // blockSize use in tape read part
@@ -338,9 +337,7 @@ void TapeDelay::process(const float *const *__restrict in,
             }
         }
         buffer_.setLimits();
-
-        ctxt.nextBlock();
-        ctxt.save(buffer_);
+        buffer_.nextBlock(ctxt);
 
         count -= blockSize;
     }

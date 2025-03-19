@@ -183,10 +183,7 @@ void Springs::process(const float *const *__restrict in,
     auto *outl = out[0];
     auto *outr = out[1];
 
-    int blockSize = std::min(count, MaxBlockSize);
-
-    auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
-    auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
+    int blockSize = MaxBlockSize;
 
     auto noise = loopChaosNoise_.process();
     for (size_t i = 0; i < N; ++i) {
@@ -195,6 +192,11 @@ void Springs::process(const float *const *__restrict in,
     loopChaos_.set(noise, sampleRate_ * 0.05f);
 
     while (count) {
+
+        blockSize = std::min(count, blockSize);
+
+        auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
+        auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
 
         contextFor(ctxt)
         {
@@ -301,7 +303,7 @@ void Springs::process(const float *const *__restrict in,
         allpassIntermediary_ = allpassIntermediary;
 
         contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
-        contextFor(ctxtdec.vec())
+        contextFor(ctxtdec)
         {
             auto &x = c.getSignal();
             loopdl_.write(c, x);
@@ -341,13 +343,11 @@ void Springs::process(const float *const *__restrict in,
         rms_.processBlock(ctxt, rmsStack_);
 #endif
 
-        ctxt.nextBlock();
-        ctxtdec.nextBlock();
+        buffer_.nextBlock(ctxt);
+        bufferDec_.nextBlock(ctxtdec);
 
         count -= blockSize;
     }
-    ctxt.save(buffer_);
-    ctxtdec.save(bufferDec_);
 
     drywet_.reset();
     loopTd_.reset();

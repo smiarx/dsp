@@ -47,6 +47,12 @@ template <class In, std::size_t MinSize = 0> class Buffer
 
     void nextBufId(int incr) { bufId_ = (bufId_ + incr) & Mask; }
 
+    // prepare for next block given ctxt
+    template <class Ctxt> void nextBlock(Ctxt ctxt)
+    {
+        nextBufId(ctxt.getBlockSize());
+    }
+
     void setLimits() { buffer_[BaseSize].toVector() = buffer_[0].toVector(); }
 
   private:
@@ -89,12 +95,6 @@ class BufferContext : public Context<In, Vectorize>
         Parent::next(incr);
     }
 
-    void nextBlock()
-    {
-        const auto blockSize = Parent::getBlockSize();
-        next(blockSize);
-    }
-
     void bufferLimits() { buffer_.setLimits(); }
 
     const auto &read(int i) const
@@ -102,8 +102,6 @@ class BufferContext : public Context<In, Vectorize>
         auto &x = buffer_.read(i);
         return x.template toSignal<Vectorize>();
     }
-
-    void save(Buffer &buffer) { buffer = buffer_; }
 
   protected:
     Buffer buffer_;
