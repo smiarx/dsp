@@ -30,13 +30,13 @@ class TapeDelay
     static constexpr size_t DelayBufSize = DefaultSampleRate * MaxDelay;
 
     // lookup table for cross fading between two taps
-    static constexpr auto FadeSize = 8;
+    static constexpr auto FadeSize = 2048;
     class FadeLut : public std::array<float, FadeSize>
     {
       public:
         FadeLut()
         {
-            for (size_t n = 0; n < size(); ++n) {
+            for (size_t n = 0; n < FadeSize; ++n) {
                 (*this)[n] =
                     dsp::window::Hann::generate((n + 1.f) / (FadeSize + 1.f));
             }
@@ -139,6 +139,8 @@ class TapeDelay
     template <Mode, bool check, class Ctxt>
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
+    // move tape function
+    float moveTape();
 
     dsp::DelayLine<DelayBufSize / 3> delaylineReverse_;
     dsp::DelayLine<DelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;

@@ -130,6 +130,16 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
         auto &reverseDist = reverseDist_[tapId];
 
         reverseDist += speed + speed; // 2*speed
+
+        // read tape
+        x = tapTape.read<TapTape::Reverse>(ctxt, delayline_, tapePos_,
+                                           reverseDist);
+
+        if constexpr (M == Reverse) {
+            auto xreverse = tapReverse_.read(ctxt, delaylineReverse_, tapePos_);
+            inFor(x, k, i) { x[k][i] += xreverse[k][i]; }
+        }
+
         // reach end of reverse
         if constexpr (check) {
 
@@ -148,36 +158,34 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
                 return false;
             }
         }
-
-        // read tape
-        x = tapTape.read<TapTape::Reverse>(ctxt, delayline_, tapePos_,
-                                           reverseDist);
-
-        if constexpr (M == Reverse) {
-            auto xreverse = tapReverse_.read(ctxt, delaylineReverse_, tapePos_);
-            inFor(x, k, i) { x[k][i] += xreverse[k][i]; }
-        }
     }
     return true;
+}
+
+float TapeDelay::moveTape()
+{
+    // smooth speed;
+    speed_ += (targetSpeed_ - speed_) * speedSmooth_;
+
+    // speed modulation
+    speedMod_.step();
+    auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
+
+    // move tape
+    auto speed = static_cast<TapePosition::position_t>(speed_ + mod);
+    tapePos_.move(speed);
+
+    return speed;
 }
 
 template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 {
     contextFor(ctxt)
     {
-        // smooth speed;
-        speed_ += (targetSpeed_ - speed_) * speedSmooth_;
-
-        // speed modulation
-        speedMod_.step();
-        auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
-
-        // move tape
-        auto speed = static_cast<TapePosition::position_t>(speed_ + mod);
-        tapePos_.move(speed);
+        float speed = moveTape();
 
         if (!read<M>(c, tapId_, speed)) {
-            return n;
+            return n + 1;
         }
     }
     return ctxt.getBlockSize();
@@ -219,17 +227,7 @@ void TapeDelay::process(const float *const *__restrict in,
             ctxt.setBlockSize(blockSize);
             contextFor(ctxt)
             {
-                // smooth speed;
-                speed_ += (targetSpeed_ - speed_) * speedSmooth_;
-
-                // speed modulation
-                speedMod_.step();
-                auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
-
-                // move tape
-                auto speed =
-                    static_cast<TapePosition::position_t>(speed_ + mod);
-                tapePos_.move(speed);
+                auto speed = moveTape();
 
                 auto &x = c.getSignal();
                 switch (mode_) {
