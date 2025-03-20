@@ -73,13 +73,6 @@ class TapeDelay
         speedLFO_.setFreq({freqScale_ * speedModFreq});
     }
 
-    void setBlockSize(int blockSize)
-    {
-        blockSize_    = blockSize;
-        invBlockSize_ = 1.f / blockSize;
-        blockRate_    = sampleRate_ * invBlockSize_;
-    }
-
     // getters
     float getDelay() const { return delay_; }
     float getDrift() const { return drift_; }
@@ -90,17 +83,18 @@ class TapeDelay
     float getDryWet() const { return drywet_.getTarget()[0]; }
 
     // setters
-    void setDelay(float delay);
-    void setDrift(float drift);
-    void setCutLowPass(float cutlowpass);
-    void setCutHiPass(float cuthipass);
-    void setSaturation(float saturation);
-    void setFeedback(float feedback);
-    void setDryWet(float drywet);
-    void setMode(Mode mode);
+    void setDelay(float delay, int blockSize);
+    void setDrift(float drift, int blockSize);
+    void setCutLowPass(float cutlowpass, int blockSize);
+    void setCutHiPass(float cuthipass, int blockSize);
+    void setSaturation(float saturation, int blockSize);
+    void setFeedback(float feedback, int blockSize);
+    void setDryWet(float drywet, int blockSize);
+    void setMode(Mode mode, int blockSize);
 
     void update(float delay, float feedback, float cutlp, float cuthp,
-                float saturation, float drift, Mode mode, float drywet);
+                float saturation, float drift, Mode mode, float drywet,
+                int blockSize);
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
@@ -108,9 +102,6 @@ class TapeDelay
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
     float invSampleRate_{1.f / 48000.f};
-    int blockSize_{0};
-    float invBlockSize_{0.f};
-    float blockRate_{0.f};
 
     float delay_{0.f};
     float feedback_{0.f};

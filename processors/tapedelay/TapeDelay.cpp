@@ -7,29 +7,29 @@ TapeDelay::FadeLut TapeDelay::fadeLut;
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
                        float cuthighpass, float saturation, float drift,
-                       Mode mode, float drywet)
+                       Mode mode, float drywet, int blockSize)
 {
     if (delay != delay_) {
-        setDelay(delay);
+        setDelay(delay, blockSize);
     }
     if (drift != drift_) {
-        setDrift(drift);
+        setDrift(drift, blockSize);
     }
     if (cutlowpass != cutlowpass_) {
-        setCutLowPass(cutlowpass);
+        setCutLowPass(cutlowpass, blockSize);
     }
     if (cuthighpass != cuthighpass_) {
-        setCutHiPass(cuthighpass);
+        setCutHiPass(cuthighpass, blockSize);
     }
     if (mode != mode_) {
-        setMode(mode);
+        setMode(mode, blockSize);
     }
-    setSaturation(saturation);
-    setFeedback(feedback);
-    setDryWet(drywet);
+    setSaturation(saturation, blockSize);
+    setFeedback(feedback, blockSize);
+    setDryWet(drywet, blockSize);
 }
 
-void TapeDelay::setDelay(float delay)
+void TapeDelay::setDelay(float delay, int blockSize)
 {
     delay_ = delay;
 
@@ -44,37 +44,37 @@ void TapeDelay::setDelay(float delay)
     // set new target speed
     targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
 
-    setDrift(getDrift());
+    setDrift(getDrift(), blockSize);
 }
 
-void TapeDelay::setDrift(float drift)
+void TapeDelay::setDrift(float drift, int blockSize)
 {
     drift_ = drift;
-    speedMod_.set({targetSpeed_ * drift * speedModAmp}, invBlockSize_);
+    speedMod_.set({targetSpeed_ * drift * speedModAmp}, 1.f / blockSize);
 }
 
-void TapeDelay::setCutLowPass(float cutlowpass)
+void TapeDelay::setCutLowPass(float cutlowpass, int /*blockSize*/)
 {
     cutlowpass_ = cutlowpass;
     auto freq   = cutlowpass_ * freqScale_;
     lpf_.setFreq({freq, freq});
 }
 
-void TapeDelay::setCutHiPass(float cuthighpass)
+void TapeDelay::setCutHiPass(float cuthighpass, int /*blockSize*/)
 {
     cuthighpass_ = cuthighpass;
     auto freq    = cuthighpass_ * freqScale_;
     hpf_.setFreq({freq, freq});
 }
 
-void TapeDelay::setSaturation(float saturation)
+void TapeDelay::setSaturation(float saturation, int blockSize)
 {
-    saturation_.set({saturation}, invBlockSize_);
+    saturation_.set({saturation}, 1.f / blockSize);
 
     // update feedback
-    setFeedback(getFeedback());
+    setFeedback(getFeedback(), blockSize);
 }
-void TapeDelay::setFeedback(float feedback)
+void TapeDelay::setFeedback(float feedback, int blockSize)
 {
     feedback_ = feedback;
 
@@ -87,14 +87,14 @@ void TapeDelay::setFeedback(float feedback)
         feedback = std::min(feedback, 1.f);
     }
 
-    feedbackCompensated_.set({feedback, feedback}, invBlockSize_);
+    feedbackCompensated_.set({feedback, feedback}, 1.f / blockSize);
 }
-void TapeDelay::setDryWet(float drywet)
+void TapeDelay::setDryWet(float drywet, int blockSize)
 {
-    drywet_.set({drywet, drywet}, invBlockSize_);
+    drywet_.set({drywet, drywet}, 1.f / blockSize);
 }
 
-void TapeDelay::setMode(Mode mode)
+void TapeDelay::setMode(Mode mode, int /*blockSize*/)
 {
     if (mode == Reverse) {
         tapReverse_.search(tapePos_);

@@ -23,7 +23,6 @@ void TapeDelay_Ctor(TapeDelay *unit)
     new (unit->tapedelay) processors::TapeDelay();
 
     unit->tapedelay->setSampleRate(SAMPLERATE);
-    unit->tapedelay->setBlockSize(BUFLENGTH);
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;
@@ -38,7 +37,7 @@ void TapeDelay_next(TapeDelay *unit, int inNumSamples)
 
     unit->tapedelay->update(IN0(0), IN0(1), IN0(2), IN0(3), IN0(4), IN0(5),
                             static_cast<processors::TapeDelay::Mode>(IN0(6)),
-                            IN0(7));
+                            IN0(7), inNumSamples);
     unit->tapedelay->process(in, out, inNumSamples);
 }
 
