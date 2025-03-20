@@ -194,7 +194,7 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 void TapeDelay::process(const float *const *__restrict in,
                         float *const *__restrict out, int count)
 {
-    int blockSize = MaxBlockSize;
+    int blockSize = maxBlockSize_;
 
     const float *localin[] = {in[0], in[1]};
     float *localout[]      = {out[0], out[1]};

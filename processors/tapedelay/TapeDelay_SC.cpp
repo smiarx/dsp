@@ -22,13 +22,21 @@ void TapeDelay_Ctor(TapeDelay *unit)
     ClearUnitIfMemFailed(unit->tapedelay);
     new (unit->tapedelay) processors::TapeDelay();
 
-    unit->tapedelay->setSampleRate(SAMPLERATE);
+    unit->tapedelay->prepare(SAMPLERATE, BUFLENGTH,
+                             [&unit](void *ptr, size_t len) {
+                                 return RTRealloc(unit->mWorld, ptr, len);
+                             });
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;
 }
 
-void TapeDelay_Dtor(TapeDelay *unit) { RTFree(unit->mWorld, unit->tapedelay); }
+void TapeDelay_Dtor(TapeDelay *unit)
+{
+
+    unit->tapedelay->free([&unit](void *ptr) { RTFree(unit->mWorld, ptr); });
+    RTFree(unit->mWorld, unit->tapedelay);
+}
 
 void TapeDelay_next(TapeDelay *unit, int inNumSamples)
 {

@@ -52,8 +52,6 @@ class TapeDelay
 
     TapeDelay()
     {
-        buffer_.setBuffer(bufferArray_);
-
         inFor(pregain_, k, i)
         {
             pregain_[k][i]  = 1.f;
@@ -61,17 +59,12 @@ class TapeDelay
         }
     }
 
-    void setSampleRate(float sR)
-    {
-        sampleRate_    = sR;
-        invSampleRate_ = 1.f / sR;
-        freqScale_     = 2.f * invSampleRate_;
+    template <class ReAlloc = decltype(std::realloc)>
+    void prepare(float sampleRate, int blockSize,
+                 ReAlloc realloc = std::realloc);
 
-        speedSmooth_ =
-            1.f - powf(0.001, 1.f / speedSmoothTime * invSampleRate_);
-
-        speedLFO_.setFreq({freqScale_ * speedModFreq});
-    }
+    template <class Free = decltype(std::free)>
+    void free(Free free = std::free);
 
     // getters
     float getDelay() const { return delay_; }
@@ -99,9 +92,9 @@ class TapeDelay
                  float *const *__restrict out, int count);
 
   private:
-    float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
     float invSampleRate_{1.f / 48000.f};
+    int maxBlockSize_{};
 
     float delay_{0.f};
     float feedback_{0.f};
@@ -161,10 +154,43 @@ class TapeDelay
     decltype(hpf_)::State hpfMem_{};
 
     static constexpr auto BufferSize = nextTo(delayline_);
-    dsp::Buffer<dsp::fSample<2>, BufferSize> buffer_;
-    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size] = {{0.f}};
+    dsp::Buffer<dsp::fSample<N>, BufferSize> buffer_;
 
-    // write tmp buffers
-    dsp::fSample<N> x_[MaxBlockSize] = {{0.f}};
+    // tmp buffers
+    dsp::fSample<N> *__restrict x_{nullptr};
 };
+
+template <class ReAlloc>
+void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
+{
+    invSampleRate_ = 1.f / sampleRate;
+    freqScale_     = 2.f * invSampleRate_;
+    maxBlockSize_  = std::min(blockSize, MaxBlockSize);
+
+    speedSmooth_ = 1.f - powf(0.001, 1.f / speedSmoothTime * invSampleRate_);
+
+    speedLFO_.setFreq({freqScale_ * speedModFreq});
+
+    // alloc ressources
+    x_ = (dsp::fSample<N> *)realloc(x_, sizeof(dsp::fSample<N>) *
+                                            static_cast<size_t>(maxBlockSize_));
+
+    auto *buf = buffer_.getBuffer();
+    constexpr auto bufferSize =
+        sizeof(dsp::fSample<N>) * decltype(buffer_)::Size;
+    buf = (dsp::fSample<N> *)realloc(buf, bufferSize);
+    memset(buf, 0, bufferSize);
+    buffer_.setBuffer(buf);
+}
+
+template <class Free> void TapeDelay::free(Free free)
+{
+    free(x_);
+    x_ = nullptr;
+
+    auto *buf = buffer_.getBuffer();
+    free(buf);
+    buffer_.setBuffer(nullptr);
+}
+
 } // namespace processors

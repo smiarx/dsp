@@ -58,7 +58,7 @@ template <class In, std::size_t MinSize = 0> class Buffer
   private:
     bool isBufferOffset_{false};
     int bufId_{Offset};
-    In *buffer_;
+    In *__restrict buffer_{nullptr};
 };
 
 template <class In, class Buffer, bool Vectorize = false>

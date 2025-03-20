@@ -24,7 +24,7 @@ template <typename In, bool Vectorize = false> class Context
     int vecSize() const { return VecSize; }
     int getStep() const { return VecSize; }
 
-    auto &__restrict getSignal() { return in_->template toSignal<Vectorize>(); }
+    auto &getSignal() { return in_->template toSignal<Vectorize>(); }
 
     template <typename T> void setSamples(T &x) { in_ = &x[0]; }
 
@@ -38,7 +38,7 @@ template <typename In, bool Vectorize = false> class Context
 
   private:
     int blockSize_;
-    In *in_;
+    In *__restrict in_;
 };
 
 template <class Ctxt, class... Ctxts>
