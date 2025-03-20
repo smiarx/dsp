@@ -70,12 +70,6 @@ class Springs
 
     // set processor samplerate
     void setSampleRate(float sR);
-    // set processor blocksize
-    void setBlockSize(int blockSize)
-    {
-        blockSize_    = blockSize;
-        invBlockSize_ = 1.f / blockSize;
-    }
 
     // getters
     float getDryWet() const { return drywet_.getTarget()[0]; }
@@ -88,17 +82,23 @@ class Springs
     float getDiffusion() const { return diffusion_; }
 
     // setters
-    void setFreq(float R, float freq);
-    void setTd(float Td, float chaos);
-    void setT60(float T60);
-    void setDiffusion(float dif);
-    void setScatter(float scatter);
-    void setDryWet(float drywet) { drywet_.set({drywet}, invBlockSize_); }
-    void setWidth(float width);
+    void setFreq(float freq, int blockSize);
+    void setRes(float R, int blockSize);
+    void setTd(float Td, int blockSize);
+    void setChaos(float chaos, int blockSize);
+    void setT60(float T60, int blockSize);
+    void setDiffusion(float dif, int blockSize);
+    void setScatter(float scatter, int blockSize);
+    void setDryWet(float drywet, int blockSize)
+    {
+        drywet_.set({drywet}, 1.f / blockSize);
+    }
+    void setWidth(float width, int blockSize);
 
     // update
     void update(float R, float freq, float Td, float T60, float diffusion,
-                float chaos, float scatter, float width, float drywet);
+                float chaos, float scatter, float width, float drywet,
+                int blockSize);
 
     // main process
     void process(const float *const *__restrict in,
@@ -108,8 +108,6 @@ class Springs
     int M_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
-    int blockSize_{0};
-    float invBlockSize_{0.f};
 
     dsp::ControlSmoother<1> drywet_{{1.f}};
     float width_{1.f};

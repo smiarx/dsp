@@ -19,30 +19,37 @@ void Springs::setSampleRate(float sR)
 }
 
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
-                     float chaos, float scatter, float width, float drywet)
+                     float chaos, float scatter, float width, float drywet,
+                     int blockSize)
 {
-    if (R != R_ || freq != freq_) {
-        setFreq(R, freq);
+    if (freq != freq_) {
+        setFreq(freq, blockSize);
     }
-    if (Td != Td_ || chaos != chaos_) {
-        setTd(Td, chaos);
+    if (R != R_) {
+        setRes(R, blockSize);
+    }
+    if (Td != Td_) {
+        setTd(Td, blockSize);
+    }
+    if (chaos != chaos_) {
+        setChaos(chaos, blockSize);
     }
     if (T60 != T60_) {
-        setT60(T60);
+        setT60(T60, blockSize);
     }
     if (diffusion != diffusion_) {
-        setDiffusion(diffusion);
+        setDiffusion(diffusion, blockSize);
     }
     if (width != width_) {
-        setWidth(width);
+        setWidth(width, blockSize);
     }
     if (scatter_ != scatter) {
-        setScatter(scatter);
+        setScatter(scatter, blockSize);
     }
-    setDryWet(drywet);
+    setDryWet(drywet, blockSize);
 }
 
-void Springs::setFreq(float R, float freq)
+void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
     int M           = DecimateMaxFreq / freqScaled;
@@ -51,28 +58,24 @@ void Springs::setFreq(float R, float freq)
     freqScaled *= M;
     dsp::fData<N> freqs;
     dsp::fData<NAP> freqsAP;
-    dsp::fData<NAP> Rs;
     for (size_t i = 0; i < N; ++i) {
         auto fFactor = 1.f + (freqFactor[i] - 1.f) * getScatterFactor();
-        auto rFactor = 1.f + (RFactor[i] - 1.f) * getScatterFactor();
         freqs[i]     = freqScaled * fFactor;
         freqs[i]     = std::min(0.995f, freqs[i]);
         freqs[i]     = std::max(0.005f, freqs[i]);
         freqsAP[i]   = freqs[i];
-        Rs[i]        = std::abs(R) * rFactor;
     }
 
-    if (R < 0) {
+    if (R_ < 0) {
         for (size_t i = 0; i < N; ++i) {
             freqsAP[i] = 1.f - freqsAP[i];
         }
     }
     for (size_t i = N; i < NAP; ++i) {
         freqsAP[i] = freqsAP[i % N];
-        Rs[i]      = Rs[i % N];
     }
 
-    allpass_.setFreq(freqsAP, Rs);
+    allpass_.setFreq(freqsAP);
     lowpass_.setFreq(freqs, {
                                 LowPassRes,
                                 LowPassRes,
@@ -80,20 +83,11 @@ void Springs::setFreq(float R, float freq)
                                 LowPassRes,
                             });
 
-    /* if abs(R) smaller than a certain value, reduce the cascade size
-     * this helps to avoid long ringing around allpass phasing frequency */
-    if (std::abs(R) < MinRWithMaxCascadeL) {
-        apNStages_ = std::abs(R) / MinRWithMaxCascadeL * APCascadeL;
-    } else {
-        apNStages_ = APCascadeL;
-    }
-
     multirate_  = multirates.get(M);
     decimateId_ = 0;
 
     int oldM = M_;
     M_       = M;
-    R_       = R;
     freq_    = freq;
 
     if (M != oldM) {
@@ -106,14 +100,38 @@ void Springs::setFreq(float R, float freq)
         dcblocker_.setFreq(
             {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
 
-        setTd(Td_, chaos_);
+        setTd(Td_, blockSize);
     }
 }
 
-void Springs::setTd(float Td, float chaos)
+void Springs::setRes(float R, int /*blockSize*/)
 {
-    Td_    = Td;
-    chaos_ = chaos;
+    R_ = R;
+
+    dsp::fData<NAP> Rs;
+    for (size_t i = 0; i < N; ++i) {
+        auto rFactor = 1.f + (RFactor[i] - 1.f) * getScatterFactor();
+        Rs[i]        = std::abs(R_) * rFactor;
+    }
+
+    for (size_t i = N; i < NAP; ++i) {
+        Rs[i] = Rs[i % N];
+    }
+
+    allpass_.setRes(Rs);
+
+    /* if abs(R) smaller than a certain value, reduce the cascade size
+     * this helps to avoid long ringing around allpass phasing frequency */
+    if (std::abs(R) < MinRWithMaxCascadeL) {
+        apNStages_ = std::abs(R) / MinRWithMaxCascadeL * APCascadeL;
+    } else {
+        apNStages_ = APCascadeL;
+    }
+}
+
+void Springs::setTd(float Td, int blockSize)
+{
+    Td_ = Td;
     dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
     dsp::fSample<N> loopTd;
@@ -123,7 +141,7 @@ void Springs::setTd(float Td, float chaos)
         loopTd[i]       = sampleTd * loopFactor;
 
         loopModAmp_[i]   = loopTd[i] * loopModFactor[i];
-        loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos, 2.5f);
+        loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos_, 2.5f);
 
         loopEchoT[i] = loopTd[i] / 5.f;
 
@@ -132,15 +150,21 @@ void Springs::setTd(float Td, float chaos)
         loopTd[i] -= loopEchoT[i];
     }
 
-    loopTd_.set(loopTd, invBlockSize_ * M_);
+    loopTd_.set(loopTd, M_ / static_cast<float>(blockSize));
 
     predelay_.setDelay(predelayT);
     ap1_.setDelay(loopEchoT);
 
-    setT60(T60_);
+    setT60(T60_, blockSize);
 }
 
-void Springs::setDiffusion(float dif)
+void Springs::setChaos(float chaos, int blockSize)
+{
+    chaos_ = chaos;
+    setTd(Td_, blockSize);
+}
+
+void Springs::setDiffusion(float dif, int blockSize)
 {
     diffusion_ = dif;
 
@@ -148,17 +172,18 @@ void Springs::setDiffusion(float dif)
     ap1_.setCoeff({-apdif, -apdif, -apdif, -apdif});
 
     mixMatrix_ = dsp::hadamardInterpolMatrix<N>(dif);
-    setTd(Td_, chaos_);
-    setFreq(R_, freq_);
+    setTd(Td_, blockSize);
+    setFreq(freq_, blockSize);
+    setRes(R_, blockSize);
 }
 
-void Springs::setT60(float T60)
+void Springs::setT60(float T60, int /*blockSize*/)
 {
     T60_      = T60;
     loopGain_ = -powf(0.001, Td_ / T60_);
 }
 
-void Springs::setWidth(float width)
+void Springs::setWidth(float width, int /*blockSize*/)
 {
     width_     = width;
     auto theta = M_PIf / 4.f * (1.f - width_);
@@ -166,11 +191,11 @@ void Springs::setWidth(float width)
     widthsin_  = sinf(theta);
 }
 
-void Springs::setScatter(float scatter)
+void Springs::setScatter(float scatter, int blockSize)
 {
     scatter_ = scatter;
-    setTd(Td_, chaos_);
-    setFreq(R_, freq_);
+    setTd(Td_, blockSize);
+    setFreq(freq_, blockSize);
 }
 
 void Springs::process(const float *const *__restrict in,
