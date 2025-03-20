@@ -3,6 +3,8 @@ find_package(Catch2 3 REQUIRED)
 set(bench_sources
     TapeDelay.cpp
     ../processors/tapedelay/TapeDelay.cpp
+    Springs.cpp
+    ../processors/springs/Springs.cpp
 )
 
 add_executable(bench ${bench_sources})
