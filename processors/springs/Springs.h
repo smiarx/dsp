@@ -60,16 +60,18 @@ class Springs
 
     Springs()
     {
-        buffer_.setBuffer(bufferArray_);
-        bufferDec_.setBuffer(bufferDecArray_);
-
         /* loop modulation */
         dsp::iNoise<N> noise;
         loopMod_.setPhase(noise.process());
     }
 
     // set processor samplerate
-    void setSampleRate(float sR);
+    template <class ReAlloc = decltype(std::realloc)>
+    void prepare(float sampleRate, int blockSize,
+                 ReAlloc realloc = std::realloc);
+
+    template <class Free = decltype(std::free)>
+    void free(Free free = std::free);
 
     // getters
     float getDryWet() const { return drywet_.getTarget()[0]; }
@@ -108,6 +110,7 @@ class Springs
     int M_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
+    int maxBlockSize_{};
 
     dsp::ControlSmoother<1> drywet_{{1.f}};
     float width_{1.f};
@@ -160,7 +163,6 @@ class Springs
     const MRs::Base *multirate_;
 
     dsp::Buffer<dsp::fSample<N>, BufSize> buffer_;
-    dsp::fSample<N> bufferArray_[decltype(buffer_)::Size]{};
 
     dsp::DelayLine<LoopLength / 2> predelaydl_;
     dsp::TapNoInterp<N> predelay_;
@@ -186,10 +188,9 @@ class Springs
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;
-    dsp::fSample<N> bufferDecArray_[decltype(bufferDec_)::Size]{};
 
-    dsp::fSample<N> x_[MaxBlockSize]{};
-    dsp::fSample<N> xdecimate_[MaxBlockSize / 2]{};
+    dsp::fSample<N> *x_{};
+    dsp::fSample<N> *xdecimate_{};
 
 // section for rms output of springs
 #ifdef SPRINGS_RMS
@@ -209,4 +210,54 @@ class Springs
     dsp::Stack<N, RMSStackSize> rmsStack_;
 #endif
 };
+
+template <class ReAlloc>
+void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
+{
+    sampleRate_ = sampleRate;
+    freqScale_    = 2.f / sampleRate;
+    maxBlockSize_ = std::min(blockSize, MaxBlockSize);
+
+    /* loop size modulation */
+    dsp::fData<N> freq;
+    for (size_t i = 0; i < N; ++i) {
+        freq[i] = loopModFreq[i] * freqScale_;
+    }
+    loopMod_.setFreq(freq);
+
+    // alloc ressources
+    x_         = (dsp::fSample<N> *)realloc(x_, sizeof(dsp::fSample<N>) *
+                                                    static_cast<size_t>(maxBlockSize_));
+    xdecimate_ = (dsp::fSample<N> *)realloc(
+        xdecimate_,
+        sizeof(dsp::fSample<N>) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
+
+    // set buffers
+#define allocateBuffer(buffer)                                     \
+    {                                                         \
+        auto *b = buffer.getBuffer();                         \
+        constexpr auto size =                                 \
+            sizeof(dsp::fSample<N>) * decltype(buffer)::Size; \
+        b = (dsp::fSample<N> *)realloc(b, size);              \
+        memset(b, 0, size);                                   \
+        buffer.setBuffer(b);                                  \
+    }
+
+    allocateBuffer(buffer_);
+    allocateBuffer(bufferDec_);
+
+#undef allocateBuffer
+}
+
+template <class Free> void Springs::free(Free free)
+{
+    free(x_);
+    x_ = nullptr;
+
+    free(buffer_.getBuffer());
+    buffer_.setBuffer(nullptr);
+
+    free(bufferDec_.getBuffer());
+    bufferDec_.setBuffer(nullptr);
+}
 } // namespace processors

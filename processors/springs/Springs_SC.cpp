@@ -20,13 +20,20 @@ void Springs_Ctor(Springs *unit)
     ClearUnitIfMemFailed(unit->springs);
     new (unit->springs) processors::Springs();
 
-    unit->springs->setSampleRate(SAMPLERATE);
+    unit->springs->prepare(SAMPLERATE, BUFLENGTH,
+                           [&unit](void *ptr, size_t len) {
+                               return RTRealloc(unit->mWorld, ptr, len);
+                           });
 
     ZOUT0(0) = 0.f;
     ZOUT0(1) = 0.f;
 }
 
-void Springs_Dtor(Springs *unit) { RTFree(unit->mWorld, unit->springs); }
+void Springs_Dtor(Springs *unit)
+{
+    unit->springs->free([&unit](void *ptr) { RTFree(unit->mWorld, ptr); });
+    RTFree(unit->mWorld, unit->springs);
+}
 
 void Springs_next(Springs *unit, int inNumSamples)
 {

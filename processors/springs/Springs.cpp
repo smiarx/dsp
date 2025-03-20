@@ -6,18 +6,6 @@ namespace processors
 // multirate converter
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
-void Springs::setSampleRate(float sR)
-{
-    sampleRate_ = sR;
-    freqScale_  = 2.f / sR;
-
-    dsp::fData<N> freq;
-    for (size_t i = 0; i < N; ++i) {
-        freq[i] = loopModFreq[i] * freqScale_;
-    }
-    loopMod_.setFreq(freq);
-}
-
 void Springs::update(float R, float freq, float Td, float T60, float diffusion,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
@@ -208,7 +196,7 @@ void Springs::process(const float *const *__restrict in,
     auto *outl = out[0];
     auto *outr = out[1];
 
-    int blockSize = MaxBlockSize;
+    int blockSize = maxBlockSize_;
 
     auto noise = loopChaosNoise_.process();
     for (size_t i = 0; i < N; ++i) {

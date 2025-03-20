@@ -14,8 +14,9 @@ TEST_CASE("Springs")
         float *ins[2] = {in[0], in[1]};
 
         processors::Springs springs;
-        springs.setSampleRate(sampleRate);
+        springs.prepare(sampleRate, blockSize);
         springs.update(0.5, 4500, 0.05, 2.3, 0.3, 0.4, 0.4, 1., 0.3, blockSize);
+        springs.free();
 
         BENCHMARK("Springs") { springs.process(ins, ins, blockSize); };
     }
