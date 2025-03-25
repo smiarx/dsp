@@ -56,7 +56,7 @@ TEST_CASE("RMS", "[dsp][rms]")
         for (size_t t = 0; t < 2; ++t) {
             for (size_t k = 0; k < NBlock; ++k) {
                 for (size_t n = 0; n < Size; ++n) {
-                    x[n][0] = sin(M_PIf * freq * n);
+                    x[n][0] = sin(dsp::constants<float>::pi * freq * n);
                 }
 
                 rms.processBlock(dsp::Context(x, Size), stack);

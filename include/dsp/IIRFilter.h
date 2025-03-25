@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "FastMath.h"
 #include "Signal.h"
 #include <cmath>
 
@@ -52,7 +53,7 @@ template <int N, int Order> class IIRFilter
         fData<N> csq;
         arrayFor(c, i)
         {
-            c[i]   = tanf(M_PIf * 0.5f * freq[i]);
+            c[i]   = tanf(dsp::constants<float>::pi * 0.5f * freq[i]);
             csq[i] = c[i] * c[i];
         }
 
@@ -70,8 +71,8 @@ template <int N, int Order> class IIRFilter
             ba[nsos][0][1] = 0.f;
             ba[nsos][0][2] = highpass ? 0.f : 1.f;
             ba[nsos][1][0] = 1.f;
-            ba[nsos][1][1] =
-                -2.f * cosf(M_PIf * (2 * nsos + Order + 1) / (2 * Order));
+            ba[nsos][1][1] = -2.f * cosf(dsp::constants<float>::pi *
+                                         (2 * nsos + Order + 1) / (2 * Order));
             ba[nsos][1][2] = 1.f;
         }
     }
@@ -128,7 +129,7 @@ void IIRFilter<N, Order>::SOS::process(Ctxt ctxt, Memory &mem) const
 
 template <int N, int Order>
 fData<N> IIRFilter<N, Order>::SOS::tfAnalog(const float ba[2][3], fData<N> c,
-                                             fData<N> csq)
+                                            fData<N> csq)
 {
     /* filter params */
     /* we define a filter designed with analog coefficients

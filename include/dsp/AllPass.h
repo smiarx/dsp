@@ -169,7 +169,7 @@ template <size_t N> class AllPass2
     void setFreq(fData<N> freq)
     {
         for (size_t i = 0; i < N; ++i) {
-            a_[1][i] = -cos(M_PIf * freq[i]);
+            a_[1][i] = -std::cos(constants<float>::pi * freq[i]);
         }
     }
 
@@ -222,7 +222,7 @@ template <size_t N> class AllPass2
         state = s;
     }
 
-    __PROCESSBLOCK__;
+    __PROCESSBLOCK__
 
   private:
     fData<N> a_[2]; // allpass coeffs

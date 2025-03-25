@@ -10,7 +10,8 @@ template <typename In, bool Vectorize = false> class Context
 {
   public:
     Context(In *in, int blockSize = 1) : blockSize_(blockSize), in_(in) {}
-    Context(const Context &ctxt) = default;
+    Context(const Context &ctxt)            = default;
+    Context &operator=(const Context &ctxt) = default;
 
     static constexpr auto VecSize       = Vectorize ? In::VectorSize : 1;
     static constexpr auto isUsingVector = Vectorize;

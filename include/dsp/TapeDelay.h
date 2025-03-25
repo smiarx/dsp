@@ -23,7 +23,7 @@ template <size_t L> class TapePosition
 
     static constexpr position_t convertSpeed(float speed)
     {
-        return Unity * speed;
+        return static_cast<position_t>(Unity * speed);
     }
 
     void move(position_t speed)
@@ -133,7 +133,7 @@ template <class Tap = TapLin<1>> class TapTape
         // determine delay;
         int delay   = (tapePos.getNwrite() - nread_ + 1) & TapePos::Mask;
         auto fdelay = static_cast<float>(foundPos1 - readPosition) /
-                      (foundPos1 - foundPos0);
+                      static_cast<float>(foundPos1 - foundPos0);
 
         Tap tap;
         tap.setDelay({delay}, {fdelay});

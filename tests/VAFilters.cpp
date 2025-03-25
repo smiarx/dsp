@@ -1,4 +1,5 @@
 #include "dsp/VAFilters.h"
+#include "dsp/FastMath.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
@@ -15,7 +16,7 @@ void generatesine(dsp::fData<N> f, dsp::fData<N> phase, dsp::fSample<N> *x,
     // generate signal
     for (size_t n = 0; n < length; ++n) {
         for (size_t i = 0; i < N; ++i) {
-            x[n][i] = sinf(M_PIf * f[i] * n + phase[i]);
+            x[n][i] = sinf(dsp::constants<float>::pi * f[i] * n + phase[i]);
         }
     }
 }
@@ -69,11 +70,11 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
         auto cut = GENERATE(500.f / nyquist, 1000.f / nyquist, 2000.f / nyquist,
                             15000.f / nyquist);
 
-#define TEST_DC(FILTER, TYPE, VAL)                                    \
-    generatesine({0.f}, {M_PIf / 2.f}, x, Length);                    \
-    filterArray<FILTER<N, TYPE>>({cut}, x, Length);                   \
-    for (int n = 6.f / cut; n < Length; ++n) {                        \
-        REQUIRE_THAT(x[n][0], Catch::Matchers::WithinAbs(VAL, 1e-3)); \
+#define TEST_DC(FILTER, TYPE, VAL)                                     \
+    generatesine({0.f}, {dsp::constants<float>::pi / 2.f}, x, Length); \
+    filterArray<FILTER<N, TYPE>>({cut}, x, Length);                    \
+    for (int n = 6.f / cut; n < Length; ++n) {                         \
+        REQUIRE_THAT(x[n][0], Catch::Matchers::WithinAbs(VAL, 1e-3));  \
     }
 
         TEST_DC(dsp::va::OnePole, dsp::va::LowPass, 1.f);

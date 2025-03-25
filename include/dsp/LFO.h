@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FastMath.h"
 #include "Signal.h"
 #include <cassert>
 #include <cmath>
@@ -23,15 +24,15 @@ template <size_t N> class LFOSine
     {
         for (size_t i = 0; i < N; ++i) {
             // TODO modify to real value
-            sin_[i] = sinf(2.f * M_PIf * phase[i]);
-            cos_[i] = cosf(2.f * M_PIf * phase[i]);
+            sin_[i] = std::sin(2.f * dsp::constants<float>::pi * phase[i]);
+            cos_[i] = std::cos(2.f * dsp::constants<float>::pi * phase[i]);
         }
     }
 
     void setFreq(fData<N> freq)
     {
         for (size_t i = 0; i < N; ++i) {
-            a_[i] = 2.f * sinf(M_PIf / 2.f * freq[i]);
+            a_[i] = 2.f * std::sin(dsp::constants<float>::pi / 2.f * freq[i]);
         }
     }
 
@@ -85,7 +86,7 @@ template <size_t N> class LFOParabolic
         for (size_t i = 0; i < N; ++i) {
             assert(freq[i] >= 0.f && freq[i] <= 1.f);
             // Scale frequency for fixed-point accumulation
-            freq_[i] = freq[i] * 4 * Unity;
+            freq_[i] = static_cast<int>(freq[i] * 4.f * float(Unity));
         }
     }
 

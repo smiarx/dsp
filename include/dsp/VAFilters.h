@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Context.h"
+#include "FastMath.h"
 #include "Signal.h"
 #include <cmath>
 
@@ -21,7 +22,10 @@ enum FilterType {
 
 template <size_t N> static constexpr fData<N> warpGain(fData<N> freq)
 {
-    arrayFor(freq, i) { freq[i] = tanf(M_PIf * freq[i] * 0.5f); }
+    arrayFor(freq, i)
+    {
+        freq[i] = tanf(dsp::constants<float>::pi * freq[i] * 0.5f);
+    }
     return freq;
 }
 
@@ -69,7 +73,7 @@ template <size_t N, FilterType FT = LowPass> class OnePole
         state = s;
     }
 
-    __PROCESSBLOCK__;
+    __PROCESSBLOCK__
 
     fData<N> getGain() const
     {
@@ -143,10 +147,11 @@ template <size_t N, FilterType FT = LowPass> class SVF
         {
             auto freqbwm = gain_[i] * powf(2.f, -bw[i] * 0.5f);
             auto freqbwp = gain_[i] * powf(2.f, bw[i] * 0.5f);
-            auto bwwarp =
-                logf(warpGain<1>({freqbwp})[0] / warpGain<1>({freqbwm})[0]) /
-                logf(2.f);
-            res[i] = pow(2.f, bwwarp * 0.5f) - pow(2.f, -bwwarp * 0.5);
+            auto bwwarp  = std::log(warpGain<1>({freqbwp})[0] /
+                                    warpGain<1>({freqbwm})[0]) /
+                          std::log(2.f);
+            res[i] =
+                std::pow(2.f, bwwarp * 0.5f) - std::pow(2.f, -bwwarp * 0.5f);
             res[i] *= 0.5f;
         }
         setRes(res);
@@ -203,7 +208,7 @@ template <size_t N, FilterType FT = LowPass> class SVF
         state[1].fromSIMD(s2);
     }
 
-    __PROCESSBLOCK__;
+    __PROCESSBLOCK__
 
   private:
     fData<N> gain_;
@@ -273,7 +278,7 @@ template <size_t N, FilterType FT = LowPass> class Ladder
         }
     }
 
-    __PROCESSBLOCK__;
+    __PROCESSBLOCK__
 
   private:
     fData<N> res_;

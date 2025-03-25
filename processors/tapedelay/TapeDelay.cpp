@@ -50,7 +50,8 @@ void TapeDelay::setDelay(float delay, int blockSize)
 void TapeDelay::setDrift(float drift, int blockSize)
 {
     drift_ = drift;
-    speedMod_.set({targetSpeed_ * drift * speedModAmp}, 1.f / blockSize);
+    speedMod_.set({targetSpeed_ * drift * speedModAmp},
+                  1.f / static_cast<float>(blockSize));
 }
 
 void TapeDelay::setCutLowPass(float cutlowpass, int /*blockSize*/)
@@ -69,7 +70,7 @@ void TapeDelay::setCutHiPass(float cuthighpass, int /*blockSize*/)
 
 void TapeDelay::setSaturation(float saturation, int blockSize)
 {
-    saturation_.set({saturation}, 1.f / blockSize);
+    saturation_.set({saturation}, 1.f / static_cast<float>(blockSize));
 
     // update feedback
     setFeedback(getFeedback(), blockSize);
@@ -87,11 +88,12 @@ void TapeDelay::setFeedback(float feedback, int blockSize)
         feedback = std::min(feedback, 1.f);
     }
 
-    feedbackCompensated_.set({feedback, feedback}, 1.f / blockSize);
+    feedbackCompensated_.set({feedback, feedback},
+                             1.f / static_cast<float>(blockSize));
 }
 void TapeDelay::setDryWet(float drywet, int blockSize)
 {
-    drywet_.set({drywet, drywet}, 1.f / blockSize);
+    drywet_.set({drywet, drywet}, 1.f / static_cast<float>(blockSize));
 }
 
 void TapeDelay::setMode(Mode mode, int /*blockSize*/)
@@ -162,7 +164,7 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
     return true;
 }
 
-float TapeDelay::moveTape()
+TapeDelay::TapePosition::position_t TapeDelay::moveTape()
 {
     // smooth speed;
     speed_ += (targetSpeed_ - speed_) * speedSmooth_;
@@ -182,7 +184,7 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 {
     contextFor(ctxt)
     {
-        float speed = moveTape();
+        auto speed = moveTape();
 
         if (!read<M>(c, tapId_, speed)) {
             return n + 1;

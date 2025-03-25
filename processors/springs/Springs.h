@@ -5,10 +5,13 @@
 #include "dsp/LinAlg.h"
 #include "dsp/MultiRate.h"
 #include "dsp/Noise.h"
-#include "dsp/RMS.h"
 #include "dsp/Smoother.h"
-#include "dsp/Stack.h"
 #include "dsp/VAFilters.h"
+
+#ifdef SPRINGS_RMS
+#include "dsp/RMS.h"
+#include "dsp/Stack.h"
+#endif
 
 namespace processors
 {
@@ -20,7 +23,7 @@ class Springs
 
     static constexpr auto MaxBlockSize = 512;
     static constexpr auto MaxDecimate  = 8;
-    static constexpr int LoopLength    = 0.25 * 48000;
+    static constexpr int LoopLength    = static_cast<int>(0.25 * 48000);
     static constexpr auto CascadeL     = 160;
 
     static constexpr auto DecimateMaxFreq = 0.78f;
@@ -41,7 +44,7 @@ class Springs
     static constexpr float freqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr float RFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr float loopTdFactor[] = {
-        0.8293183583208989, 1.1876863056468745, 0.94273342, 1.2432815625};
+        0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
     static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
     static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
     static constexpr float loopRippleGain  = 0.016f;
@@ -93,7 +96,7 @@ class Springs
     void setScatter(float scatter, int blockSize);
     void setDryWet(float drywet, int blockSize)
     {
-        drywet_.set({drywet}, 1.f / blockSize);
+        drywet_.set({drywet}, 1.f / static_cast<float>(blockSize));
     }
     void setWidth(float width, int blockSize);
 
@@ -214,7 +217,7 @@ class Springs
 template <class ReAlloc>
 void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
-    sampleRate_ = sampleRate;
+    sampleRate_   = sampleRate;
     freqScale_    = 2.f / sampleRate;
     maxBlockSize_ = std::min(blockSize, MaxBlockSize);
 
@@ -233,7 +236,7 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
         sizeof(dsp::fSample<N>) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
 
     // set buffers
-#define allocateBuffer(buffer)                                     \
+#define allocateBuffer(buffer)                                \
     {                                                         \
         auto *b = buffer.getBuffer();                         \
         constexpr auto size =                                 \

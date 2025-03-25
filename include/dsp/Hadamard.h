@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FastMath.h"
 #include "LinAlg.h"
 #include "Utils.h"
 #include <cmath>
@@ -44,8 +45,7 @@ Sample<F, N> hadamard(Sample<F, N> x)
         x[i] *= powerNorm;
     }
 
-    return _hadamard<F,N,H>(x);
-
+    return _hadamard<F, N, H>(x);
 }
 
 template <size_t N>
@@ -140,7 +140,7 @@ static inline linalg::fMatrix<N> hadamardInterpolMatrix(float t)
         {-0.25f, 0.25f, 0.25f, 0.25f},
     }}};
 
-    constexpr auto v1_2  = M_SQRT1_2f;
+    constexpr auto v1_2  = constants<float>::sqrt1_2;
     constexpr auto v1_8  = 0.5f * v1_2;
     linalg::fMatrix<N> C = {{{
         {0.f, v1_8, -v1_8, 0.f},
@@ -151,8 +151,8 @@ static inline linalg::fMatrix<N> hadamardInterpolMatrix(float t)
 
     linalg::fMatrix<N> H{};
 
-    auto c = cosf(M_PIf * t);
-    auto s = sinf(M_PIf * t);
+    auto c = cosf(dsp::constants<float>::pi * t);
+    auto s = sinf(dsp::constants<float>::pi * t);
 #pragma omp simd
     for (size_t j = 0; j < N; ++j) {
         for (size_t i = 0; i < N; ++i) {

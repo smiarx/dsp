@@ -73,7 +73,7 @@ template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
 class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
 {
   public:
-    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate(cutoff) {};
+    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate(cutoff) {}
 
     using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
     using Base = typename Next::Base;

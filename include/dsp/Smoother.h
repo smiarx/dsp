@@ -31,7 +31,7 @@ template <size_t N = 1, bool Vectorize = false> class ControlSmoother
             inFor(value_, k, i)
             {
                 auto step = (target_[i] - value_[k][i]) * invBlockSize;
-                value_[k][i] -= step * (VecSize - 1 - k);
+                value_[k][i] -= step * static_cast<float>(VecSize - 1 - k);
                 step_[k][i] = step * VecSize;
             }
             active_ = true;
@@ -58,8 +58,8 @@ template <size_t N = 1, bool Vectorize = false> class ControlSmoother
 
   private:
     Type target_{0.f};
-    OutType value_{0.f};
-    OutType step_{0.f};
+    OutType value_{};
+    OutType step_{};
     bool active_{false};
 };
 
@@ -89,8 +89,9 @@ template <size_t N> class SmootherLin
 
     void set(fData<N> target, int count)
     {
+        auto fcount = static_cast<float>(count);
         for (size_t i = 0; i < N; ++i) {
-            step_[i] = (target[i] - value_[i]) / count;
+            step_[i] = (target[i] - value_[i]) / fcount;
             count_   = count;
         }
     }

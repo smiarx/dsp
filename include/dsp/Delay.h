@@ -209,7 +209,7 @@ struct TapTail {
 
 /* help function */
 template <class Ctxt, class DL, class T>
-void _fixread(Ctxt c, const DL &delayline, T &x, int i)
+void _fixread(Ctxt /*c*/, const DL & /*delayline*/, T & /*x*/, int /*i*/)
 {
 }
 template <class Ctxt, class DL, class T, int D, int... Ds>
@@ -275,7 +275,7 @@ template <size_t N> class TapLin : public TapNoInterp<N>
             fd_[i] = d[i] - static_cast<float>(id[i]);
         }
         TapNoInterp<N>::setDelay(id);
-    };
+    }
 
     void setDelay(iData<N> d, fData<N> fd)
     {

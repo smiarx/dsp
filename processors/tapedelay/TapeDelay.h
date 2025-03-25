@@ -27,7 +27,8 @@ class TapeDelay
 
     static constexpr auto KernelSize = 4;
 
-    static constexpr size_t DelayBufSize = DefaultSampleRate * MaxDelay;
+    static constexpr auto DelayBufSize =
+        static_cast<size_t>(DefaultSampleRate * MaxDelay);
 
     // lookup table for cross fading between two taps
     static constexpr auto FadeSize = 2048;
@@ -37,8 +38,9 @@ class TapeDelay
         FadeLut()
         {
             for (size_t n = 0; n < FadeSize; ++n) {
-                (*this)[n] =
-                    dsp::window::Hann::generate((n + 1.f) / (FadeSize + 1.f));
+                float x =
+                    (static_cast<float>(n) + 1.f) / (float(FadeSize) + 1.f);
+                (*this)[n] = dsp::window::Hann::generate(x);
             }
         }
     };
@@ -114,7 +116,7 @@ class TapeDelay
     TapTape tapTape_[2];
     TapTape tapReverse_;
     TapePosition::position_t reverseDist_[2]{0, 0};
-    size_t tapId_{0};
+    int tapId_{0};
     int fadePos_{-1};
 
     // switch tape width mode
@@ -124,7 +126,7 @@ class TapeDelay
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
     // move tape function
-    float moveTape();
+    TapePosition::position_t moveTape();
 
     dsp::DelayLine<DelayBufSize / 3> delaylineReverse_;
     dsp::DelayLine<DelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;
@@ -167,7 +169,8 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     freqScale_     = 2.f * invSampleRate_;
     maxBlockSize_  = std::min(blockSize, MaxBlockSize);
 
-    speedSmooth_ = 1.f - powf(0.001, 1.f / speedSmoothTime * invSampleRate_);
+    speedSmooth_ =
+        1.f - std::pow(0.001f, 1.f / speedSmoothTime * invSampleRate_);
 
     speedLFO_.setFreq({freqScale_ * speedModFreq});
 

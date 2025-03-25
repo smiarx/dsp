@@ -18,7 +18,7 @@ template <int A, class Window> class Sinc
     static constexpr auto Size = A;
     static constexpr auto generate(float x)
     {
-        auto xpi = x * M_PIf;
+        auto xpi = x * dsp::constants<float>::pi;
         return sinf(xpi) / (xpi)*Window::generate(x / A);
     }
 };
@@ -30,7 +30,7 @@ template <int A> class Lanczos
     static constexpr auto Size = A;
     static constexpr auto generate(float x)
     {
-        auto xpi = x * M_PIf;
+        auto xpi = x * dsp::constants<float>::pi;
         return sinf(xpi) * sinf(xpi / A) / (xpi * xpi) * A;
     }
 };
@@ -78,7 +78,7 @@ class TapKernel : public TapLin<1>
         {
             // prepare convolution kernel
             Lut<KernelType, LutSize>::fill([](float x) -> auto {
-                KernelType kernels = {{0.f}};
+                KernelType kernels = {};
                 if (fabs(x) < 1e-7) {
                     for (size_t i = 0; i < N; ++i) {
                         kernels[idFromKernel(0)][i] = 1.f;
@@ -89,7 +89,7 @@ class TapKernel : public TapLin<1>
                     }
                 } else {
                     for (size_t id = 0; id < FilterWidth; ++id) {
-                        auto k     = kernelFromId(id);
+                        auto k     = static_cast<float>(kernelFromId(id));
                         auto value = Kernel::generate(-k - x);
                         for (size_t i = 0; i < N; ++i) {
                             kernels[id][i] = value;
@@ -110,15 +110,21 @@ class TapKernel : public TapLin<1>
         Last  = A - 1,
     };
 
-    static constexpr int kernelFromId(int id) { return First + id; }
-    static constexpr int idFromKernel(int k) { return k - First; }
+    static constexpr int kernelFromId(size_t id)
+    {
+        return First + static_cast<int>(id);
+    }
+    static constexpr size_t idFromKernel(int k)
+    {
+        return static_cast<size_t>(k - First);
+    }
 
   public:
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline)
     {
         static_assert(Ctxt::VecSize == 1);
 
-        typename Ctxt::Type x = {{0.f}};
+        typename Ctxt::Type x = {};
 
         auto idelay = TapNoInterp<1>::id_[0];
         auto fdelay = TapLin<1>::fd_[0];
@@ -128,15 +134,15 @@ class TapKernel : public TapLin<1>
         constexpr auto VecSize = Ctxt::BaseType::VectorSize;
         for (size_t l = 0; l < FilterWidth - FilterWidth % VecSize;
              l += VecSize) {
-            auto points =
-                delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
+            auto delay  = idelay - kernelFromId(l);
+            auto points = delayline.read(c, delay)[0].toVector();
             inFor(points, k, i) { points[k][i] *= kernels[l + k][i]; }
             inFor(points, k, i) { x[0][i] += points[k][i]; }
         }
         for (size_t l = FilterWidth - FilterWidth % VecSize; l < FilterWidth;
              ++l) {
-            auto point =
-                delayline.read(c, idelay - (kernelFromId(l)))[0].toVector();
+            auto delay = idelay - kernelFromId(l);
+            auto point = delayline.read(c, delay)[0].toVector();
             arrayFor(point[0], i) { x[0][i] += point[0][i] * kernels[l][i]; }
         }
 

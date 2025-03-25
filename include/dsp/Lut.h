@@ -43,13 +43,13 @@ template <typename T, size_t Size> class Lut
 
         x += fpos * dx;
         return x;
-    };
+    }
 
     template <typename Float> auto read(Float pos) const
     {
         pos *= Size;
         auto ipos = static_cast<int>(pos);
-        auto fpos = pos - ipos;
+        auto fpos = pos - static_cast<float>(ipos);
 
         // ipos between 0 and Size
         ipos &= static_cast<int>(Mask);
@@ -59,10 +59,10 @@ template <typename T, size_t Size> class Lut
 
         x += dx * fpos;
         return x;
-    };
+    }
 
   private:
     /* Lookup table */
-    T table_[Size][2] = {{0.f}};
+    T table_[Size][2] = {};
 };
 } // namespace dsp

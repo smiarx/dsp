@@ -40,10 +40,10 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
 void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
-    int M           = DecimateMaxFreq / freqScaled;
+    auto M          = static_cast<int>(DecimateMaxFreq / freqScaled);
     M               = std::min(M, MaxDecimate);
 
-    freqScaled *= M;
+    freqScaled *= static_cast<float>(M);
     dsp::fData<N> freqs;
     dsp::fData<NAP> freqsAP;
     for (size_t i = 0; i < N; ++i) {
@@ -79,12 +79,12 @@ void Springs::setFreq(float freq, int blockSize)
     freq_    = freq;
 
     if (M != oldM) {
-
-        auto eqPeak = EQPeak * freqScale_ * M;
+        auto fM     = static_cast<float>(M);
+        auto eqPeak = EQPeak * freqScale_ * fM;
         eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});
         eq_.setBandWidth({EQBandWidth, EQBandWidth, EQBandWidth, EQBandWidth});
 
-        auto dcblockfreq = DCBlockFreq * freqScale_ * M;
+        auto dcblockfreq = DCBlockFreq * freqScale_ * fM;
         dcblocker_.setFreq(
             {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
 
@@ -111,7 +111,8 @@ void Springs::setRes(float R, int /*blockSize*/)
     /* if abs(R) smaller than a certain value, reduce the cascade size
      * this helps to avoid long ringing around allpass phasing frequency */
     if (std::abs(R) < MinRWithMaxCascadeL) {
-        apNStages_ = std::abs(R) / MinRWithMaxCascadeL * APCascadeL;
+        apNStages_ = static_cast<unsigned int>(
+            std::abs(R) / MinRWithMaxCascadeL * APCascadeL);
     } else {
         apNStages_ = APCascadeL;
     }
@@ -123,7 +124,7 @@ void Springs::setTd(float Td, int blockSize)
     dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
     dsp::fSample<N> loopTd;
-    float sampleTd = Td * sampleRate_ / M_;
+    float sampleTd = Td * sampleRate_ / static_cast<float>(M_);
     for (size_t i = 0; i < N; ++i) {
         auto loopFactor = 1.f + (loopTdFactor[i] - 1.f) * getScatterFactor();
         loopTd[i]       = sampleTd * loopFactor;
@@ -131,14 +132,14 @@ void Springs::setTd(float Td, int blockSize)
         loopModAmp_[i]   = loopTd[i] * loopModFactor[i];
         loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos_, 2.5f);
 
-        loopEchoT[i] = loopTd[i] / 5.f;
+        loopEchoT[i] = static_cast<int>(loopTd[i] / 5.f);
 
-        predelayT[i] = loopTd[i] * 0.5f;
+        predelayT[i] = static_cast<int>(loopTd[i] * .5f);
 
-        loopTd[i] -= loopEchoT[i];
+        loopTd[i] -= static_cast<float>(loopEchoT[i]);
     }
 
-    loopTd_.set(loopTd, M_ / static_cast<float>(blockSize));
+    loopTd_.set(loopTd, static_cast<float>(M_) / static_cast<float>(blockSize));
 
     predelay_.setDelay(predelayT);
     ap1_.setDelay(loopEchoT);
@@ -168,13 +169,13 @@ void Springs::setDiffusion(float dif, int blockSize)
 void Springs::setT60(float T60, int /*blockSize*/)
 {
     T60_      = T60;
-    loopGain_ = -powf(0.001, Td_ / T60_);
+    loopGain_ = -powf(0.001f, Td_ / T60_);
 }
 
 void Springs::setWidth(float width, int /*blockSize*/)
 {
     width_     = width;
-    auto theta = M_PIf / 4.f * (1.f - width_);
+    auto theta = dsp::constants<float>::pi / 4.f * (1.f - width_);
     widthcos_  = cosf(theta);
     widthsin_  = sinf(theta);
 }
@@ -202,7 +203,7 @@ void Springs::process(const float *const *__restrict in,
     for (size_t i = 0; i < N; ++i) {
         noise[i] *= loopChaosMod_[i];
     }
-    loopChaos_.set(noise, sampleRate_ * 0.05f);
+    loopChaos_.set(noise, static_cast<int>(sampleRate_ * 0.05f));
 
     while (count) {
 

@@ -23,12 +23,14 @@ template <int Attenuation> class Kaiser
 
     template <typename F> static constexpr F computeBeta(int Att)
     {
+        auto fAtt = static_cast<F>(Att);
         if (Att < 21) {
-            return 0;
+            return F(0);
         } else if (Att < 50) {
-            return pow(0.5842 * (Att - 21), 0.4) + 0.07886 * (Att - 21);
+            return std::pow(F(0.5842) * (fAtt - F(21)), F(0.4)) +
+                   F(0.07886) * (fAtt - F(21));
         } else {
-            return 0.1102 * (Att - 8.7);
+            return F(0.1102) * (fAtt - F(8.7));
         }
     }
 };
@@ -39,7 +41,7 @@ class Hann
     Hann() = delete;
     template <typename F> static constexpr auto generate(F x)
     {
-        return 0.5f + 0.5f * cosf(M_PI * x);
+        return F(0.5) + F(0.5) * std::cos(constants<F>::pi * x);
     }
 };
 

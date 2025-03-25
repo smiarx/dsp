@@ -95,14 +95,14 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
         dsp::fSample<N> x;
         for (size_t n = 0; n < PrepareSize; ++n) {
             for (size_t i = 0; i < N; ++i) {
-                x[i] = sin(M_PIf * f * n);
+                x[i] = sin(dsp::constants<float>::pi * f * n);
             }
             ap.process(dsp::Context(&x, 1), apstate);
         }
 
         for (size_t n = PrepareSize; n < PrepareSize + TestSize; ++n) {
             for (size_t i = 0; i < N; ++i) {
-                x[i] = sin(M_PIf * f * n);
+                x[i] = sin(dsp::constants<float>::pi * f * n);
             }
             auto x0 = x;
             ap.process(dsp::Context(&x, 1), apstate);
@@ -134,7 +134,7 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
         dsp::fSample<N> x[Size];
         for (size_t n = 0; n < Size; ++n) {
             for (size_t i = 0; i < N; ++i) {
-                x[n][i] = sin(M_PIf * f * n);
+                x[n][i] = sin(dsp::constants<float>::pi * f * n);
             }
         }
 
@@ -166,7 +166,7 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
     //        dsp::fSample<N> x[Size];
     //        for (size_t n = 0; n < Size; ++n) {
     //            for (size_t i = 0; i < N; ++i) {
-    //                x[n][i] = sin(M_PIf * sinefreq * n);
+    //                x[n][i] = sin(dsp::constants<float>::pi * sinefreq * n);
     //            }
     //        }
     //

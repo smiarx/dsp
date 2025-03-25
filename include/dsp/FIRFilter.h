@@ -52,7 +52,7 @@ template <size_t N, size_t Order> class FIRFilter
     {
         auto &x = c.getSignal();
 
-        typename Ctxt::Type sums[Ctxt::VecSize] = {0};
+        typename Ctxt::Type sums[Ctxt::VecSize] = {};
 
         for (auto j = 0; j < NCoeff + Ctxt::VecSize - 1; ++j) {
             auto n        = j % Ctxt::VecSize;
@@ -82,7 +82,7 @@ template <size_t N, size_t Order> class FIRFilter
     }
 
   private:
-    fSample<N> b_[PaddedLength] = {0};
+    fSample<N> b_[PaddedLength] = {};
 };
 
 template <size_t N, size_t Order, size_t M> class FIRDecimate
@@ -104,9 +104,10 @@ template <size_t N, size_t Order, size_t M> class FIRDecimate
             for (size_t i = 0; i < N; ++i) {
                 auto mid  = NCoeff / 2.f;
                 auto freq = cutoff / M;
+                float fn  = static_cast<float>(n);
                 b_[PaddedLength - Pad - n][i] =
-                    window::Kaiser<140>::generate((n - mid) / (mid)) *
-                    sinc((n - mid) * freq) * freq;
+                    window::Kaiser<140>::generate((fn - mid) / (mid)) *
+                    sinc((fn - mid) * freq) * freq;
             }
         }
     }
@@ -126,11 +127,13 @@ template <size_t N, size_t Order, size_t M> class FIRDecimate
 
             size_t xOffset = (M - id) % M;
             while (xOffset < CtxtIn::VecSize) {
-                typename CtxtIn::Type sum = {0};
+                typename CtxtIn::Type sum = {};
 
                 for (size_t delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                      delay += CtxtIn::VecSize) {
-                    auto &x0 = delay == 0 ? x : delayline.read(c, delay);
+                    auto &x0 = delay == 0
+                                   ? x
+                                   : delayline.read(c, static_cast<int>(delay));
                     const auto &b =
                         b_[PaddedLength - Pad - delay - xOffset].toVector();
 
@@ -165,7 +168,7 @@ template <size_t N, size_t Order, size_t M> class FIRDecimate
     }
 
   private:
-    fSample<N> b_[PaddedLength] = {0};
+    fSample<N> b_[PaddedLength] = {};
 };
 
 /*
@@ -202,9 +205,10 @@ template <size_t N, size_t Order, size_t L> class FIRInterpolate
                     auto freq = cutoff / L;
                     auto mid  = NCoeff * L / 2.f;
                     auto k    = l + n * L;
+                    auto fk   = static_cast<float>(k);
                     b_[l][PaddedLength - Pad - n][i] =
-                        window::Kaiser<140>::generate((k - mid) / (mid)) *
-                        sinc((k - mid) * freq) * cutoff;
+                        window::Kaiser<140>::generate((fk - mid) / (mid)) *
+                        sinc((fk - mid) * freq) * cutoff;
                 }
             }
         }
@@ -227,7 +231,7 @@ template <size_t N, size_t Order, size_t L> class FIRInterpolate
                 cin.next();
             }
 
-            typename CtxtIn::Type sum = {0};
+            typename CtxtIn::Type sum = {};
 
             for (size_t delay = 0; delay < NCoeff + CtxtIn::VecSize - 1;
                  delay += CtxtIn::VecSize) {
@@ -235,7 +239,7 @@ template <size_t N, size_t Order, size_t L> class FIRInterpolate
                 // a problem because CopyDelayLine index changes after each
                 // write whereas Buffer Delay Line changes with new context...
                 // we will see in the future
-                auto &x0      = delayline.read(c, delay + 1);
+                auto &x0      = delayline.read(c, static_cast<int>(delay + 1));
                 const auto &b = b_[id][PaddedLength - Pad - delay].toVector();
 
 #pragma omp simd
@@ -262,7 +266,7 @@ template <size_t N, size_t Order, size_t L> class FIRInterpolate
     }
 
   private:
-    fSample<N> b_[L][PaddedLength] = {0};
+    fSample<N> b_[L][PaddedLength] = {};
 };
 
 } // namespace dsp
