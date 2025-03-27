@@ -2,7 +2,6 @@
 
 #include "dsp/AllPass.h"
 #include "dsp/LFO.h"
-#include "dsp/LinAlg.h"
 #include "dsp/MultiRate.h"
 #include "dsp/Noise.h"
 #include "dsp/Smoother.h"

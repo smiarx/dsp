@@ -1,5 +1,5 @@
 #include "Springs.h"
-#include "dsp/Hadamard.h"
+#include "dsp/Orthogonal.h"
 
 namespace processors
 {
@@ -269,8 +269,8 @@ void Springs::process(const float *const *__restrict in,
                 ap1_.process(apctxt, ap1dl_);
             }
 
-            // mixing matrix (hadamard);
-            arrayFor(loop, k) { loop[k] = mixMatrix_.mult(loop[k]); }
+            // householder transform
+            arrayFor(loop, k) { loop[k] = dsp::householder(loop[k]); }
 
             loopRippleDL_.write(c, loop);
             auto loopRipple = dsp::TapTail{}.read(c, loopRippleDL_);
