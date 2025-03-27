@@ -77,7 +77,7 @@ class Springs
     void free(Free free = std::free);
 
     // getters
-    float getDryWet() const { return drywet_.getTarget()[0]; }
+    float getDryWet() const { return drywet_; }
     float getWidth() const { return width_; }
     float getFreq() const { return freq_; }
     float getR() const { return R_; }
@@ -94,10 +94,7 @@ class Springs
     void setT60(float T60, int blockSize);
     void setDiffusion(float dif, int blockSize);
     void setScatter(float scatter, int blockSize);
-    void setDryWet(float drywet, int blockSize)
-    {
-        drywet_.set({drywet}, 1.f / static_cast<float>(blockSize));
-    }
+    void setDryWet(float drywet, int blockSize);
     void setWidth(float width, int blockSize);
 
     // update
@@ -115,7 +112,7 @@ class Springs
     float freqScale_{2.f / 48000.f};
     int maxBlockSize_{};
 
-    dsp::ControlSmoother<1> drywet_{{1.f}};
+    float drywet_{0.f};
     float width_{1.f};
     float R_{0.f};
     float freq_{0.f};
@@ -125,7 +122,8 @@ class Springs
     float chaos_{0.f};
     float scatter_{1.f};
 
-    float widthcos_{1.f}, widthsin_{0.f};
+    dsp::ControlSmoother<1> dry_{{1.f}};
+    dsp::ControlSmoother<2> wet_{{}};
 
     static constexpr auto diffScatterFactor = 0.22f;
     static constexpr auto minScatter        = 0.1f;

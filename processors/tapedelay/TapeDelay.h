@@ -75,7 +75,7 @@ class TapeDelay
     float getCutHiPass() const { return cuthighpass_; }
     float getSaturation() const { return saturation_.getTarget()[0]; }
     float getFeedback() const { return feedback_; }
-    float getDryWet() const { return drywet_.getTarget()[0]; }
+    float getDryWet() const { return drywet_; }
 
     // setters
     void setDelay(float delay, int blockSize);
@@ -101,7 +101,9 @@ class TapeDelay
     float delay_{0.f};
     float feedback_{0.f};
     dsp::ControlSmoother<2, true> feedbackCompensated_{{0.f, 0.f}};
-    dsp::ControlSmoother<2, true> drywet_{{0.f, 0.f}};
+    float drywet_{0.f};
+    dsp::ControlSmoother<2> dry_{{1.f, 1.f}};
+    dsp::ControlSmoother<2> wet_{{0.f, 0.f}};
 
     // tape movement
     using TapePosition = dsp::TapePosition<DelayBufSize>;

@@ -93,7 +93,12 @@ void TapeDelay::setFeedback(float feedback, int blockSize)
 }
 void TapeDelay::setDryWet(float drywet, int blockSize)
 {
-    drywet_.set({drywet, drywet}, 1.f / static_cast<float>(blockSize));
+    drywet_            = drywet;
+    float dry          = std::cos(dsp::constants<float>::pi_2 * drywet);
+    float wet          = std::sin(dsp::constants<float>::pi_2 * drywet);
+    float invBlockSize = 1.f / static_cast<float>(blockSize);
+    dry_.set({dry, dry}, invBlockSize);
+    wet_.set({wet, wet}, invBlockSize);
 }
 
 void TapeDelay::setMode(Mode mode, int /*blockSize*/)
@@ -314,12 +319,13 @@ void TapeDelay::process(const float *const *__restrict in,
 
             inFor(xin, k, i) { xin[k][i] = *localin[i]++; }
 
-            drywet_.step();
-            auto drywet = drywet_.get();
+            dry_.step();
+            wet_.step();
+            auto dry = dry_.get();
+            auto wet = wet_.get();
             inFor(xin, k, i)
             {
-                *localout[i]++ =
-                    xin[k][i] + drywet[k][i] * (loop[k][i] - xin[k][i]);
+                *localout[i]++ = xin[k][i] * dry[k][i] + loop[k][i] * wet[k][i];
             }
 
             feedbackCompensated_.step();
@@ -344,7 +350,8 @@ void TapeDelay::process(const float *const *__restrict in,
         count -= blockSize;
     }
 
-    drywet_.reset();
+    dry_.reset();
+    wet_.reset();
     feedbackCompensated_.reset();
     speedMod_.reset();
     if (saturation_.isActive()) {

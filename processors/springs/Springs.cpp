@@ -34,7 +34,9 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
     if (scatter_ != scatter) {
         setScatter(scatter, blockSize);
     }
-    setDryWet(drywet, blockSize);
+    if (drywet != drywet_) {
+        setDryWet(drywet, blockSize);
+    }
 }
 
 void Springs::setFreq(float freq, int blockSize)
@@ -172,12 +174,26 @@ void Springs::setT60(float T60, int /*blockSize*/)
     loopGain_ = -powf(0.001f, Td_ / T60_);
 }
 
-void Springs::setWidth(float width, int /*blockSize*/)
+void Springs::setWidth(float width, int blockSize)
 {
-    width_     = width;
-    auto theta = dsp::constants<float>::pi / 4.f * (1.f - width_);
-    widthcos_  = cosf(theta);
-    widthsin_  = sinf(theta);
+    width_          = width;
+    auto theta      = dsp::constants<float>::pi_4 * (1.f - width_);
+    auto wet        = std::sin(dsp::constants<float>::pi_2 * drywet_);
+    auto wetchannel = std::cos(theta) * wet;
+    auto wetcross   = std::sin(theta) * wet;
+
+    float invBlockSize = 1.f / static_cast<float>(blockSize);
+    wet_.set({wetchannel, wetcross}, invBlockSize);
+}
+
+void Springs::setDryWet(float drywet, int blockSize)
+{
+    drywet_            = drywet;
+    float invBlockSize = 1.f / static_cast<float>(blockSize);
+    float dry          = std::cos(dsp::constants<float>::pi_2 * drywet);
+    dry_.set({dry}, invBlockSize);
+
+    setWidth(width_, blockSize);
 }
 
 void Springs::setScatter(float scatter, int blockSize)
@@ -341,14 +357,16 @@ void Springs::process(const float *const *__restrict in,
             mix[0] *= 2.f / N;
             mix[1] *= 2.f / N;
 
-            float wet[2];
-            wet[0] = widthcos_ * mix[0] + widthsin_ * mix[1];
-            wet[1] = widthcos_ * mix[1] + widthsin_ * mix[0];
+            float wetsig[2];
+            wet_.step();
+            auto wet  = wet_.get()[0];
+            wetsig[0] = wet[0] * mix[0] + wet[1] * mix[1];
+            wetsig[1] = wet[0] * mix[1] + wet[1] * mix[0];
 
-            drywet_.step();
-            auto drywet = drywet_.get()[0][0];
-            *outl       = *inl2 + drywet * (wet[0] - *inl2);
-            *outr       = *inr2 + drywet * (wet[1] - *inr2);
+            dry_.step();
+            auto dry = dry_.get()[0][0];
+            *outl    = *inl2 * dry + wetsig[0];
+            *outr    = *inr2 * dry + wetsig[1];
             ++outl, ++inl2;
             ++outr, ++inr2;
         }
@@ -363,7 +381,8 @@ void Springs::process(const float *const *__restrict in,
         count -= blockSize;
     }
 
-    drywet_.reset();
+    dry_.reset();
+    wet_.reset();
     loopTd_.reset();
 }
 } // namespace processors
