@@ -44,4 +44,9 @@ template <typename F> static constexpr auto db2gain(F db)
     return powf(F(10), db / F(20));
 }
 
+template <typename F> static constexpr auto expScale(F min, F max, F x)
+{
+    return min * std::pow(max / min, x);
+}
+
 } // namespace dsp

@@ -29,7 +29,6 @@ class Springs
     static constexpr auto DecimateMaxFreq = 0.78f;
     static constexpr auto DCBlockFreq     = 10.f;
 
-    static constexpr auto EQPeak      = 100.f;
     static constexpr auto EQBandWidth = 5.f;
 
     static constexpr auto LowPassRes = 0.6f;
@@ -38,8 +37,10 @@ class Springs
 
     static constexpr auto NonLinearityGain = 0.2f;
 
-    static constexpr auto APDiffMax = 0.5f;
-    static constexpr auto APDiffMin = 0.08f;
+    static constexpr auto ToneMin = 80.f;
+    static constexpr auto ToneMax = 5000.f;
+
+    static constexpr auto loopEchoAp = 0.12f;
 
     static constexpr float freqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr float RFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
@@ -84,7 +85,7 @@ class Springs
     float getTd() const { return Td_; }
     float getChaos() const { return chaos_; }
     float getT60() const { return T60_; }
-    float getDiffusion() const { return diffusion_; }
+    float getTone() const { return tone_; }
 
     // setters
     void setFreq(float freq, int blockSize);
@@ -92,13 +93,13 @@ class Springs
     void setTd(float Td, int blockSize);
     void setChaos(float chaos, int blockSize);
     void setT60(float T60, int blockSize);
-    void setDiffusion(float dif, int blockSize);
+    void setTone(float tone, int blockSize);
     void setScatter(float scatter, int blockSize);
     void setDryWet(float drywet, int blockSize);
     void setWidth(float width, int blockSize);
 
     // update
-    void update(float R, float freq, float Td, float T60, float diffusion,
+    void update(float R, float freq, float Td, float T60, float tone,
                 float chaos, float scatter, float width, float drywet,
                 int blockSize);
 
@@ -118,20 +119,15 @@ class Springs
     float freq_{0.f};
     float Td_{0.f};
     float T60_{0.f};
-    float diffusion_{0.f};
+    float tone_{0.f};
     float chaos_{0.f};
     float scatter_{1.f};
 
     dsp::ControlSmoother<1> dry_{{1.f}};
     dsp::ControlSmoother<2> wet_{{}};
 
-    static constexpr auto diffScatterFactor = 0.22f;
-    static constexpr auto minScatter        = 0.1f;
-    auto getScatterFactor() const
-    {
-        return minScatter + scatter_ +
-               (diffusion_ * diffScatterFactor) * (1 - scatter_);
-    }
+    static constexpr auto minScatter = 0.1f;
+    auto getScatterFactor() const { return minScatter + scatter_; }
 
     // allpass
     dsp::AllPass2<NAP> allpass_{};
@@ -182,10 +178,9 @@ class Springs
 
     dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
-    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{{}};
+    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{
+        {loopEchoAp, loopEchoAp, loopEchoAp, loopEchoAp}};
     dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
-
-    dsp::linalg::fMatrix<N> mixMatrix_;
 
     static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
     dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;

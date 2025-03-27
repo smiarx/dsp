@@ -2,8 +2,8 @@ Springs : MultiOutUGen
 {
     *ar
     {
-        arg inputArray, r=0.75, freq=2500, td=0.05, t60=3.5, diffusion=0, chaos=0.0, scatter=1, width=1, drywet=1;
-        ^this.multiNewList(['audio',r,freq,td,t60,diffusion,chaos,scatter,width,drywet]++ inputArray.asArray);
+        arg inputArray, r=0.75, freq=2500, td=0.05, t60=3.5, tone=0, chaos=0.0, scatter=1, width=1, drywet=1;
+        ^this.multiNewList(['audio',r,freq,td,t60,tone,chaos,scatter,width,drywet]++ inputArray.asArray);
     }
 
     checkInputs

@@ -6,7 +6,7 @@ namespace processors
 // multirate converter
 static const Springs::MRs multirates{Springs::DecimateMaxFreq};
 
-void Springs::update(float R, float freq, float Td, float T60, float diffusion,
+void Springs::update(float R, float freq, float Td, float T60, float tone,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
 {
@@ -25,8 +25,8 @@ void Springs::update(float R, float freq, float Td, float T60, float diffusion,
     if (T60 != T60_) {
         setT60(T60, blockSize);
     }
-    if (diffusion != diffusion_) {
-        setDiffusion(diffusion, blockSize);
+    if (tone != tone_) {
+        setTone(tone, blockSize);
     }
     if (width != width_) {
         setWidth(width, blockSize);
@@ -81,16 +81,14 @@ void Springs::setFreq(float freq, int blockSize)
     freq_    = freq;
 
     if (M != oldM) {
-        auto fM     = static_cast<float>(M);
-        auto eqPeak = EQPeak * freqScale_ * fM;
-        eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});
-        eq_.setBandWidth({EQBandWidth, EQBandWidth, EQBandWidth, EQBandWidth});
+        auto fM = static_cast<float>(M);
 
         auto dcblockfreq = DCBlockFreq * freqScale_ * fM;
         dcblocker_.setFreq(
             {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
 
         setTd(Td_, blockSize);
+        setTone(tone_, blockSize);
     }
 }
 
@@ -155,17 +153,15 @@ void Springs::setChaos(float chaos, int blockSize)
     setTd(Td_, blockSize);
 }
 
-void Springs::setDiffusion(float dif, int blockSize)
+void Springs::setTone(float tone, int /*blockSize*/)
 {
-    diffusion_ = dif;
+    tone_ = tone;
 
-    auto apdif = APDiffMin + dif * (APDiffMax - APDiffMin);
-    ap1_.setCoeff({-apdif, -apdif, -apdif, -apdif});
-
-    mixMatrix_ = dsp::hadamardInterpolMatrix<N>(dif);
-    setTd(Td_, blockSize);
-    setFreq(freq_, blockSize);
-    setRes(R_, blockSize);
+    auto eqPeak = dsp::expScale(ToneMin, ToneMax, tone) * freqScale_ * M_;
+    static constexpr auto maxEqPeak = 0.95f;
+    eqPeak                          = std::min(maxEqPeak, eqPeak);
+    eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});
+    eq_.setBandWidth({EQBandWidth, EQBandWidth, EQBandWidth, EQBandWidth});
 }
 
 void Springs::setT60(float T60, int /*blockSize*/)

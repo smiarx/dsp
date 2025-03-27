@@ -139,19 +139,21 @@ template <size_t N, FilterType FT = LowPass> class SVF
     }
 
     /* -3db bandwidth in octave */
-    void setBandWidth(fData<N> bw)
+    template <bool PreWarp = false> void setBandWidth(fData<N> bandwith)
     {
         static_assert(FT == BandPass);
         fData<N> res;
-        arrayFor(bw, i)
+        arrayFor(bandwith, i)
         {
-            auto freqbwm = gain_[i] * powf(2.f, -bw[i] * 0.5f);
-            auto freqbwp = gain_[i] * powf(2.f, bw[i] * 0.5f);
-            auto bwwarp  = std::log(warpGain<1>({freqbwp})[0] /
-                                    warpGain<1>({freqbwm})[0]) /
-                          std::log(2.f);
-            res[i] =
-                std::pow(2.f, bwwarp * 0.5f) - std::pow(2.f, -bwwarp * 0.5f);
+            auto bw = bandwith[i];
+            if constexpr (PreWarp) {
+                auto freqbwm = gain_[i] * powf(2.f, -bw * 0.5f);
+                auto freqbwp = gain_[i] * powf(2.f, bw * 0.5f);
+                bw           = std::log(warpGain<1>({freqbwp})[0] /
+                                        warpGain<1>({freqbwm})[0]) /
+                     std::log(2.f);
+            }
+            res[i] = std::pow(2.f, bw * 0.5f) - std::pow(2.f, -bw * 0.5f);
             res[i] *= 0.5f;
         }
         setRes(res);
