@@ -76,6 +76,7 @@ class TapeDelay
     float getSaturation() const { return saturation_.getTarget()[0]; }
     float getFeedback() const { return feedback_; }
     float getDryWet() const { return drywet_; }
+    Mode getMode() const { return mode_;}
 
     // setters
     void setDelay(float delay, int blockSize);
