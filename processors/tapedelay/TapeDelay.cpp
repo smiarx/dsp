@@ -122,6 +122,11 @@ void TapeDelay::switchTap(Mode mode)
         reverseDist_[tapId_] = 0;
         tapTape_[tapId_].reset(tapePos_);
     }
+
+#ifdef TAPEDELAY_SWITCH_INDICATOR
+    // set indicator
+    switchIndicator_.store(true);
+#endif
 }
 
 template <TapeDelay::Mode M, bool check = true, class Ctxt>
