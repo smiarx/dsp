@@ -4,6 +4,10 @@ project(dsp VERSION 0.0.1)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
+    OPTION(BUILD_SC  "Build SuperCollider processors"  ON)
+
+else()
+    set(BUILD_SC OFF)
 endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
@@ -11,5 +15,22 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(bench)
 endif()
 
-OPTION(BUILD_SC  "Build SuperCollider processors"  ON)
+add_library(dsp_include INTERFACE)
+target_include_directories(dsp_include INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+)
+
+add_library(dsp_compile_options INTERFACE)
+if(MSVC)
+    target_compile_options(dsp_compile_options INTERFACE
+    $<$<CONFIG:RELEASE>:/fp:fast /fp:fast>
+)
+else()
+    target_compile_options(dsp_compile_options INTERFACE
+    -Wall -Wextra -Wpedantic -Werror -fopenmp-simd
+    $<$<CONFIG:RELEASE>:-Ofast -funsafe-math-optimizations -ffp-contract=fast>
+)
+target_compile_features(dsp_compile_options INTERFACE cxx_std_17)
+endif()
+
 add_subdirectory(processors/)
