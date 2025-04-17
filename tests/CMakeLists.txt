@@ -10,6 +10,7 @@ set(test_sources
     LinAlg.cpp
     Hadamard.cpp
     AllPass.cpp
+    Enveloppe.cpp
 )
 
 add_executable(tests ${test_sources})

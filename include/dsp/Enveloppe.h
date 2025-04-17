@@ -1,0 +1,68 @@
+#pragma once
+
+#include "Context.h"
+#include "Signal.h"
+#include <cmath>
+
+namespace dsp
+{
+template <std::size_t N> class DoubleRamp
+{
+  public:
+    enum State {
+        Off = 0,
+        Up,
+        Down,
+    };
+
+    void set(fData<N> maxValue, fData<N> up, fData<N> down)
+    {
+        arrayFor(maxValue, i)
+        {
+            target_[i]   = maxValue[i];
+            stepUp_[i]   = (maxValue[i] - value_[i]) / up[i];
+            stepDown_[i] = -maxValue[i] / down[i];
+            state_[i]    = Up;
+        }
+    }
+
+    bool isRunning()
+    {
+        bool running = false;
+        arrayFor(state_, i) { running |= (state_[i] != Off); }
+        return running;
+    }
+
+    fSample<N> process()
+    {
+        fSample<N> x{};
+
+        arrayFor(x, i)
+        {
+            if (state_[i] == Up) {
+                value_[i] += stepUp_[i];
+                if (std::abs(value_[i]) >= std::abs(target_[i])) {
+                    value_[i] = 2 * target_[i] - value_[i];
+                    state_[i] = Down;
+                }
+            } else if (state_[i] == Down) {
+                value_[i] += stepDown_[i];
+                if (std::signbit(value_[i]) ^ std::signbit(target_[i]) ||
+                    value_[i] == 0.f) {
+                    value_[i] = 0.f;
+                    state_[i] = Off;
+                }
+            }
+            x[i] = value_[i];
+        }
+        return x;
+    }
+
+  private:
+    fSample<N> value_{};
+    fData<N> target_{};
+    fData<N> stepUp_{};
+    fData<N> stepDown_{};
+    std::array<State, N> state_{};
+};
+} // namespace dsp
