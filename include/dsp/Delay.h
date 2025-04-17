@@ -115,7 +115,7 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
         for (size_t j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + vecSize];
 
         /* shift rest */
-        for (size_t j = lastNonVector; j < Length - 1; j += vecSize)
+        for (size_t j = lastNonVector; j < Length - vecSize; j += vecSize)
             mem_[j].template toSignal<isVec>() =
                 mem_[j + vecSize].template toSignal<isVec>();
 

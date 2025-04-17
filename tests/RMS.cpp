@@ -75,7 +75,6 @@ TEST_CASE("RMS", "[dsp][rms]")
         constexpr size_t Size     = 8;
         constexpr size_t NBlock   = Shift / Size;
         constexpr size_t NOverlap = RMSSize / Shift;
-        constexpr size_t NValues  = 4;
 
         dsp::RMS<N, RMSSize, Overlap> rms;
         dsp::Stack<N, 1> stack;

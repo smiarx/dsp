@@ -121,11 +121,9 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
         constexpr size_t N    = 2;
         constexpr auto sR     = 48000.f;
         constexpr size_t Size = 2048;
-        float sinefreq        = GENERATE(take(2, random(200.f, sR * 0.5f)));
         float freq            = GENERATE(take(2, random(200.f, sR * 0.5f)));
         float R               = GENERATE(take(2, random(0.1f, 10.f)));
         float f               = 2.f * freq / sR;
-        float sinef           = 2.f * sinefreq / sR;
 
         dsp::AllPass2<N> ap;
         decltype(ap)::State apstate{};

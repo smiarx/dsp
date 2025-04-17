@@ -8,7 +8,7 @@ template <int N, int Order, bool Vec = false> void test_fir()
     dsp::FIRFilter<N, Order> filter(b);
     typename decltype(filter)::DL fstate;
 
-    std::array<dsp::Sample<float, N>, (Order + 1) + 8> x = {0.f};
+    std::array<dsp::Sample<float, N>, (Order + 1) + 8> x = {};
     arrayFor(x[0], i) { x[0][i] = 1.f; }
     dsp::Context<dsp::Sample<float, N>, Vec> ctxt(x.data(), Order + 2);
 

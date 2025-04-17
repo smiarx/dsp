@@ -54,7 +54,7 @@ template <size_t N, size_t Order> class FIRFilter
 
         typename Ctxt::Type sums[Ctxt::VecSize] = {};
 
-        for (auto j = 0; j < NCoeff + Ctxt::VecSize - 1; ++j) {
+        for (size_t j = 0; j < NCoeff + Ctxt::VecSize - 1; ++j) {
             auto n        = j % Ctxt::VecSize;
             auto delay    = j - n;
             auto &x0      = delay == 0 ? x : delayline.read(c, delay);

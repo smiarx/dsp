@@ -73,7 +73,7 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
 #define TEST_DC(FILTER, TYPE, VAL)                                     \
     generatesine({0.f}, {dsp::constants<float>::pi / 2.f}, x, Length); \
     filterArray<FILTER<N, TYPE>>({cut}, x, Length);                    \
-    for (int n = 6.f / cut; n < Length; ++n) {                         \
+    for (size_t n = 6.f / cut; n < Length; ++n) {                      \
         REQUIRE_THAT(x[n][0], Catch::Matchers::WithinAbs(VAL, 1e-3));  \
     }
 
