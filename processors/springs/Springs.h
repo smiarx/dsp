@@ -12,6 +12,10 @@
 #include "dsp/Stack.h"
 #endif
 
+#ifdef SPRINGS_SHAKE
+#include "dsp/Enveloppe.h"
+#endif
+
 namespace processors
 {
 
@@ -203,6 +207,21 @@ class Springs
   private:
     dsp::RMS<N, RMSSize, RMSOverlap> rms_;
     dsp::Stack<N, RMSStackSize> rmsStack_;
+#endif
+
+#ifdef SPRINGS_SHAKE
+  public:
+    static constexpr auto shakeEnvUp   = 0.001f;
+    static constexpr auto shakeEnvDown = 0.09f;
+    void shake()
+    {
+        shakeEnv_.set({1.f}, {shakeEnvUp * sampleRate_},
+                      {shakeEnvDown * sampleRate_});
+    }
+
+  private:
+    dsp::DoubleRamp<1> shakeEnv_;
+    dsp::Noise<1> shakeNoise_;
 #endif
 };
 

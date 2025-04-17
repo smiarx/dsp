@@ -234,6 +234,25 @@ void Springs::process(const float *const *__restrict in,
             }
         }
 
+#ifdef SPRINGS_SHAKE
+        // shake springs
+        contextFor(ctxt)
+        {
+            auto &x = c.getSignal();
+            if (shakeEnv_.isRunning()) {
+                arrayFor(x, k)
+                {
+                    auto env   = shakeEnv_.process();
+                    auto noise = shakeNoise_.process();
+                    auto shake = env[0] * noise[0];
+                    arrayFor(x[0], i) { x[k][i] += shake; }
+                }
+            } else {
+                break;
+            }
+        }
+#endif
+
         multirate_->decimate(ctxt, ctxtdec, dldecimate_, decimateId_);
 
         contextFor(ctxtdec)

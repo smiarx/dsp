@@ -4,6 +4,7 @@ set(springs_sc_sources
     Springs_SC.cpp)
 
 option(DSP_SPRINGS_RMS "Compile Springs with RMS functionality" OFF)
+option(DSP_SPRINGS_SHAKE "Compile Springs with Shake functionality" OFF)
 
 add_library(dsp_springs_processor STATIC ${springs_sources})
 set_property(TARGET dsp_springs_processor PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -18,6 +19,10 @@ target_link_libraries(dsp_springs_processor
 if(DSP_SPRINGS_RMS)
     target_compile_definitions(dsp_springs_processor
         PUBLIC SPRINGS_RMS)
+endif()
+if(DSP_SPRINGS_SHAKE)
+    target_compile_definitions(dsp_springs_processor
+        PUBLIC SPRINGS_SHAKE)
 endif()
 
 if(BUILD_SC)
