@@ -20,10 +20,10 @@ template <size_t N, size_t Size> class Stack
         return y;
     }
 
-    fSample<N> get() const { return stack_[n_]; }
+    [[nodiscard]] fSample<N> get() const { return stack_[n_]; }
 
-    const fSample<N> *getSamples() const { return stack_; }
-    const size_t *getPos() const { return &n_; }
+    [[nodiscard]] const fSample<N> *getSamples() const { return stack_; }
+    [[nodiscard]] const size_t *getPos() const { return &n_; }
 
   private:
     size_t n_{Size - 1};

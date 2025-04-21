@@ -1,5 +1,8 @@
-#include "SC_PlugIn.h"
-#include "SC_Unit.h"
+#include <SC_InterfaceTable.h>
+#include <SC_PlugIn.h> // NOLINT
+#include <SC_Unit.h>
+#include <Unroll.h>
+#include <cstddef>
 
 #include "TapeDelay.h"
 
@@ -9,9 +12,9 @@ struct TapeDelay : public Unit {
     processors::TapeDelay *tapedelay;
 };
 
-void TapeDelay_Ctor(TapeDelay *unit);
-void TapeDelay_Dtor(TapeDelay *unit);
-void TapeDelay_next(TapeDelay *unit, int inNumSamples);
+static void TapeDelay_Ctor(TapeDelay *unit);
+static void TapeDelay_Dtor(TapeDelay *unit);
+static void TapeDelay_next(TapeDelay *unit, int inNumSamples);
 
 void TapeDelay_Ctor(TapeDelay *unit)
 {
@@ -49,4 +52,5 @@ void TapeDelay_next(TapeDelay *unit, int inNumSamples)
     unit->tapedelay->process(in, out, inNumSamples);
 }
 
+extern void LoadTapeDelay();
 void LoadTapeDelay() { DefineDtorUnit(TapeDelay); }

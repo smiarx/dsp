@@ -45,7 +45,7 @@ template <typename T, size_t Size> class Lut
         return x;
     }
 
-    template <typename Float> auto read(Float pos) const
+    template <typename Float> [[nodiscard]] auto read(Float pos) const
     {
         pos *= Size;
         auto ipos = static_cast<int>(pos);

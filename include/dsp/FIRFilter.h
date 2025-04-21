@@ -104,7 +104,7 @@ template <size_t N, size_t Order, size_t M> class FIRDecimate
             for (size_t i = 0; i < N; ++i) {
                 auto mid  = NCoeff / 2.f;
                 auto freq = cutoff / M;
-                float fn  = static_cast<float>(n);
+                auto fn   = static_cast<float>(n);
                 b_[PaddedLength - Pad - n][i] =
                     window::Kaiser<140>::generate((fn - mid) / (mid)) *
                     sinc((fn - mid) * freq) * freq;

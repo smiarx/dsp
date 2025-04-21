@@ -1,11 +1,16 @@
+#include "dsp/LinAlg.h"
 #include "dsp/Orthogonal.h"
+#include "dsp/Signal.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cmath>
+#include <cstddef>
 
-template <size_t N> float dot(dsp::fData<N> x, dsp::fData<N> y)
+template <size_t N> static float dot(dsp::fData<N> x, dsp::fData<N> y)
 {
     float val{};
     for (size_t i = 0; i < N; ++i) {

@@ -1,7 +1,10 @@
-#include "SC_PlugIn.h"
-#include "SC_Unit.h"
 #include "dsp/Context.h"
+#include "dsp/Signal.h"
 #include "dsp/VAFilters.h"
+#include <SC_InterfaceTable.h>
+#include <SC_PlugIn.h> // NOLINT
+#include <SC_Rate.h>
+#include <SC_Unit.h>
 
 extern InterfaceTable *ft;
 
@@ -18,11 +21,12 @@ template <class Base> struct Filter<Base, true> : public Unit {
     float res{0};
 };
 
-template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit);
 template <class Base, bool hasRes>
-void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples);
+static void Filter_Ctor(Filter<Base, hasRes> *unit);
 template <class Base, bool hasRes>
-void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples);
+static void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples);
+template <class Base, bool hasRes>
+static void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples);
 
 template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit)
 {
@@ -118,6 +122,7 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
 #define DefineFilterUnit(name, Base, hasRes)                \
     (*ft->fDefineUnit)(#name, sizeof(Filter<Base, hasRes>), \
                        (UnitCtorFunc) & Filter_Ctor<Base, hasRes>, 0, 0);
+extern void LoadFilters();
 void LoadFilters()
 {
     DefineFilterUnit(OnePoleLP, dsp::va::OnePole<1 CMA dsp::va::LowPass>,

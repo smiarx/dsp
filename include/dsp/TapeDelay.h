@@ -34,10 +34,13 @@ template <size_t L> class TapePosition
         nwrite_              = (nwrite_ + 1) & Mask;
     }
 
-    size_t getNwrite() const { return nwrite_; }
-    position_t get() const { return tapePos_; }
+    [[nodiscard]] size_t getNwrite() const { return nwrite_; }
+    [[nodiscard]] position_t get() const { return tapePos_; }
 
-    position_t at(size_t index) const { return tapePosBuf_[index & Mask]; }
+    [[nodiscard]] position_t at(size_t index) const
+    {
+        return tapePosBuf_[index & Mask];
+    }
 
     static bool greaterThan(position_t x1, position_t x2)
     {

@@ -1,9 +1,10 @@
-#include "SC_PlugIn.h"
+#include <SC_InterfaceTable.h>
 
-void LoadTapeDelay();
-void LoadSprings();
-void LoadFilters();
+extern void LoadTapeDelay();
+extern void LoadSprings();
+extern void LoadFilters();
 
+extern InterfaceTable *ft;
 InterfaceTable *ft;
 PluginLoad(Processors)
 {

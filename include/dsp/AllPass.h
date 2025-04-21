@@ -47,11 +47,11 @@ template <size_t N, class Tap = TapTail> class AllPass
     }
 
     void setCoeff(fData<N> a) { a_ = a; }
-    const auto &getCoeff() const { return a_; }
+    [[nodiscard]] const auto &getCoeff() const { return a_; }
     void setDelay(fData<N> d) { tap_.setDelay(d); }
     void setDelay(iData<N> d) { tap_.setDelay(d); }
 
-    const auto &getTap() const { return tap_; }
+    [[nodiscard]] const auto &getTap() const { return tap_; }
 
   private:
     fData<N> a_;
@@ -222,7 +222,7 @@ template <size_t N> class AllPass2
         state = s;
     }
 
-    __PROCESSBLOCK__
+    PROCESSBLOCK_
 
   private:
     fData<N> a_[2]; // allpass coeffs

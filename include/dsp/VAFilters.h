@@ -73,9 +73,9 @@ template <size_t N, FilterType FT = LowPass> class OnePole
         state = s;
     }
 
-    __PROCESSBLOCK__
+    PROCESSBLOCK_
 
-    fData<N> getGain() const
+    [[nodiscard]] fData<N> getGain() const
     {
         auto gain = gain_;
         if constexpr (FT == LowPass) {
@@ -210,7 +210,7 @@ template <size_t N, FilterType FT = LowPass> class SVF
         state[1].fromSIMD(s2);
     }
 
-    __PROCESSBLOCK__
+    PROCESSBLOCK_
 
   private:
     fData<N> gain_;
@@ -219,9 +219,8 @@ template <size_t N, FilterType FT = LowPass> class SVF
     class Empty
     {
     };
-    typename std::conditional<FT == HighPass, fData<N>, Empty>::type gains1_;
-    typename std::conditional<NormaLizedBandPass, fData<N>, Empty>::type
-        inputGain_;
+    std::conditional_t<FT == HighPass, fData<N>, Empty> gains1_;
+    std::conditional_t<NormaLizedBandPass, fData<N>, Empty> inputGain_;
 };
 
 template <size_t N, FilterType FT = LowPass> class Ladder
@@ -280,7 +279,7 @@ template <size_t N, FilterType FT = LowPass> class Ladder
         }
     }
 
-    __PROCESSBLOCK__
+    PROCESSBLOCK_
 
   private:
     fData<N> res_;

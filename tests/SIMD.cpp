@@ -78,12 +78,12 @@ TEST_CASE("SIMD Loading and Storing", "[simd]")
         REQUIRE(result[3] == 4.0f);
 
         // Aligned load and store
-        float *aligned_data = (float *)_mm_malloc(4 * sizeof(float), 16);
-        aligned_data[0]     = 1.0f;
-        aligned_data[1]     = 2.0f;
-        aligned_data[2]     = 3.0f;
-        aligned_data[3]     = 4.0f;
-        v                   = dsp::arrayToSIMD<float, 4, true>(aligned_data);
+        auto *aligned_data = (float *)_mm_malloc(4 * sizeof(float), 16);
+        aligned_data[0]    = 1.0f;
+        aligned_data[1]    = 2.0f;
+        aligned_data[2]    = 3.0f;
+        aligned_data[3]    = 4.0f;
+        v                  = dsp::arrayToSIMD<float, 4, true>(aligned_data);
         dsp::SIMDtoArray<float, 4, true>(aligned_data, v);
         REQUIRE(aligned_data[0] == 1.0f);
         REQUIRE(aligned_data[1] == 2.0f);
@@ -104,10 +104,10 @@ TEST_CASE("SIMD Loading and Storing", "[simd]")
         REQUIRE(result[1] == 2.0);
 
         // Aligned load and store
-        double *aligned_data = (double *)_mm_malloc(2 * sizeof(double), 16);
-        aligned_data[0]      = 1.0;
-        aligned_data[1]      = 2.0;
-        v                    = dsp::arrayToSIMD<double, 2, true>(aligned_data);
+        auto *aligned_data = (double *)_mm_malloc(2 * sizeof(double), 16);
+        aligned_data[0]    = 1.0;
+        aligned_data[1]    = 2.0;
+        v                  = dsp::arrayToSIMD<double, 2, true>(aligned_data);
         dsp::SIMDtoArray<double, 2, true>(aligned_data, v);
         REQUIRE(aligned_data[0] == 1.0);
         REQUIRE(aligned_data[1] == 2.0);

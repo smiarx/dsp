@@ -81,14 +81,14 @@ class Springs
     void free(Free free = std::free);
 
     // getters
-    float getDryWet() const { return drywet_; }
-    float getWidth() const { return width_; }
-    float getFreq() const { return freq_; }
-    float getR() const { return R_; }
-    float getTd() const { return Td_; }
-    float getChaos() const { return chaos_; }
-    float getT60() const { return T60_; }
-    float getTone() const { return tone_; }
+    [[nodiscard]] float getDryWet() const { return drywet_; }
+    [[nodiscard]] float getWidth() const { return width_; }
+    [[nodiscard]] float getFreq() const { return freq_; }
+    [[nodiscard]] float getR() const { return R_; }
+    [[nodiscard]] float getTd() const { return Td_; }
+    [[nodiscard]] float getChaos() const { return chaos_; }
+    [[nodiscard]] float getT60() const { return T60_; }
+    [[nodiscard]] float getTone() const { return tone_; }
 
     // setters
     void setFreq(float freq, int blockSize);
@@ -108,7 +108,7 @@ class Springs
 
     // main process
     void process(const float *const *__restrict in,
-                 float *const *__restrict out, int num);
+                 float *const *__restrict out, int count);
 
   private:
     int M_{1};
@@ -130,7 +130,10 @@ class Springs
     dsp::ControlSmoother<2> wet_{{}};
 
     static constexpr auto minScatter = 0.1f;
-    auto getScatterFactor() const { return minScatter + scatter_; }
+    [[nodiscard]] auto getScatterFactor() const
+    {
+        return minScatter + scatter_;
+    }
 
     // allpass
     dsp::AllPass2<NAP> allpass_{};

@@ -72,7 +72,7 @@ template <size_t L, int Off> class DelayLine
 
     template <int O> using WithOffset = DelayLine<L, O>;
 
-    constexpr DelayLine() {}
+    constexpr DelayLine() = default;
 
     /* write value inside delay line */
     template <class Ctxt, class In> void write(Ctxt c, const In &x) const
@@ -81,7 +81,7 @@ template <size_t L, int Off> class DelayLine
     }
 
     /* read value at delay id */
-    template <class Ctxt> const auto &read(Ctxt c, int id) const
+    template <class Ctxt> [[nodiscard]] const auto &read(Ctxt c, int id) const
     {
         return c.read(Offset + id);
     }
@@ -123,7 +123,7 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
         mem_[Length - vecSize].template toSignal<isVec>() = x;
     }
 
-    template <class Ctxt> const auto &read(Ctxt c, int i) const
+    template <class Ctxt> [[nodiscard]] const auto &read(Ctxt c, int i) const
     {
         (void)c;
         auto si = static_cast<size_t>(i);
@@ -137,7 +137,7 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
         }
     }
 
-    template <class Ctxt> const auto &tail(Ctxt c) const
+    template <class Ctxt> [[nodiscard]] const auto &tail(Ctxt c) const
     {
         return read(c, Length);
     }
@@ -201,7 +201,7 @@ struct TapTail {
     /* Tap that reads at the end of a delayline */
 
     template <class Ctxt, class DL>
-    const auto &read(Ctxt c, const DL &delayline) const
+    [[nodiscard]] const auto &read(Ctxt c, const DL &delayline) const
     {
         return delayline.tail(c);
     }
@@ -247,7 +247,8 @@ template <size_t N> class TapNoInterp
     void setDelay(int i, int id) { id_[i] = id; }
     void setDelay(iData<N> id) { id_ = id; }
 
-    template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
+    template <class Ctxt, class DL>
+    [[nodiscard]] auto read(Ctxt c, const DL &delayline) const
     {
         typename Ctxt::Type x;
         for (size_t i = 0; i < N; i++) {

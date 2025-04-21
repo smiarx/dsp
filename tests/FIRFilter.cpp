@@ -1,7 +1,11 @@
 #include "dsp/FIRFilter.h"
+#include "dsp/Context.h"
+#include "dsp/Signal.h"
+#include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <cstdlib>
 
-template <int N, int Order, bool Vec = false> void test_fir()
+template <int N, int Order, bool Vec = false> static void test_fir()
 {
     std::array<dsp::Data<float, N>, Order + 1> b;
     arrayFor(b, k) { arrayFor(b[0], i) b[k][i] = rand(); }

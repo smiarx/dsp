@@ -12,8 +12,8 @@ template <size_t N = 1, bool Vectorize = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
     using Type    = fSample<N>;
-    using OutType = typename std::conditional<Vectorize, typename Type::Vector,
-                                              typename Type::Scalar>::type;
+    using OutType = std::conditional_t<Vectorize, typename Type::Vector,
+                                       typename Type::Scalar>;
 
     /* linear smoother for control values */
   public:
@@ -38,8 +38,8 @@ template <size_t N = 1, bool Vectorize = false> class ControlSmoother
         }
     }
 
-    auto get() const { return value_; }
-    auto getTarget() const { return target_; }
+    [[nodiscard]] auto get() const { return value_; }
+    [[nodiscard]] auto getTarget() const { return target_; }
 
     bool isActive() { return active_; }
 

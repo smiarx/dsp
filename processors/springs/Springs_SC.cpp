@@ -1,5 +1,9 @@
-#include "SC_PlugIn.h"
 #include "Springs.h"
+#include <SC_InterfaceTable.h>
+#include <SC_PlugIn.h> // NOLINT
+#include <SC_Unit.h>
+#include <Unroll.h>
+#include <cstddef>
 
 extern InterfaceTable *ft;
 
@@ -7,9 +11,9 @@ struct Springs : public Unit {
     processors::Springs *springs;
 };
 
-void Springs_Ctor(Springs *unit);
-void Springs_Dtor(Springs *unit);
-void Springs_next(Springs *unit, int inNumSamples);
+static void Springs_Ctor(Springs *unit);
+static void Springs_Dtor(Springs *unit);
+static void Springs_next(Springs *unit, int inNumSamples);
 
 void Springs_Ctor(Springs *unit)
 {
@@ -45,4 +49,5 @@ void Springs_next(Springs *unit, int inNumSamples)
     unit->springs->process(in, out, inNumSamples);
 }
 
+extern void LoadSprings();
 void LoadSprings() { DefineDtorUnit(Springs); }

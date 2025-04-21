@@ -1,17 +1,21 @@
 #include "dsp/VAFilters.h"
+#include "dsp/Context.h"
 #include "dsp/FastMath.h"
+#include "dsp/Signal.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cstddef>
 
 static constexpr float sr      = 48000.f;
 static constexpr float nyquist = sr / 2.f;
 
 template <size_t N>
-void generatesine(dsp::fData<N> f, dsp::fData<N> phase, dsp::fSample<N> *x,
-                  size_t length)
+static void generatesine(dsp::fData<N> f, dsp::fData<N> phase,
+                         dsp::fSample<N> *x, size_t length)
 {
     // generate signal
     for (size_t n = 0; n < length; ++n) {
@@ -22,7 +26,7 @@ void generatesine(dsp::fData<N> f, dsp::fData<N> phase, dsp::fSample<N> *x,
 }
 
 template <class Filter, size_t N>
-void filterArray(dsp::fData<N> cut, dsp::fSample<N> *x, size_t length)
+static void filterArray(dsp::fData<N> cut, dsp::fSample<N> *x, size_t length)
 {
     Filter filter;
     typename decltype(filter)::State filterstate;
@@ -32,8 +36,8 @@ void filterArray(dsp::fData<N> cut, dsp::fSample<N> *x, size_t length)
 }
 
 template <class Filter, size_t N>
-void filterResArray(dsp::fData<N> cut, dsp::fData<N> res, dsp::fSample<N> *x,
-                    size_t length)
+static void filterResArray(dsp::fData<N> cut, dsp::fData<N> res,
+                           dsp::fSample<N> *x, size_t length)
 {
     Filter filter;
     typename decltype(filter)::State filterstate;
@@ -42,7 +46,8 @@ void filterResArray(dsp::fData<N> cut, dsp::fData<N> res, dsp::fSample<N> *x,
     filter.processBlock(dsp::Context(x, length), filterstate);
 }
 
-template <size_t N> dsp::fSample<N> rms(dsp::fSample<N> *x, size_t length)
+template <size_t N>
+static dsp::fSample<N> rms(dsp::fSample<N> *x, size_t length)
 {
     dsp::fSample<N> rms = {0.f};
     for (size_t n = 0; n < length; ++n) {

@@ -39,7 +39,7 @@ template <class In, std::size_t MinSize = 0> class Buffer
     {
         buffer_[(bufId_ - i) & Mask].toScalar() = x;
     }
-    const In &read(int i) const
+    [[nodiscard]] const In &read(int i) const
     {
         assert(i <= static_cast<int>(MinSize));
         return buffer_[(bufId_ - i) & Mask];
@@ -76,12 +76,12 @@ class BufferContext : public Context<In, Vectorize>
     {
     }
 
-    auto vec() const
+    [[nodiscard]] auto vec() const
     {
         return BufferContext<In, Buffer, true>(Context<In, Vectorize>::vec(),
                                                buffer_);
     }
-    auto scalar() const
+    [[nodiscard]] auto scalar() const
     {
         return BufferContext<In, Buffer, false>(
             Context<In, Vectorize>::scalar(), buffer_);
@@ -97,7 +97,7 @@ class BufferContext : public Context<In, Vectorize>
 
     void bufferLimits() { buffer_.setLimits(); }
 
-    const auto &read(int i) const
+    [[nodiscard]] const auto &read(int i) const
     {
         auto &x = buffer_.read(i);
         return x.template toSignal<Vectorize>();

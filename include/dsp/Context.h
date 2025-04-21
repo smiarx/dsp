@@ -16,14 +16,20 @@ template <typename In, bool Vectorize = false> class Context
     static constexpr auto VecSize       = Vectorize ? In::VectorSize : 1;
     static constexpr auto isUsingVector = Vectorize;
     using BaseType                      = In;
-    using Type = typename std::conditional<Vectorize, typename In::Vector,
-                                           typename In::Scalar>::type;
+    using Type =
+        std::conditional_t<Vectorize, typename In::Vector, typename In::Scalar>;
 
-    auto vec() const { return Context<In, true>(in_, blockSize_); }
-    auto scalar() const { return Context<In, false>(in_, blockSize_); }
+    [[nodiscard]] auto vec() const
+    {
+        return Context<In, true>(in_, blockSize_);
+    }
+    [[nodiscard]] auto scalar() const
+    {
+        return Context<In, false>(in_, blockSize_);
+    }
 
-    int vecSize() const { return VecSize; }
-    int getStep() const { return VecSize; }
+    [[nodiscard]] int vecSize() const { return VecSize; }
+    [[nodiscard]] int getStep() const { return VecSize; }
 
     auto &getSignal() { return in_->template toSignal<Vectorize>(); }
 
@@ -31,7 +37,7 @@ template <typename In, bool Vectorize = false> class Context
 
     void next(int incr = VecSize) { nextIn(incr); }
 
-    int getBlockSize() const { return blockSize_; }
+    [[nodiscard]] int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 
   protected:
@@ -73,7 +79,7 @@ void _ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
     for (size_t k = 0; k < x.size(); ++k) \
         for (size_t i = 0; i < x[0].size(); ++i)
 
-#define __PROCESSBLOCK__                             \
+#define PROCESSBLOCK_                                \
     template <class Ctxt, class State>               \
     void processBlock(Ctxt ctxt, State &state) const \
     {                                                \

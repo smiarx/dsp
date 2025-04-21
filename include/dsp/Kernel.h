@@ -79,11 +79,11 @@ class TapKernel : public TapLin<1>
             // prepare convolution kernel
             Lut<KernelType, LutSize>::fill([](float x) -> auto {
                 KernelType kernels = {};
-                if (fabs(x) < 1e-7) {
+                if (std::fabs(x) < 1e-7) {
                     for (size_t i = 0; i < N; ++i) {
                         kernels[idFromKernel(0)][i] = 1.f;
                     }
-                } else if (fabs(x - 1.f) < 1e-7) {
+                } else if (std::fabs(x - 1.f) < 1e-7) {
                     for (size_t i = 0; i < N; ++i) {
                         kernels[idFromKernel(-1)][i] = 1.f;
                     }

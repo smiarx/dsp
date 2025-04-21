@@ -16,7 +16,7 @@ class alignas(N * sizeof(T)) Data : public std::array<T, N>
     // data type
     using Type = T;
 
-    SIMD_t<T, N> toSIMD() const
+    [[nodiscard]] SIMD_t<T, N> toSIMD() const
     {
         return arrayToSIMD<T, N, true>(this->data());
     }
@@ -45,15 +45,15 @@ template <typename T, size_t N> class Sample : public Data<T, N>
         return *reinterpret_cast<
             std::conditional_t<Vectorize, Vector, Scalar> *>(this);
     }
-    template <bool Vectorize = false> const auto &toSignal() const
+    template <bool Vectorize = false> [[nodiscard]] const auto &toSignal() const
     {
         return *reinterpret_cast<
             const std::conditional_t<Vectorize, Vector, Scalar> *>(this);
     }
     auto &toVector() { return toSignal<true>(); }
-    const auto &toVector() const { return toSignal<true>(); }
+    [[nodiscard]] const auto &toVector() const { return toSignal<true>(); }
     auto &toScalar() { return toSignal(); }
-    const auto &toScalar() const { return toSignal(); }
+    [[nodiscard]] const auto &toScalar() const { return toSignal(); }
 };
 
 template <typename T, size_t N, size_t L>

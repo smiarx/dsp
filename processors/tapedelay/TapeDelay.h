@@ -73,28 +73,31 @@ class TapeDelay
     void free(Free free = std::free);
 
     // getters
-    float getDelay() const { return delay_; }
-    float getDrift() const { return drift_; }
-    float getCutLowPass() const { return cutlowpass_; }
-    float getCutHiPass() const { return cuthighpass_; }
-    float getSaturation() const { return saturation_.getTarget()[0]; }
-    float getFeedback() const { return feedback_; }
-    float getDryWet() const { return drywet_; }
-    Mode getMode() const { return mode_; }
+    [[nodiscard]] float getDelay() const { return delay_; }
+    [[nodiscard]] float getDrift() const { return drift_; }
+    [[nodiscard]] float getCutLowPass() const { return cutlowpass_; }
+    [[nodiscard]] float getCutHiPass() const { return cuthighpass_; }
+    [[nodiscard]] float getSaturation() const
+    {
+        return saturation_.getTarget()[0];
+    }
+    [[nodiscard]] float getFeedback() const { return feedback_; }
+    [[nodiscard]] float getDryWet() const { return drywet_; }
+    [[nodiscard]] Mode getMode() const { return mode_; }
 
     // setters
     void setDelay(float delay, int blockSize);
     void setDrift(float drift, int blockSize);
     void setCutLowPass(float cutlowpass, int blockSize);
-    void setCutHiPass(float cuthipass, int blockSize);
+    void setCutHiPass(float cuthighpass, int blockSize);
     void setSaturation(float saturation, int blockSize);
     void setFeedback(float feedback, int blockSize);
     void setDryWet(float drywet, int blockSize);
     void setMode(Mode mode, int blockSize);
 
-    void update(float delay, float feedback, float cutlp, float cuthp,
-                float saturation, float drift, Mode mode, float drywet,
-                int blockSize);
+    void update(float delay, float feedback, float cutlowpass,
+                float cuthighpass, float saturation, float drift, Mode mode,
+                float drywet, int blockSize);
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 

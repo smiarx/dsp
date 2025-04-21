@@ -1,4 +1,6 @@
 #include "dsp/Signal.h"
+#include "dsp/SIMD.h"
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib> // for std::aligned_alloc and std::free
 
@@ -87,7 +89,7 @@ TEST_CASE("Signal Class", "[signal]")
         REQUIRE(result[3] == 4.0f);
 
         // Aligned load and store
-        float *aligned_data = (float *)_mm_malloc(4 * sizeof(float), 16);
+        auto *aligned_data = (float *)_mm_malloc(4 * sizeof(float), 16);
         std::copy(data, data + 4, aligned_data);
         dsp::Signal<float, 2, 2> s_aligned;
         std::copy(aligned_data, aligned_data + 4, s_aligned.data()->data());

@@ -1,11 +1,16 @@
 #include "dsp/RMS.h"
+#include "dsp/Context.h"
+#include "dsp/FastMath.h"
+#include "dsp/Signal.h"
 #include "dsp/Stack.h"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
+#include <cstddef>
 
 TEST_CASE("RMS", "[dsp][rms]")
 {
@@ -28,16 +33,16 @@ TEST_CASE("RMS", "[dsp][rms]")
                                  GENERATE(take(4, random(-10.f, 10.f))),
                                  GENERATE(take(4, random(-10.f, 10.f)))};
 
-        for (size_t t = 0; t < NValues; ++t) {
-            for (size_t n = 0; n < Size; ++n) {
-                x[n][0] = values[t];
+        for (float value : values) {
+            for (auto &n : x) {
+                n[0] = value;
             }
 
             for (size_t k = 0; k < NBlock; ++k) {
                 rms.processBlock(dsp::Context(x, Size), stack);
             }
 
-            REQUIRE_THAT(stack.get()[0], WithinAbs(std::abs(values[t]), 1e-4));
+            REQUIRE_THAT(stack.get()[0], WithinAbs(std::abs(value), 1e-4));
         }
     }
 
@@ -56,7 +61,7 @@ TEST_CASE("RMS", "[dsp][rms]")
         for (size_t t = 0; t < 2; ++t) {
             for (size_t k = 0; k < NBlock; ++k) {
                 for (size_t n = 0; n < Size; ++n) {
-                    x[n][0] = sin(dsp::constants<float>::pi * freq * n);
+                    x[n][0] = std::sin(dsp::constants<float>::pi * freq * n);
                 }
 
                 rms.processBlock(dsp::Context(x, Size), stack);
@@ -80,8 +85,8 @@ TEST_CASE("RMS", "[dsp][rms]")
         dsp::Stack<N, 1> stack;
         dsp::fSample<N> x[Size];
 
-        for (size_t n = 0; n < Size; ++n) {
-            x[n][0] = 1.f;
+        for (auto &n : x) {
+            n[0] = 1.f;
         }
 
         for (size_t j = 0; j < NOverlap; ++j) {
@@ -92,8 +97,8 @@ TEST_CASE("RMS", "[dsp][rms]")
                          WithinAbs(sqrtf((1.f + j) * Shift / RMSSize), 1e-6));
         }
 
-        for (size_t n = 0; n < Size; ++n) {
-            x[n][0] = 0.f;
+        for (auto &n : x) {
+            n[0] = 0.f;
         }
 
         for (size_t j = 0; j < NOverlap; ++j) {
