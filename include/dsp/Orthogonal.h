@@ -10,21 +10,18 @@ namespace dsp
 
 /* orthogonal transforms */
 
-template <typename F, size_t N>
-Sample<F, N> householder(Sample<F, N> x)
+template <typename F, size_t N> Sample<F, N> householder(Sample<F, N> x)
 {
     // householder transform
 
     F sum{};
-    for(size_t i=0; i < N; ++i)
-    {
+    for (size_t i = 0; i < N; ++i) {
         sum += x[i];
     }
-    sum /= F(N)/F(2);
+    sum /= F(N) / F(2);
 
-    Sample<F,N> y;
-    for(size_t i=0; i < N; ++i)
-    {
+    Sample<F, N> y;
+    for (size_t i = 0; i < N; ++i) {
         y[i] = x[i] - sum;
     }
 
