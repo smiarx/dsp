@@ -37,8 +37,8 @@ template <> class DelayLine<>
      *      Length: maximum length of the delay line
      */
 
-    static constexpr size_t Length     = 10000000;
-    static constexpr size_t NextOffset = 0;
+    static constexpr size_t kLength     = 10000000;
+    static constexpr size_t kNextOffset = 0;
 
     template <int> using WithOffset = DelayLine;
 
@@ -65,10 +65,10 @@ template <size_t L, int Off> class DelayLine
 {
     /* find the next vector aligned offset */
   public:
-    static constexpr auto Length = L;
-    static constexpr auto Offset = Off;
-    static constexpr auto NextOffset =
-        Offset + nextAlignedOffset(Length, SIMDSIZE);
+    static constexpr auto kLength = L;
+    static constexpr auto kOffset = Off;
+    static constexpr auto kNextOffset =
+        kOffset + nextAlignedOffset(kLength, SIMDSIZE);
 
     template <int O> using WithOffset = DelayLine<L, O>;
 
@@ -77,19 +77,19 @@ template <size_t L, int Off> class DelayLine
     /* write value inside delay line */
     template <class Ctxt, class In> void write(Ctxt c, const In &x) const
     {
-        c.getBuffer().write(Offset, x);
+        c.getBuffer().write(kOffset, x);
     }
 
     /* read value at delay id */
     template <class Ctxt> [[nodiscard]] const auto &read(Ctxt c, int id) const
     {
-        return c.read(Offset + id);
+        return c.read(kOffset + id);
     }
 
     /* read value at tail */
     template <class Ctxt> const auto &tail(Ctxt c) const
     {
-        return read(c, Length);
+        return read(c, kLength);
     }
 };
 
@@ -97,9 +97,9 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
 {
   public:
     static_assert(L > 0, "Length must be bigger than 0");
-    static constexpr auto Length     = L;
-    static constexpr auto Offset     = Off;
-    static constexpr auto NextOffset = Offset;
+    static constexpr auto kLength     = L;
+    static constexpr auto kOffset     = Off;
+    static constexpr auto kNextOffset = kOffset;
 
     template <int O> using WithOffset = CopyDelayLine<N, L, O>;
 
@@ -107,20 +107,20 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
     {
         (void)c;
 
-        constexpr auto vecSize = Ctxt::VecSize;
-        constexpr auto isVec   = Ctxt::isUsingVector;
-        auto lastNonVector     = Length % vecSize;
+        constexpr auto kVecSize = Ctxt::kVecSize;
+        constexpr auto kIsVec   = Ctxt::kIsUsingVector;
+        auto lastNonVector      = kLength % kVecSize;
 
         /* first shift non vector aligned float */
-        for (size_t j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + vecSize];
+        for (size_t j = 0; j < lastNonVector; ++j) mem_[j] = mem_[j + kVecSize];
 
         /* shift rest */
-        for (size_t j = lastNonVector; j < Length - vecSize; j += vecSize)
-            mem_[j].template toSignal<isVec>() =
-                mem_[j + vecSize].template toSignal<isVec>();
+        for (size_t j = lastNonVector; j < kLength - kVecSize; j += kVecSize)
+            mem_[j].template toSignal<kIsVec>() =
+                mem_[j + kVecSize].template toSignal<kIsVec>();
 
         /* copy last value */
-        mem_[Length - vecSize].template toSignal<isVec>() = x;
+        mem_[kLength - kVecSize].template toSignal<kIsVec>() = x;
     }
 
     template <class Ctxt> [[nodiscard]] const auto &read(Ctxt c, int i) const
@@ -128,9 +128,9 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
         (void)c;
         auto si = static_cast<size_t>(i);
 
-        assert(si <= Length);
-        const auto &x = mem_[Length - si];
-        if constexpr (Ctxt::isUsingVector) {
+        assert(si <= kLength);
+        const auto &x = mem_[kLength - si];
+        if constexpr (Ctxt::kIsUsingVector) {
             return x.toVector();
         } else {
             return x.toScalar();
@@ -139,11 +139,11 @@ template <size_t N, size_t L = 1, int Off = 0> class CopyDelayLine
 
     template <class Ctxt> [[nodiscard]] const auto &tail(Ctxt c) const
     {
-        return read(c, Length);
+        return read(c, kLength);
     }
 
   private:
-    fSample<N> mem_[Length]{};
+    fSample<N> mem_[kLength]{};
 };
 
 template <class DL, class DLi, int Off = 0>
@@ -153,9 +153,9 @@ class NestedDelayLine : public DL::template WithOffset<Off>
     using Inner = typename DLi::template WithOffset<Outer::NextOffset>;
 
   public:
-    static constexpr auto Length     = Outer::Length + Inner::Length;
-    static constexpr auto Offset     = Off;
-    static constexpr auto NextOffset = Inner::NextOffset;
+    static constexpr auto kLength     = Outer::Length + Inner::Length;
+    static constexpr auto kOffset     = Off;
+    static constexpr auto kNextOffset = Inner::NextOffset;
 
     template <int O> using WithOffset = NestedDelayLine<DL, DLi, O>;
 
@@ -175,21 +175,21 @@ class ArrayDelayLine
     using Base = typename DL::template WithOffset<Off>;
 
   public:
-    static constexpr auto Length     = DL::Length * Nm;
-    static constexpr auto Offset     = Off;
-    static constexpr auto OneOffset  = (Base::NextOffset - Offset);
-    static constexpr auto NextOffset = OneOffset * Nm;
+    static constexpr auto kLength     = DL::Length * Nm;
+    static constexpr auto kOffset     = Off;
+    static constexpr auto kOneOffset  = (Base::NextOffset - kOffset);
+    static constexpr auto kNextOffset = kOneOffset * Nm;
 
     template <int O> using WithOffset = ArrayDelayLine<DL, Nm, O>;
 
     template <class Ctxt> auto &get(Ctxt &c, int i)
     {
-        c.nextBufId(OneOffset * i);
+        c.nextBufId(kOneOffset * i);
         return (*this)[i];
     }
 };
 
-#define nextTo(delayline) decltype(delayline)::NextOffset
+#define nextTo(delayline) decltype(delayline)::kNextOffset
 
 /*
  * Taps: different classes that can read into a delay line with different
@@ -209,23 +209,23 @@ struct TapTail {
 
 /* help function */
 template <class Ctxt, class DL, class T>
-void _fixread(Ctxt /*c*/, const DL & /*delayline*/, T & /*x*/, int /*i*/)
+void basefixread(Ctxt /*c*/, const DL & /*delayline*/, T & /*x*/, int /*i*/)
 {
 }
 template <class Ctxt, class DL, class T, int D, int... Ds>
-void _fixread(Ctxt c, const DL &delayline, T &x, int i)
+void basefixread(Ctxt c, const DL &delayline, T &x, int i)
 {
     static_assert(D <= DL::Length - Ctxt::VecSize + 1,
                   "tap delay length is bigger than delay line");
     auto &val = delayline.read(c, D);
     for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
-    _fixread<Ctxt, DL, T, Ds...>(c, delayline, x, ++i);
+    basefixread<Ctxt, DL, T, Ds...>(c, delayline, x, ++i);
 }
 template <int D = 1, int... Ds> struct TapFix : public TapFix<Ds...> {
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline) const
     {
         typename Ctxt::Type x = {0};
-        _fixread<Ctxt, DL, decltype(x), D, Ds...>(c, delayline, x, 0);
+        basefixread<Ctxt, DL, decltype(x), D, Ds...>(c, delayline, x, 0);
         return x;
     }
 };
@@ -252,9 +252,10 @@ template <size_t N> class TapNoInterp
     {
         typename Ctxt::Type x;
         for (size_t i = 0; i < N; i++) {
-            assert(id_[i] <= static_cast<int>(DL::Length - Ctxt::VecSize + 1));
+            assert(id_[i] <=
+                   static_cast<int>(DL::kLength - Ctxt::kVecSize + 1));
             auto &val = delayline.read(c, id_[i]);
-            for (size_t k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
+            for (size_t k = 0; k < Ctxt::kVecSize; ++k) x[k][i] = val[k][i];
         }
         return x;
     }
@@ -343,18 +344,18 @@ template <size_t N> class TapCubic : public TapLin<N>
             arrayFor(x0[0], i)
             {
                 assert(id[i % N] <=
-                       static_cast<int>(DL::Length - 2 - Ctxt::VecSize));
+                       static_cast<int>(DL::kLength - 2 - Ctxt::kVecSize));
                 auto &valm1 = delayline.read(c, id[i % N] - 1);
-                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                for (size_t k = 0; k < Ctxt::kVecSize; ++k)
                     xm1[k][i] = valm1[k][i];
                 auto &val0 = delayline.read(c, id[i % N]);
-                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                for (size_t k = 0; k < Ctxt::kVecSize; ++k)
                     x0[k][i] = val0[k][i];
                 auto &val1 = delayline.read(c, id[i % N] + 1);
-                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                for (size_t k = 0; k < Ctxt::kVecSize; ++k)
                     x1[k][i] = val1[k][i];
                 auto &val2 = delayline.read(c, id[i % N] + 2);
-                for (size_t k = 0; k < Ctxt::VecSize; ++k)
+                for (size_t k = 0; k < Ctxt::kVecSize; ++k)
                     x2[k][i] = val2[k][i];
             }
         }

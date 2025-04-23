@@ -38,18 +38,18 @@ TEST_CASE("Sample Class", "[sample]")
         dsp::Sample<float, 4> s({1.0f, 2.0f, 3.0f, 4.0f});
 
         // Convert to scalar signal
-        auto &scalar_signal = s.toScalar();
-        REQUIRE(scalar_signal[0][0] == 1.0f);
-        REQUIRE(scalar_signal[0][1] == 2.0f);
-        REQUIRE(scalar_signal[0][2] == 3.0f);
-        REQUIRE(scalar_signal[0][3] == 4.0f);
+        auto &scalarSignal = s.toScalar();
+        REQUIRE(scalarSignal[0][0] == 1.0f);
+        REQUIRE(scalarSignal[0][1] == 2.0f);
+        REQUIRE(scalarSignal[0][2] == 3.0f);
+        REQUIRE(scalarSignal[0][3] == 4.0f);
 
         // Convert to vectorized signal
-        auto &vector_signal = s.toVector();
-        REQUIRE(vector_signal[0][0] == 1.0f);
-        REQUIRE(vector_signal[0][1] == 2.0f);
-        REQUIRE(vector_signal[0][2] == 3.0f);
-        REQUIRE(vector_signal[0][3] == 4.0f);
+        auto &vectorSignal = s.toVector();
+        REQUIRE(vectorSignal[0][0] == 1.0f);
+        REQUIRE(vectorSignal[0][1] == 2.0f);
+        REQUIRE(vectorSignal[0][2] == 3.0f);
+        REQUIRE(vectorSignal[0][3] == 4.0f);
     }
 
     SECTION("Sample<int, 4>")
@@ -57,18 +57,18 @@ TEST_CASE("Sample Class", "[sample]")
         dsp::Sample<int, 4> s({1, 2, 3, 4});
 
         // Convert to scalar signal
-        auto &scalar_signal = s.toScalar();
-        REQUIRE(scalar_signal[0][0] == 1);
-        REQUIRE(scalar_signal[0][1] == 2);
-        REQUIRE(scalar_signal[0][2] == 3);
-        REQUIRE(scalar_signal[0][3] == 4);
+        auto &scalarSignal = s.toScalar();
+        REQUIRE(scalarSignal[0][0] == 1);
+        REQUIRE(scalarSignal[0][1] == 2);
+        REQUIRE(scalarSignal[0][2] == 3);
+        REQUIRE(scalarSignal[0][3] == 4);
 
         // Convert to vectorized signal
-        auto &vector_signal = s.toVector();
-        REQUIRE(vector_signal[0][0] == 1);
-        REQUIRE(vector_signal[0][1] == 2);
-        REQUIRE(vector_signal[0][2] == 3);
-        REQUIRE(vector_signal[0][3] == 4);
+        auto &vectorSignal = s.toVector();
+        REQUIRE(vectorSignal[0][0] == 1);
+        REQUIRE(vectorSignal[0][1] == 2);
+        REQUIRE(vectorSignal[0][2] == 3);
+        REQUIRE(vectorSignal[0][3] == 4);
     }
 }
 
@@ -89,17 +89,17 @@ TEST_CASE("Signal Class", "[signal]")
         REQUIRE(result[3] == 4.0f);
 
         // Aligned load and store
-        auto *aligned_data = (float *)_mm_malloc(4 * sizeof(float), 16);
-        std::copy(data, data + 4, aligned_data);
-        dsp::Signal<float, 2, 2> s_aligned;
-        std::copy(aligned_data, aligned_data + 4, s_aligned.data()->data());
-        v = s_aligned.toSIMD();
-        dsp::SIMDtoArray<float, 4, true>(aligned_data, v);
-        REQUIRE(aligned_data[0] == 1.0f);
-        REQUIRE(aligned_data[1] == 2.0f);
-        REQUIRE(aligned_data[2] == 3.0f);
-        REQUIRE(aligned_data[3] == 4.0f);
-        _mm_free(aligned_data);
+        auto *alignedData = (float *)_mm_malloc(4 * sizeof(float), 16);
+        std::copy(data, data + 4, alignedData);
+        dsp::Signal<float, 2, 2> sAligned;
+        std::copy(alignedData, alignedData + 4, sAligned.data()->data());
+        v = sAligned.toSIMD();
+        dsp::SIMDtoArray<float, 4, true>(alignedData, v);
+        REQUIRE(alignedData[0] == 1.0f);
+        REQUIRE(alignedData[1] == 2.0f);
+        REQUIRE(alignedData[2] == 3.0f);
+        REQUIRE(alignedData[3] == 4.0f);
+        _mm_free(alignedData);
     }
 
 #if defined(__AVX__)

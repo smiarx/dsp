@@ -29,28 +29,28 @@ template <typename F, size_t N> Sample<F, N> householder(Sample<F, N> x)
 }
 
 template <typename F, size_t N, size_t H = ilog2(N)>
-Sample<F, N> _hadamard(Sample<F, N> x)
+Sample<F, N> hadamardBase(Sample<F, N> x)
 {
     /* compute hadamard transform of sample (without power normalization) */
-    static constexpr auto L = 1 << H;
+    static constexpr auto kL = 1 << H;
 
     if constexpr (H == 0) {
         return x;
     } else {
-        static_assert(N % L == 0, "N must be divisible by L");
-        constexpr auto L2 = L / 2;
+        static_assert(N % kL == 0, "N must be divisible by L");
+        constexpr auto kL2 = kL / 2;
 
         decltype(x) y;
 
 #pragma omp simd
-        for (size_t i = 0; i < N; i += L) {
-            for (size_t j = 0; j < L2; ++j) {
-                auto n    = i + j;
-                y[n]      = x[n] + x[n + L2];
-                y[n + L2] = x[n] - x[n + L2];
+        for (size_t i = 0; i < N; i += kL) {
+            for (size_t j = 0; j < kL2; ++j) {
+                auto n     = i + j;
+                y[n]       = x[n] + x[n + kL2];
+                y[n + kL2] = x[n] - x[n + kL2];
             }
         }
-        return _hadamard<F, N, H - 1>(y);
+        return hadamardBase<F, N, H - 1>(y);
     }
 }
 
@@ -60,12 +60,12 @@ Sample<F, N> hadamard(Sample<F, N> x)
     /* hadamard transform with power normalization */
 
     // first we multiply values by power normalization
-    constexpr F powerNorm = std::pow(F(1) / F(2), F(H) / F(2));
+    constexpr F kPowerNorm = std::pow(F(1) / F(2), F(H) / F(2));
     for (size_t i = 0; i < N; ++i) {
-        x[i] *= powerNorm;
+        x[i] *= kPowerNorm;
     }
 
-    return _hadamard<F, N, H>(x);
+    return hadamardBase<F, N, H>(x);
 }
 
 template <size_t N>
@@ -147,40 +147,40 @@ static inline linalg::fMatrix<N> hadamardInterpolMatrix(float t)
      */
 
     static_assert(N == 4, "Implemented only for N=4");
-    linalg::fMatrix<N> A = {{{
+    linalg::fMatrix<N> matA = {{{
         {0.75f, 0.25f, 0.25f, 0.25f},
         {0.25f, 0.25f, 0.25f, -0.25f},
         {0.25f, 0.25f, 0.25f, -0.25f},
         {0.25f, -0.25f, -0.25f, 0.75f},
     }}};
-    linalg::fMatrix<N> B = {{{
+    linalg::fMatrix<N> matB = {{{
         {0.25f, -0.25f, -0.25f, -0.25f},
         {-0.25f, 0.75f, -0.25f, 0.25f},
         {-0.25f, -0.25f, 0.75f, 0.25f},
         {-0.25f, 0.25f, 0.25f, 0.25f},
     }}};
 
-    constexpr auto v1_2  = constants<float>::sqrt1_2;
-    constexpr auto v1_8  = 0.5f * v1_2;
-    linalg::fMatrix<N> C = {{{
-        {0.f, v1_8, -v1_8, 0.f},
-        {-v1_8, 0.f, v1_2, v1_8},
-        {v1_8, -v1_2, 0.f, -v1_8},
-        {0.f, -v1_8, v1_8, 0.f},
+    constexpr auto kV12     = constants<float>::sqrt1_2;
+    constexpr auto kV18     = 0.5f * kV12;
+    linalg::fMatrix<N> matC = {{{
+        {0.f, kV18, -kV18, 0.f},
+        {-kV18, 0.f, kV12, kV18},
+        {kV18, -kV12, 0.f, -kV18},
+        {0.f, -kV18, kV18, 0.f},
     }}};
 
-    linalg::fMatrix<N> H{};
+    linalg::fMatrix<N> matH{};
 
     auto c = cosf(dsp::constants<float>::pi * t);
     auto s = sinf(dsp::constants<float>::pi * t);
 #pragma omp simd
     for (size_t j = 0; j < N; ++j) {
         for (size_t i = 0; i < N; ++i) {
-            H[j][i] = A[j][i] + c * B[j][i] + s * C[j][i];
+            matH[j][i] = matA[j][i] + c * matB[j][i] + s * matC[j][i];
         }
     }
 
-    return H;
+    return matH;
 }
 
 } // namespace dsp

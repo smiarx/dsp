@@ -13,11 +13,11 @@ namespace dsp::va
  */
 
 enum FilterType {
-    LowPass,
-    HighPass,
-    AllPass,
-    BandPass,
-    Notch,
+    kLowPass,
+    kHighPass,
+    kAllPass,
+    kBandPass,
+    kNotch,
 };
 
 template <size_t N> static constexpr fData<N> warpGain(fData<N> freq)
@@ -29,7 +29,7 @@ template <size_t N> static constexpr fData<N> warpGain(fData<N> freq)
     return freq;
 }
 
-template <size_t N, FilterType FT = LowPass> class OnePole
+template <size_t N, FilterType FT = kLowPass> class OnePole
 {
   public:
     struct State : public fData<N> {
@@ -38,7 +38,7 @@ template <size_t N, FilterType FT = LowPass> class OnePole
 
     OnePole(fData<N> freq)
     {
-        static_assert(FT == LowPass || FT == HighPass || FT == AllPass);
+        static_assert(FT == kLowPass || FT == kHighPass || FT == kAllPass);
         setFreq(freq);
     }
     OnePole() = default;
@@ -58,13 +58,13 @@ template <size_t N, FilterType FT = LowPass> class OnePole
             auto v  = (x[k][i] - s[i]) * gain_[i];
             auto lp = v + s[i];
             s[i]    = lp + v;
-            if constexpr (FT == LowPass) {
+            if constexpr (FT == kLowPass) {
                 x[k][i] = lp;
             } else {
                 auto hp = x[k][i] - lp;
-                if constexpr (FT == HighPass) {
+                if constexpr (FT == kHighPass) {
                     x[k][i] = hp;
-                } else if constexpr (FT == AllPass) {
+                } else if constexpr (FT == kAllPass) {
                     auto ap = lp - hp;
                     x[k][i] = ap;
                 }
@@ -78,11 +78,11 @@ template <size_t N, FilterType FT = LowPass> class OnePole
     [[nodiscard]] fData<N> getGain() const
     {
         auto gain = gain_;
-        if constexpr (FT == LowPass) {
+        if constexpr (FT == kLowPass) {
             return gain;
-        } else if constexpr (FT == HighPass) {
+        } else if constexpr (FT == kHighPass) {
             arrayFor(gain, i) gain[i] = 1.f - gain[i];
-        } else if constexpr (FT == AllPass) {
+        } else if constexpr (FT == kAllPass) {
             arrayFor(gain, i) gain[i] += gain[i];
         }
         return gain;
@@ -92,11 +92,11 @@ template <size_t N, FilterType FT = LowPass> class OnePole
     fData<N> gain_;
 };
 
-template <size_t N, FilterType FT = LowPass> class SVF
+template <size_t N, FilterType FT = kLowPass> class SVF
 {
   public:
-    static constexpr bool NormaLizedBandPass =
-        FT == BandPass || FT == AllPass || FT == Notch;
+    static constexpr bool kNormaLizedBandPass =
+        FT == kBandPass || FT == kAllPass || FT == kNotch;
 
     struct State : public std::array<fData<N>, 2> {
         State() : std::array<fData<N>, 2>{} {}
@@ -113,9 +113,9 @@ template <size_t N, FilterType FT = LowPass> class SVF
     }
     void setFreq(fData<N> freq)
     {
-        static constexpr auto defaultRes = 0.70710677f; // 1/sqrt(2)
+        static constexpr auto kDefaultRes = 0.70710677f; // 1/sqrt(2)
         fData<N> res;
-        arrayFor(res, i) { res[i] = defaultRes; }
+        arrayFor(res, i) { res[i] = kDefaultRes; }
         setFreq(freq, res);
     }
 
@@ -126,12 +126,12 @@ template <size_t N, FilterType FT = LowPass> class SVF
             assert(res[i] >= 0.f);
             denominator_[i] =
                 1.f / (1.f + gain_[i] * (2.f * res[i] + gain_[i]));
-            if constexpr (FT == HighPass) {
+            if constexpr (FT == kHighPass) {
                 gains1_[i] = 2 * res[i] + gain_[i];
             }
-            if constexpr (NormaLizedBandPass) {
+            if constexpr (kNormaLizedBandPass) {
                 inputGain_[i] = 2.f * res[i];
-                if constexpr (FT == AllPass) {
+                if constexpr (FT == kAllPass) {
                     inputGain_[i] *= 2.f;
                 }
             }
@@ -141,7 +141,7 @@ template <size_t N, FilterType FT = LowPass> class SVF
     /* -3db bandwidth in octave */
     template <bool PreWarp = false> void setBandWidth(fData<N> bandwith)
     {
-        static_assert(FT == BandPass);
+        static_assert(FT == kBandPass);
         fData<N> res;
         arrayFor(bandwith, i)
         {
@@ -164,7 +164,7 @@ template <size_t N, FilterType FT = LowPass> class SVF
         auto &in = c.getSignal();
         auto x   = in;
 
-        if constexpr (NormaLizedBandPass) {
+        if constexpr (kNormaLizedBandPass) {
             x.fromSIMD(x.toSIMD() * inputGain_.toSIMD());
         }
 
@@ -175,7 +175,7 @@ template <size_t N, FilterType FT = LowPass> class SVF
         arrayFor(x, k)
         {
             auto xk = x[k].toSIMD();
-            if constexpr (FT == HighPass) {
+            if constexpr (FT == kHighPass) {
                 auto hp = (xk - gains1_.toSIMD() * s1 - s2) * denominator;
                 auto v1 = gain * hp;
                 auto bp = v1 + s1;
@@ -186,17 +186,17 @@ template <size_t N, FilterType FT = LowPass> class SVF
                 in[k].fromSIMD(hp);
             } else {
                 auto bp = (gain * (xk - s2) + s1) * denominator;
-                if constexpr (NormaLizedBandPass) {
+                if constexpr (kNormaLizedBandPass) {
                     auto bp2 = bp + bp; // first integrator;
                     s1       = bp2 - s1;
                     auto v22 = gain * bp2; // second integrator
                     s2       = v22 + s2;
-                    if constexpr (FT == BandPass) {
+                    if constexpr (FT == kBandPass) {
                         in[k].fromSIMD(bp);
-                    } else if constexpr (FT == AllPass || FT == Notch) {
+                    } else if constexpr (FT == kAllPass || FT == kNotch) {
                         in[k].fromSIMD(in[k].toSIMD() - bp);
                     }
-                } else if (FT == LowPass) {
+                } else if (FT == kLowPass) {
                     auto v1 = bp - s1; // first integrator
                     s1      = bp + v1;
                     auto v2 = gain * bp; // secondintegrator
@@ -219,11 +219,11 @@ template <size_t N, FilterType FT = LowPass> class SVF
     class Empty
     {
     };
-    std::conditional_t<FT == HighPass, fData<N>, Empty> gains1_;
-    std::conditional_t<NormaLizedBandPass, fData<N>, Empty> inputGain_;
+    std::conditional_t<FT == kHighPass, fData<N>, Empty> gains1_;
+    std::conditional_t<kNormaLizedBandPass, fData<N>, Empty> inputGain_;
 };
 
-template <size_t N, FilterType FT = LowPass> class Ladder
+template <size_t N, FilterType FT = kLowPass> class Ladder
 {
   public:
     using OP    = OnePole<N, FT>;
@@ -265,9 +265,9 @@ template <size_t N, FilterType FT = LowPass> class Ladder
                 auto g  = gain[i];
                 auto S  = s4 + g * (s3 + g * (s2 + g * s1));
                 // https://www.kvraudio.com/forum/viewtopic.php?f=33&t=571909
-                if constexpr (FT == LowPass) {
+                if constexpr (FT == kLowPass) {
                     S *= (1.f - g);
-                } else if constexpr (FT == HighPass) {
+                } else if constexpr (FT == kHighPass) {
                     S *= -g;
                 }
                 u[i] = (x[k][i] - res_[i] * S) * denominator_[i];

@@ -10,8 +10,8 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cstddef>
 
-static constexpr float sr      = 48000.f;
-static constexpr float nyquist = sr / 2.f;
+static constexpr float kSr      = 48000.f;
+static constexpr float kNyquist = kSr / 2.f;
 
 template <size_t N>
 static void generatesine(dsp::fData<N> f, dsp::fData<N> phase,
@@ -72,8 +72,8 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
         constexpr size_t Length = 1 << 11;
         dsp::fSample<N> x[Length];
 
-        auto cut = GENERATE(500.f / nyquist, 1000.f / nyquist, 2000.f / nyquist,
-                            15000.f / nyquist);
+        auto cut = GENERATE(500.f / kNyquist, 1000.f / kNyquist,
+                            2000.f / kNyquist, 15000.f / kNyquist);
 
 #define TEST_DC(FILTER, TYPE, VAL)                                     \
     generatesine({0.f}, {dsp::constants<float>::pi / 2.f}, x, Length); \
@@ -82,13 +82,13 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
         REQUIRE_THAT(x[n][0], Catch::Matchers::WithinAbs(VAL, 1e-3));  \
     }
 
-        TEST_DC(dsp::va::OnePole, dsp::va::LowPass, 1.f);
-        TEST_DC(dsp::va::SVF, dsp::va::LowPass, 1.f);
-        TEST_DC(dsp::va::Ladder, dsp::va::LowPass, 1.f);
+        TEST_DC(dsp::va::OnePole, dsp::va::kLowPass, 1.f);
+        TEST_DC(dsp::va::SVF, dsp::va::kLowPass, 1.f);
+        TEST_DC(dsp::va::Ladder, dsp::va::kLowPass, 1.f);
 
-        TEST_DC(dsp::va::OnePole, dsp::va::HighPass, 0.f);
-        TEST_DC(dsp::va::SVF, dsp::va::HighPass, 0.f);
-        TEST_DC(dsp::va::Ladder, dsp::va::HighPass, 0.f);
+        TEST_DC(dsp::va::OnePole, dsp::va::kHighPass, 0.f);
+        TEST_DC(dsp::va::SVF, dsp::va::kHighPass, 0.f);
+        TEST_DC(dsp::va::Ladder, dsp::va::kHighPass, 0.f);
     }
 
     // test filter reaction to Cuttof frequency signal
@@ -110,13 +110,13 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
     REQUIRE_THAT(rms(x, Length)[0] / power,         \
                  Catch::Matchers::WithinAbs(GAIN, 1e-3));
 
-        TEST_CUTOFF(dsp::va::OnePole, dsp::va::LowPass, cutGainm3db);
-        TEST_CUTOFF(dsp::va::SVF, dsp::va::LowPass, cutGainm3db);
-        TEST_CUTOFF(dsp::va::Ladder, dsp::va::LowPass, cutGainm12db);
+        TEST_CUTOFF(dsp::va::OnePole, dsp::va::kLowPass, cutGainm3db);
+        TEST_CUTOFF(dsp::va::SVF, dsp::va::kLowPass, cutGainm3db);
+        TEST_CUTOFF(dsp::va::Ladder, dsp::va::kLowPass, cutGainm12db);
 
-        TEST_CUTOFF(dsp::va::OnePole, dsp::va::HighPass, cutGainm3db);
-        TEST_CUTOFF(dsp::va::SVF, dsp::va::HighPass, cutGainm3db);
-        TEST_CUTOFF(dsp::va::Ladder, dsp::va::HighPass, cutGainm12db);
+        TEST_CUTOFF(dsp::va::OnePole, dsp::va::kHighPass, cutGainm3db);
+        TEST_CUTOFF(dsp::va::SVF, dsp::va::kHighPass, cutGainm3db);
+        TEST_CUTOFF(dsp::va::Ladder, dsp::va::kHighPass, cutGainm12db);
     }
 
     // test filter reaction to high frequency signal
@@ -129,8 +129,8 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
         dsp::fSample<N> powerOrig;
         dsp::fSample<N> power;
 
-        auto cut = GENERATE(50.3f / nyquist, 104.38f / nyquist,
-                            200.38f / nyquist, 332.2f / nyquist);
+        auto cut = GENERATE(50.3f / kNyquist, 104.38f / kNyquist,
+                            200.38f / kNyquist, 332.2f / kNyquist);
 
 #define TEST_HIGHFREQ(FILTER, TYPE, VAL)                               \
     generatesine(fs, {0.f}, x, Length);                                \
@@ -141,13 +141,13 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
         REQUIRE_THAT(power[i], Catch::Matchers::WithinAbs(VAL, 1e-2)); \
     }
 
-        TEST_HIGHFREQ(dsp::va::OnePole, dsp::va::LowPass, 0.f);
-        TEST_HIGHFREQ(dsp::va::SVF, dsp::va::LowPass, 0.f);
-        TEST_HIGHFREQ(dsp::va::Ladder, dsp::va::LowPass, 0.f);
+        TEST_HIGHFREQ(dsp::va::OnePole, dsp::va::kLowPass, 0.f);
+        TEST_HIGHFREQ(dsp::va::SVF, dsp::va::kLowPass, 0.f);
+        TEST_HIGHFREQ(dsp::va::Ladder, dsp::va::kLowPass, 0.f);
 
-        TEST_HIGHFREQ(dsp::va::OnePole, dsp::va::HighPass, powerOrig[i]);
-        TEST_HIGHFREQ(dsp::va::SVF, dsp::va::HighPass, powerOrig[i]);
-        TEST_HIGHFREQ(dsp::va::Ladder, dsp::va::HighPass, powerOrig[i]);
+        TEST_HIGHFREQ(dsp::va::OnePole, dsp::va::kHighPass, powerOrig[i]);
+        TEST_HIGHFREQ(dsp::va::SVF, dsp::va::kHighPass, powerOrig[i]);
+        TEST_HIGHFREQ(dsp::va::Ladder, dsp::va::kHighPass, powerOrig[i]);
     }
 
     // test filter resonance
@@ -170,8 +170,8 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
     REQUIRE_THAT(rms(x, Length)[0] / power,                 \
                  Catch::Matchers::WithinAbs(GAIN, 5e-3));
 
-        TEST_RES(dsp::va::SVF, dsp::va::LowPass, cutGainm3db);
-        TEST_RES(dsp::va::SVF, dsp::va::HighPass, cutGainm3db);
-        TEST_RES(dsp::va::SVF, dsp::va::BandPass, 1.f);
+        TEST_RES(dsp::va::SVF, dsp::va::kLowPass, cutGainm3db);
+        TEST_RES(dsp::va::SVF, dsp::va::kHighPass, cutGainm3db);
+        TEST_RES(dsp::va::SVF, dsp::va::kBandPass, 1.f);
     }
 }

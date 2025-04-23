@@ -9,12 +9,12 @@ namespace dsp
 template <size_t N, size_t Size> class Stack
 {
     static_assert(isPow2(Size), "Size must be a power of 2");
-    static constexpr auto Mask = Size - 1;
+    static constexpr auto kMask = Size - 1;
 
   public:
     fSample<N> push(fSample<N> x)
     {
-        n_         = (n_ + 1) & Mask;
+        n_         = (n_ + 1) & kMask;
         auto y     = stack_[n_];
         stack_[n_] = x;
         return y;

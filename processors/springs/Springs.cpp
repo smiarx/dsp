@@ -13,26 +13,26 @@
 namespace processors
 {
 // multirate converter
-static const Springs::MRs multirates{Springs::DecimateMaxFreq};
+static const Springs::MRs kMultirates{Springs::kDecimateMaxFreq};
 
-void Springs::update(float R, float freq, float Td, float T60, float tone,
+void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
 {
     if (freq != freq_) {
         setFreq(freq, blockSize);
     }
-    if (R != R_) {
-        setRes(R, blockSize);
+    if (r != r_) {
+        setRes(r, blockSize);
     }
-    if (Td != Td_) {
-        setTd(Td, blockSize);
+    if (td != td_) {
+        setTd(td, blockSize);
     }
     if (chaos != chaos_) {
         setChaos(chaos, blockSize);
     }
-    if (T60 != T60_) {
-        setT60(T60, blockSize);
+    if (t60 != t60_) {
+        setT60(t60, blockSize);
     }
     if (tone != tone_) {
         setTone(tone, blockSize);
@@ -51,94 +51,94 @@ void Springs::update(float R, float freq, float Td, float T60, float tone,
 void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
-    auto M          = static_cast<int>(DecimateMaxFreq / freqScaled);
-    M               = std::min(M, MaxDecimate);
+    auto rateFactor          = static_cast<int>(kDecimateMaxFreq / freqScaled);
+    rateFactor               = std::min(rateFactor, kMaxDecimate);
 
-    freqScaled *= static_cast<float>(M);
+    freqScaled *= static_cast<float>(rateFactor);
     dsp::fData<N> freqs;
-    dsp::fData<NAP> freqsAP;
+    dsp::fData<kNap> freqsAP;
     for (size_t i = 0; i < N; ++i) {
-        auto fFactor = 1.f + (freqFactor[i] - 1.f) * getScatterFactor();
+        auto fFactor = 1.f + (kFreqFactor[i] - 1.f) * getScatterFactor();
         freqs[i]     = freqScaled * fFactor;
         freqs[i]     = std::min(0.995f, freqs[i]);
         freqs[i]     = std::max(0.005f, freqs[i]);
         freqsAP[i]   = freqs[i];
     }
 
-    if (R_ < 0) {
+    if (r_ < 0) {
         for (size_t i = 0; i < N; ++i) {
             freqsAP[i] = 1.f - freqsAP[i];
         }
     }
-    for (size_t i = N; i < NAP; ++i) {
+    for (size_t i = N; i < kNap; ++i) {
         freqsAP[i] = freqsAP[i % N];
     }
 
     allpass_.setFreq(freqsAP);
     lowpass_.setFreq(freqs, {
-                                LowPassRes,
-                                LowPassRes,
-                                LowPassRes,
-                                LowPassRes,
+                                kLowPassRes,
+                                kLowPassRes,
+                                kLowPassRes,
+                                kLowPassRes,
                             });
 
-    multirate_  = multirates.get(M);
+    multirate_  = kMultirates.get(rateFactor);
     decimateId_ = 0;
 
-    int oldM = M_;
-    M_       = M;
+    int oldRateFactor = rateFactor_;
+    rateFactor_       = rateFactor;
     freq_    = freq;
 
-    if (M != oldM) {
-        auto fM = static_cast<float>(M);
+    if (rateFactor != oldRateFactor) {
+        auto fM = static_cast<float>(rateFactor);
 
-        auto dcblockfreq = DCBlockFreq * freqScale_ * fM;
+        auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
         dcblocker_.setFreq(
             {dcblockfreq, dcblockfreq, dcblockfreq, dcblockfreq});
 
-        setTd(Td_, blockSize);
+        setTd(td_, blockSize);
         setTone(tone_, blockSize);
     }
 }
 
-void Springs::setRes(float R, int /*blockSize*/)
+void Springs::setRes(float r, int /*blockSize*/)
 {
-    R_ = R;
+    r_ = r;
 
-    dsp::fData<NAP> Rs;
+    dsp::fData<kNap> rs;
     for (size_t i = 0; i < N; ++i) {
-        auto rFactor = 1.f + (RFactor[i] - 1.f) * getScatterFactor();
-        Rs[i]        = std::abs(R_) * rFactor;
+        auto rFactor = 1.f + (kRFactor[i] - 1.f) * getScatterFactor();
+        rs[i]        = std::abs(r_) * rFactor;
     }
 
-    for (size_t i = N; i < NAP; ++i) {
-        Rs[i] = Rs[i % N];
+    for (size_t i = N; i < kNap; ++i) {
+        rs[i] = rs[i % N];
     }
 
-    allpass_.setRes(Rs);
+    allpass_.setRes(rs);
 
     /* if abs(R) smaller than a certain value, reduce the cascade size
      * this helps to avoid long ringing around allpass phasing frequency */
-    if (std::abs(R) < MinRWithMaxCascadeL) {
+    if (std::abs(r) < kMinRWithMaxCascadeL) {
         apNStages_ = static_cast<unsigned int>(
-            std::abs(R) / MinRWithMaxCascadeL * APCascadeL);
+            std::abs(r) / kMinRWithMaxCascadeL * kApCascadeL);
     } else {
-        apNStages_ = APCascadeL;
+        apNStages_ = kApCascadeL;
     }
 }
 
-void Springs::setTd(float Td, int blockSize)
+void Springs::setTd(float td, int blockSize)
 {
-    Td_ = Td;
+    td_ = td;
     dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
     dsp::fSample<N> loopTd;
-    float sampleTd = Td * sampleRate_ / static_cast<float>(M_);
+    float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
     for (size_t i = 0; i < N; ++i) {
-        auto loopFactor = 1.f + (loopTdFactor[i] - 1.f) * getScatterFactor();
+        auto loopFactor = 1.f + (kLoopTdFactor[i] - 1.f) * getScatterFactor();
         loopTd[i]       = sampleTd * loopFactor;
 
-        loopModAmp_[i]   = loopTd[i] * loopModFactor[i];
+        loopModAmp_[i]   = loopTd[i] * kLoopModFactor[i];
         loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos_, 2.5f);
 
         loopEchoT[i] = static_cast<int>(loopTd[i] / 5.f);
@@ -148,35 +148,35 @@ void Springs::setTd(float Td, int blockSize)
         loopTd[i] -= static_cast<float>(loopEchoT[i]);
     }
 
-    loopTd_.set(loopTd, static_cast<float>(M_) / static_cast<float>(blockSize));
+    loopTd_.set(loopTd, static_cast<float>(rateFactor_) / static_cast<float>(blockSize));
 
     predelay_.setDelay(predelayT);
     ap1_.setDelay(loopEchoT);
 
-    setT60(T60_, blockSize);
+    setT60(t60_, blockSize);
 }
 
 void Springs::setChaos(float chaos, int blockSize)
 {
     chaos_ = chaos;
-    setTd(Td_, blockSize);
+    setTd(td_, blockSize);
 }
 
 void Springs::setTone(float tone, int /*blockSize*/)
 {
     tone_ = tone;
 
-    auto eqPeak = dsp::expScale(ToneMin, ToneMax, tone) * freqScale_ * M_;
-    static constexpr auto maxEqPeak = 0.95f;
-    eqPeak                          = std::min(maxEqPeak, eqPeak);
+    auto eqPeak = dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ * rateFactor_;
+    static constexpr auto kMaxEqPeak = 0.95f;
+    eqPeak                           = std::min(kMaxEqPeak, eqPeak);
     eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});
-    eq_.setBandWidth({EQBandWidth, EQBandWidth, EQBandWidth, EQBandWidth});
+    eq_.setBandWidth({kEqBandWidth, kEqBandWidth, kEqBandWidth, kEqBandWidth});
 }
 
-void Springs::setT60(float T60, int /*blockSize*/)
+void Springs::setT60(float t60, int /*blockSize*/)
 {
-    T60_      = T60;
-    loopGain_ = -powf(0.001f, Td_ / T60_);
+    t60_      = t60;
+    loopGain_ = -powf(0.001f, td_ / t60_);
 }
 
 void Springs::setWidth(float width, int blockSize)
@@ -204,7 +204,7 @@ void Springs::setDryWet(float drywet, int blockSize)
 void Springs::setScatter(float scatter, int blockSize)
 {
     scatter_ = scatter;
-    setTd(Td_, blockSize);
+    setTd(td_, blockSize);
     setFreq(freq_, blockSize);
 }
 
@@ -306,7 +306,7 @@ void Springs::process(const float *const *__restrict in,
             inFor(loop, k, i)
             {
                 loopRipple[k][i] +=
-                    loopRippleGain * (loop[k][i] - loopRipple[k][i]);
+                    kLoopRippleGain * (loop[k][i] - loopRipple[k][i]);
             }
 
             inFor(x, k, i) { x[k][i] += loopRipple[k][i] * loopGain_; }
@@ -317,9 +317,9 @@ void Springs::process(const float *const *__restrict in,
             auto &x = c.getSignal();
             inFor(x, k, i)
             {
-                x[k][i] *= NonLinearityGain;
+                x[k][i] *= kNonLinearityGain;
                 x[k][i] = dsp::tanh(x[k][i]);
-                x[k][i] /= NonLinearityGain;
+                x[k][i] /= kNonLinearityGain;
             }
         }
         contextFor(ctxtdec) { dcblocker_.process(c, dcblockerState_); }
@@ -331,7 +331,7 @@ void Springs::process(const float *const *__restrict in,
             auto &x = c.getSignal();
 
             // shift intermediary values
-            for (size_t j = APChainSize - 1; j > 0; --j) {
+            for (size_t j = kApChainSize - 1; j > 0; --j) {
                 for (size_t i = 0; i < N; ++i) {
                     allpassIntermediary[j * N + i] =
                         allpassIntermediary[(j - 1) * N + i];

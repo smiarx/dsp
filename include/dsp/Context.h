@@ -13,9 +13,9 @@ template <typename In, bool Vectorize = false> class Context
     Context(const Context &ctxt)            = default;
     Context &operator=(const Context &ctxt) = default;
 
-    static constexpr auto VecSize       = Vectorize ? In::VectorSize : 1;
-    static constexpr auto isUsingVector = Vectorize;
-    using BaseType                      = In;
+    static constexpr auto kVecSize       = Vectorize ? In::kVectorSize : 1;
+    static constexpr auto kIsUsingVector = Vectorize;
+    using BaseType                       = In;
     using Type =
         std::conditional_t<Vectorize, typename In::Vector, typename In::Scalar>;
 
@@ -28,14 +28,14 @@ template <typename In, bool Vectorize = false> class Context
         return Context<In, false>(in_, blockSize_);
     }
 
-    [[nodiscard]] int vecSize() const { return VecSize; }
-    [[nodiscard]] int getStep() const { return VecSize; }
+    [[nodiscard]] int vecSize() const { return kVecSize; }
+    [[nodiscard]] int getStep() const { return kVecSize; }
 
     auto &getSignal() { return in_->template toSignal<Vectorize>(); }
 
     template <typename T> void setSamples(T &x) { in_ = &x[0]; }
 
-    void next(int incr = VecSize) { nextIn(incr); }
+    void next(int incr = kVecSize) { nextIn(incr); }
 
     [[nodiscard]] int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
@@ -49,21 +49,21 @@ template <typename In, bool Vectorize = false> class Context
 };
 
 template <class Ctxt, class... Ctxts>
-void _ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
+void ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
 {
     blockSize = c.getBlockSize();
     step      = c.getStep();
     /* check if blockSize and incr are the same */
     (
         [&] {
-            auto _blockSize = cs.getBlockSize();
-            assert(blockSize == _blockSize);
+            auto cblockSize = cs.getBlockSize();
+            assert(blockSize == cblockSize);
         }(),
         ...);
     (
         [&] {
-            auto _step = cs.getStep();
-            assert(step == _step);
+            auto cstep = cs.getStep();
+            assert(step == cstep);
         }(),
         ...);
 }

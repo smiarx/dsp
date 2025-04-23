@@ -7,17 +7,18 @@ TEST_CASE("Springs")
 {
     SECTION("Benchmark")
     {
-        constexpr auto sampleRate = 48000.f;
-        constexpr auto blockSize  = 512;
+        constexpr auto kSampleRate = 48000.f;
+        constexpr auto kBlockSize  = 512;
 
-        float in[2][blockSize];
+        float in[2][kBlockSize];
         float *ins[2] = {in[0], in[1]};
 
         processors::Springs springs;
-        springs.prepare(sampleRate, blockSize);
-        springs.update(0.5, 4500, 0.05, 2.3, 0.3, 0.4, 0.4, 1., 0.3, blockSize);
+        springs.prepare(kSampleRate, kBlockSize);
+        springs.update(0.5, 4500, 0.05, 2.3, 0.3, 0.4, 0.4, 1., 0.3,
+                       kBlockSize);
         springs.free();
 
-        BENCHMARK("Springs") { springs.process(ins, ins, blockSize); };
+        BENCHMARK("Springs") { springs.process(ins, ins, kBlockSize); };
     }
 }

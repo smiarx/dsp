@@ -5,7 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 
-template <int N, int Order, bool Vec = false> static void test_fir()
+template <int N, int Order, bool Vec = false> static void testFir()
 {
     std::array<dsp::Data<float, N>, Order + 1> b;
     arrayFor(b, k) { arrayFor(b[0], i) b[k][i] = rand(); }
@@ -32,12 +32,12 @@ template <int N, int Order, bool Vec = false> static void test_fir()
 
 TEST_CASE("FIR filter test", "[dsp][firfilter]")
 {
-    test_fir<1, 8>();
-    test_fir<1, 47>();
-    test_fir<2, 23>();
-    test_fir<4, 17>();
-    test_fir<1, 8, true>();
-    test_fir<1, 47, true>();
-    test_fir<2, 23, true>();
-    test_fir<4, 15, true>();
+    testFir<1, 8>();
+    testFir<1, 47>();
+    testFir<2, 23>();
+    testFir<4, 17>();
+    testFir<1, 8, true>();
+    testFir<1, 47, true>();
+    testFir<2, 23, true>();
+    testFir<4, 15, true>();
 }

@@ -29,7 +29,7 @@ template <size_t N, class Tap = TapTail> class AllPass
 
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
-        static_assert(Ctxt::VecSize <= DL::Length);
+        static_assert(Ctxt::kVecSize <= DL::kLength);
 
         auto &x = c.getSignal();
         auto sN = tap_.read(c, delayline);
@@ -62,7 +62,7 @@ template <size_t N, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
-    static constexpr auto minfdelay = 0.5f;
+    static constexpr auto kMinfdelay = 0.5f;
 
     constexpr TapAllPass() = default;
     template <class... Args>
@@ -76,7 +76,7 @@ class TapAllPass : public TapOut
         fData<N> a;
         iData<N> id;
         for (int i = 0; i < N; ++i) {
-            id[i]    = static_cast<int>(d[i] - minfdelay);
+            id[i]    = static_cast<int>(d[i] - kMinfdelay);
             float fd = d[i] - static_cast<float>(id[i]);
             a[i]     = (1 - fd) / (1 + fd);
         }
@@ -100,9 +100,9 @@ template <size_t N>
 class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
 {
   public:
-    static constexpr auto minfdelay = 0.618f;
-    using TapOut                    = TapNoInterp<N>;
-    using TapIn                     = TapTail;
+    static constexpr auto kMinfdelay = 0.618f;
+    using TapOut                     = TapNoInterp<N>;
+    using TapIn                      = TapTail;
 
     constexpr TapAllPass() = default;
 
@@ -111,7 +111,7 @@ class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
         fData<N> a;
         iData<N> id;
         for (int i = 0; i < N; ++i) {
-            id[i] = static_cast<int>(d[i] - minfdelay);
+            id[i] = static_cast<int>(d[i] - kMinfdelay);
 
             float fd = d[i] - static_cast<float>(id[i]);
             // taylor approximation of (1-fd)/(1+fd)
@@ -173,18 +173,18 @@ template <size_t N> class AllPass2
         }
     }
 
-    void setRes(fData<N> R)
+    void setRes(fData<N> r)
     {
         for (size_t i = 0; i < N; ++i) {
-            assert(R[i] >= 0);
-            a_[0][i] = (1.f - R[i]) / (1.f + R[i]);
+            assert(r[i] >= 0);
+            a_[0][i] = (1.f - r[i]) / (1.f + r[i]);
         }
     }
 
-    void setFreq(fData<N> freq, fData<N> R)
+    void setFreq(fData<N> freq, fData<N> r)
     {
         setFreq(freq);
-        setRes(R);
+        setRes(r);
     }
 
     void setCoeffs(fData<N> a0, fData<N> a1)

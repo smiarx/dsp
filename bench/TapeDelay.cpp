@@ -7,18 +7,18 @@ TEST_CASE("TapeDelay")
 {
     SECTION("Benchmark")
     {
-        constexpr auto sampleRate = 48000.f;
-        constexpr auto blockSize  = 512;
+        constexpr auto kSampleRate = 48000.f;
+        constexpr auto kBlockSize  = 512;
 
-        float in[processors::TapeDelay::N][blockSize];
-        float *ins[processors::TapeDelay::N] = {in[0], in[1]};
+        float in[processors::TapeDelay::kN][kBlockSize];
+        float *ins[processors::TapeDelay::kN] = {in[0], in[1]};
 
         processors::TapeDelay tapedelay;
-        tapedelay.prepare(sampleRate, blockSize);
+        tapedelay.prepare(kSampleRate, kBlockSize);
         tapedelay.update(0.2, 0.8, 3000, 10, -40, 0.3,
-                         processors::TapeDelay::Mode::Normal, 0.4, blockSize);
+                         processors::TapeDelay::Mode::kNormal, 0.4, kBlockSize);
 
-        BENCHMARK("TapeDelay") { tapedelay.process(ins, ins, blockSize); };
+        BENCHMARK("TapeDelay") { tapedelay.process(ins, ins, kBlockSize); };
 
         tapedelay.free();
     }

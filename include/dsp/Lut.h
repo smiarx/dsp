@@ -8,25 +8,25 @@ namespace dsp
 template <typename T, size_t Size> class Lut
 {
     enum {
-        valueId = 0,
-        deltaId = 1,
+        kValueId = 0,
+        kDeltaId = 1,
     };
 
     static_assert(isPow2(Size), "Size must be power of 2");
-    static constexpr auto Mask = Size - 1;
+    static constexpr auto kMask = Size - 1;
 
   public:
     template <typename F> void fill(F func)
     {
         /* func take one float input and return Signal<N> */
-        auto x0 = table_[0][valueId] = func(0);
+        auto x0 = table_[0][kValueId] = func(0);
         for (size_t n = 1; n < Size; ++n) {
-            auto x1 = table_[n][valueId] = func(static_cast<float>(n) / Size);
-            table_[n - 1][deltaId]       = x1 - x0;
-            x0                           = x1;
+            auto x1 = table_[n][kValueId] = func(static_cast<float>(n) / Size);
+            table_[n - 1][kDeltaId]       = x1 - x0;
+            x0                            = x1;
         }
-        auto x1                   = func(1.f);
-        table_[Size - 1][deltaId] = x1 - x0;
+        auto x1                    = func(1.f);
+        table_[Size - 1][kDeltaId] = x1 - x0;
     }
 
     template <typename Float> auto read(Float pos, int i) const
@@ -36,10 +36,10 @@ template <typename T, size_t Size> class Lut
         auto fpos = pos - ipos;
 
         // ipos between 0 and Size
-        ipos &= static_cast<int>(Mask);
+        ipos &= static_cast<int>(kMask);
 
-        auto x         = table_[ipos][valueId][i];
-        const auto &dx = table_[ipos][deltaId][i];
+        auto x         = table_[ipos][kValueId][i];
+        const auto &dx = table_[ipos][kDeltaId][i];
 
         x += fpos * dx;
         return x;
@@ -52,10 +52,10 @@ template <typename T, size_t Size> class Lut
         auto fpos = pos - static_cast<float>(ipos);
 
         // ipos between 0 and Size
-        ipos &= static_cast<int>(Mask);
+        ipos &= static_cast<int>(kMask);
 
-        auto x         = table_[ipos][valueId];
-        const auto &dx = table_[ipos][deltaId];
+        auto x         = table_[ipos][kValueId];
+        const auto &dx = table_[ipos][kDeltaId];
 
         x += dx * fpos;
         return x;

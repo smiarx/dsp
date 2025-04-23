@@ -14,11 +14,11 @@ struct TapeDelay : public Unit {
 
 static void TapeDelay_Ctor(TapeDelay *unit);
 static void TapeDelay_Dtor(TapeDelay *unit);
-static void TapeDelay_next(TapeDelay *unit, int inNumSamples);
+static void tapeDelayNext(TapeDelay *unit, int inNumSamples);
 
 void TapeDelay_Ctor(TapeDelay *unit)
 {
-    SETCALC(TapeDelay_next);
+    SETCALC(tapeDelayNext);
 
     unit->tapedelay = (processors::TapeDelay *)RTAlloc(
         unit->mWorld, sizeof(processors::TapeDelay));
@@ -41,7 +41,7 @@ void TapeDelay_Dtor(TapeDelay *unit)
     RTFree(unit->mWorld, unit->tapedelay);
 }
 
-void TapeDelay_next(TapeDelay *unit, int inNumSamples)
+void tapeDelayNext(TapeDelay *unit, int inNumSamples)
 {
     float *in[2]  = {IN(8), IN(9)};
     float *out[2] = {OUT(0), OUT(1)};
@@ -52,5 +52,5 @@ void TapeDelay_next(TapeDelay *unit, int inNumSamples)
     unit->tapedelay->process(in, out, inNumSamples);
 }
 
-extern void LoadTapeDelay();
-void LoadTapeDelay() { DefineDtorUnit(TapeDelay); }
+extern void loadTapeDelay();
+void loadTapeDelay() { DefineDtorUnit(TapeDelay); }

@@ -14,18 +14,18 @@ TEST_CASE("Context Class", "[context]")
         REQUIRE(ctx.vecSize() == 1);
 
         // Copy construction
-        dsp::Context<dsp::Sample<float, 4>> ctx_copy(ctx);
-        REQUIRE(ctx_copy.getStep() == 1);
-        REQUIRE(ctx_copy.vecSize() == 1);
+        dsp::Context<dsp::Sample<float, 4>> ctxCopy(ctx);
+        REQUIRE(ctxCopy.getStep() == 1);
+        REQUIRE(ctxCopy.vecSize() == 1);
     }
 
     SECTION("Vectorized Mode")
     {
-        constexpr auto N = 2;
-        dsp::Sample<float, N> data;
-        dsp::Context<dsp::Sample<float, N>, true> ctx(&data);
-        REQUIRE(ctx.getStep() == SIMDSIZE / sizeof(float) / N);
-        REQUIRE(ctx.vecSize() == SIMDSIZE / sizeof(float) / N);
+        constexpr auto kN = 2;
+        dsp::Sample<float, kN> data;
+        dsp::Context<dsp::Sample<float, kN>, true> ctx(&data);
+        REQUIRE(ctx.getStep() == SIMDSIZE / sizeof(float) / kN);
+        REQUIRE(ctx.vecSize() == SIMDSIZE / sizeof(float) / kN);
     }
 
     SECTION("Block Size and Increment Operations")
@@ -61,7 +61,7 @@ TEST_CASE("Helper Functions", "[helpers]")
         dsp::Context<dsp::Sample<float, 4>> ctx2(&data2, 10);
 
         int blockSize, incr;
-        dsp::_ctxtInfos(blockSize, incr, ctx1, ctx2);
+        dsp::ctxtInfos(blockSize, incr, ctx1, ctx2);
         REQUIRE(blockSize == 10);
         REQUIRE(incr == 1);
     }

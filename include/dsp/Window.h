@@ -11,20 +11,20 @@ template <int Attenuation> class Kaiser
     Kaiser() = delete;
     template <typename F> static constexpr auto generate(F x)
     {
-        constexpr F beta  = computeBeta<F>(Attenuation);
-        constexpr F denom = F(1) / zerothOrderBessel(beta);
-        F K               = beta * sqrtf(F(1) - x * x);
-        F num             = zerothOrderBessel(K);
+        constexpr F kBeta  = computeBeta<F>(Attenuation);
+        constexpr F kDenom = F(1) / zerothOrderBessel(kBeta);
+        F K                = kBeta * sqrtf(F(1) - x * x);
+        F num              = zerothOrderBessel(K);
 
-        return num * denom;
+        return num * kDenom;
     }
 
-    template <typename F> static constexpr F computeBeta(int Att)
+    template <typename F> static constexpr F computeBeta(int att)
     {
-        auto fAtt = static_cast<F>(Att);
-        if (Att < 21) {
+        auto fAtt = static_cast<F>(att);
+        if (att < 21) {
             return F(0);
-        } else if (Att < 50) {
+        } else if (att < 50) {
             return std::pow(F(0.5842) * (fAtt - F(21)), F(0.4)) +
                    F(0.07886) * (fAtt - F(21));
         } else {

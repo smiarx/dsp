@@ -15,6 +15,8 @@
 namespace dsp
 {
 
+// NOLINTBEGIN (readability-identifier-naming)
+
 // class holding the simd type, loading & storing function given Type & Size
 template <typename T, int Size> struct SIMD;
 // easier definition of SIMD<Type,Size>::type
@@ -143,4 +145,6 @@ template <> struct SIMD<double, 4> {
     static constexpr auto storeu = _mm256_storeu_pd;
 };
 #endif
+
+// NOLINTEND (readability-identifier-naming)
 } // namespace dsp

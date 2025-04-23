@@ -63,9 +63,9 @@ template <size_t N> class LFOParabolic
 {
   public:
     // Number of fractional bits for fixed-point arithmetic
-    static constexpr auto Q = 30;
+    static constexpr auto kQ = 30;
     // Fixed-point representation of 1 (2^30) */
-    static constexpr unsigned int Unity = 1 << Q;
+    static constexpr unsigned int kUnity = 1 << kQ;
 
     /** @brief Default constructor initializes phase to zero. */
     LFOParabolic() = default;
@@ -86,7 +86,7 @@ template <size_t N> class LFOParabolic
         for (size_t i = 0; i < N; ++i) {
             assert(freq[i] >= 0.f && freq[i] <= 1.f);
             // Scale frequency for fixed-point accumulation
-            freq_[i] = static_cast<int>(freq[i] * 4.f * float(Unity));
+            freq_[i] = static_cast<int>(freq[i] * 4.f * float(kUnity));
         }
     }
 
@@ -104,15 +104,15 @@ template <size_t N> class LFOParabolic
 
             // Compute parabolic function
             int x        = phase_[i];
-            int xHalf    = x >> (Q / 2);           // Shift to Q15
-            int xAbsHalf = std::abs(x) >> (Q / 2); // Shift to Q15
+            int xHalf    = x >> (kQ / 2);           // Shift to Q15
+            int xAbsHalf = std::abs(x) >> (kQ / 2); // Shift to Q15
             int iy       = 2 * x - xHalf * xAbsHalf;
 
             // Increment phase
             phase_[i] += freq_[i];
 
             // Convert fixed-point result to float
-            y[i] = static_cast<float>(iy) / Unity;
+            y[i] = static_cast<float>(iy) / kUnity;
         }
 
         return y;

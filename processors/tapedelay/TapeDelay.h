@@ -19,31 +19,31 @@ namespace processors
 class TapeDelay
 {
   public:
-    static constexpr auto N = 2;
+    static constexpr auto kN = 2;
 
-    static constexpr auto MaxBlockSize      = 512;
-    static constexpr auto DefaultSampleRate = 48000.f;
-    static constexpr int MaxDelay           = 2.f;
+    static constexpr auto kMaxBlockSize      = 512;
+    static constexpr auto kDefaultSampleRate = 48000.f;
+    static constexpr int kMaxDelay           = 2.f;
 
-    static constexpr auto speedSmoothTime = 0.7f;
-    static constexpr auto speedModFreq    = 0.242f;
-    static constexpr auto speedModAmp     = 0.013f;
+    static constexpr auto kSpeedSmoothTime = 0.7f;
+    static constexpr auto kSpeedModFreq    = 0.242f;
+    static constexpr auto kSpeedModAmp     = 0.013f;
 
-    static constexpr auto KernelSize = 4;
+    static constexpr auto kKernelSize = 4;
 
-    static constexpr auto DelayBufSize =
-        static_cast<size_t>(DefaultSampleRate * MaxDelay);
+    static constexpr auto kDelayBufSize =
+        static_cast<size_t>(kDefaultSampleRate * kMaxDelay);
 
     // lookup table for cross fading between two taps
-    static constexpr auto FadeSize = 2048;
-    class FadeLut : public std::array<float, FadeSize>
+    static constexpr auto kFadeSize = 2048;
+    class FadeLut : public std::array<float, kFadeSize>
     {
       public:
         FadeLut()
         {
-            for (size_t n = 0; n < FadeSize; ++n) {
+            for (size_t n = 0; n < kFadeSize; ++n) {
                 float x =
-                    (static_cast<float>(n) + 1.f) / (float(FadeSize) + 1.f);
+                    (static_cast<float>(n) + 1.f) / (float(kFadeSize) + 1.f);
                 (*this)[n] = dsp::window::Hann::generate(x);
             }
         }
@@ -51,9 +51,9 @@ class TapeDelay
     static FadeLut fadeLut;
 
     enum Mode {
-        Normal    = 0,
-        BackForth = 1,
-        Reverse   = 2,
+        kNormal    = 0,
+        kBackForth = 1,
+        kReverse   = 2,
     };
 
     TapeDelay()
@@ -114,14 +114,14 @@ class TapeDelay
     dsp::ControlSmoother<2> wet_{{0.f, 0.f}};
 
     // tape movement
-    using TapePosition = dsp::TapePosition<DelayBufSize>;
+    using TapePosition = dsp::TapePosition<kDelayBufSize>;
     float targetSpeed_{0};
     float speed_{0};
     float speedSmooth_{0.f};
 
     TapePosition tapePos_;
     using TapeInterp = dsp::TapKernel<
-        2, dsp::kernel::Sinc<KernelSize, dsp::window::Kaiser<140>>, 64>;
+        2, dsp::kernel::Sinc<kKernelSize, dsp::window::Kaiser<140>>, 64>;
     using TapTape = dsp::TapTape<TapeInterp>;
     TapTape tapTape_[2];
     TapTape tapReverse_;
@@ -145,12 +145,12 @@ class TapeDelay
     // move tape function
     TapePosition::position_t moveTape();
 
-    dsp::DelayLine<DelayBufSize / 3> delaylineReverse_;
-    dsp::DelayLine<DelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;
+    dsp::DelayLine<kDelayBufSize / 3> delaylineReverse_;
+    dsp::DelayLine<kDelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;
 
     // mode
-    Mode mode_{Normal};
-    Mode oldMode_{Normal};
+    Mode mode_{kNormal};
+    Mode oldMode_{kNormal};
 
     // speed modulation
     float drift_{0.f};
@@ -164,19 +164,19 @@ class TapeDelay
 
     // low pass filter
     float cutlowpass_{0.f};
-    dsp::va::SVF<N, dsp::va::LowPass> lpf_{};
+    dsp::va::SVF<kN, dsp::va::kLowPass> lpf_{};
     decltype(lpf_)::State lpfMem_{};
 
     // high pass filter
     float cuthighpass_{0.f};
-    dsp::va::SVF<N, dsp::va::HighPass> hpf_{};
+    dsp::va::SVF<kN, dsp::va::kHighPass> hpf_{};
     decltype(hpf_)::State hpfMem_{};
 
-    static constexpr auto BufferSize = nextTo(delayline_);
-    dsp::Buffer<dsp::fSample<N>, BufferSize> buffer_;
+    static constexpr auto kBufferSize = nextTo(delayline_);
+    dsp::Buffer<dsp::fSample<kN>, kBufferSize> buffer_;
 
     // tmp buffers
-    dsp::fSample<N> *__restrict x_{nullptr};
+    dsp::fSample<kN> *__restrict x_{nullptr};
 };
 
 template <class ReAlloc>
@@ -184,22 +184,22 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
     invSampleRate_ = 1.f / sampleRate;
     freqScale_     = 2.f * invSampleRate_;
-    maxBlockSize_  = std::min(blockSize, MaxBlockSize);
+    maxBlockSize_  = std::min(blockSize, kMaxBlockSize);
 
     speedSmooth_ =
-        1.f - std::pow(0.001f, 1.f / speedSmoothTime * invSampleRate_);
+        1.f - std::pow(0.001f, 1.f / kSpeedSmoothTime * invSampleRate_);
 
-    speedLFO_.setFreq({freqScale_ * speedModFreq});
+    speedLFO_.setFreq({freqScale_ * kSpeedModFreq});
 
     // alloc ressources
-    x_ = (dsp::fSample<N> *)realloc(x_, sizeof(dsp::fSample<N>) *
-                                            static_cast<size_t>(maxBlockSize_));
+    x_ = (dsp::fSample<kN> *)realloc(
+        x_, sizeof(dsp::fSample<kN>) * static_cast<size_t>(maxBlockSize_));
 
     auto *buf = buffer_.getBuffer();
-    constexpr auto bufferSize =
-        sizeof(dsp::fSample<N>) * decltype(buffer_)::Size;
-    buf = (dsp::fSample<N> *)realloc(buf, bufferSize);
-    memset(buf, 0, bufferSize);
+    constexpr auto kRealBufferSize =
+        sizeof(dsp::fSample<kN>) * decltype(buffer_)::kSize;
+    buf = (dsp::fSample<kN> *)realloc(buf, kRealBufferSize);
+    memset(buf, 0, kRealBufferSize);
     buffer_.setBuffer(buf);
 }
 

@@ -36,9 +36,9 @@ template <typename T, size_t N> class Sample : public Data<T, N>
     static_assert(SIMDSIZE % (N * sizeof(T)) == 0,
                   "SIMDSIZE must be divisible by N*sizeof(T)");
 
-    static constexpr auto VectorSize = SIMDSIZE / (N * sizeof(T));
-    using Vector                     = Signal<T, N, VectorSize>;
-    using Scalar                     = Signal<T, N, 1>;
+    static constexpr auto kVectorSize = SIMDSIZE / (N * sizeof(T));
+    using Vector                      = Signal<T, N, kVectorSize>;
+    using Scalar                      = Signal<T, N, 1>;
 
     template <bool Vectorize = false> auto &toSignal()
     {
@@ -60,17 +60,17 @@ template <typename T, size_t N, size_t L>
 class Signal : public std::array<Sample<T, N>, L>
 {
   public:
-    static constexpr auto Size = N * L;
-    static_assert(SIMDSIZE % (Size * sizeof(T)) == 0,
+    static constexpr auto kSize = N * L;
+    static_assert(SIMDSIZE % (kSize * sizeof(T)) == 0,
                   "SIMDSIZE must be divisible by signal length");
 
-    SIMD_t<T, Size> toSIMD()
+    SIMD_t<T, kSize> toSIMD()
     {
-        return arrayToSIMD<T, Size>(this->data()->data());
+        return arrayToSIMD<T, kSize>(this->data()->data());
     }
-    void fromSIMD(SIMD_t<T, Size> v)
+    void fromSIMD(SIMD_t<T, kSize> v)
     {
-        SIMDtoArray<T, Size>(this->data()->data(), v);
+        SIMDtoArray<T, kSize>(this->data()->data(), v);
     }
 };
 

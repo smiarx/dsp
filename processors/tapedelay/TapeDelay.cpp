@@ -42,14 +42,15 @@ void TapeDelay::setDelay(float delay, int blockSize)
 
     // limits;
     delay = std::max(delay, 0.f);
-    if (mode_ == Reverse) {
+    if (mode_ == kReverse) {
         delay = std::min(delay,
-                         MaxDelay * DefaultSampleRate * invSampleRate_ / 3.f);
+                         kMaxDelay * kDefaultSampleRate * invSampleRate_ / 3.f);
     } else {
-        delay = std::min(delay, MaxDelay * DefaultSampleRate * invSampleRate_);
+        delay =
+            std::min(delay, kMaxDelay * kDefaultSampleRate * invSampleRate_);
     }
     // set new target speed
-    targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::Unity;
+    targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::kUnity;
 
     setDrift(getDrift(), blockSize);
 }
@@ -57,7 +58,7 @@ void TapeDelay::setDelay(float delay, int blockSize)
 void TapeDelay::setDrift(float drift, int blockSize)
 {
     drift_ = drift;
-    speedMod_.set({targetSpeed_ * drift * speedModAmp},
+    speedMod_.set({targetSpeed_ * drift * kSpeedModAmp},
                   1.f / static_cast<float>(blockSize));
 }
 
@@ -110,7 +111,7 @@ void TapeDelay::setDryWet(float drywet, int blockSize)
 
 void TapeDelay::setMode(Mode mode, int /*blockSize*/)
 {
-    if (mode == Reverse) {
+    if (mode == kReverse) {
         tapReverse_.search(tapePos_);
     }
     switchTap(mode);
@@ -120,12 +121,12 @@ void TapeDelay::switchTap(Mode mode)
 {
     oldMode_ = mode_;
     mode_    = mode;
-    fadePos_ = FadeSize - 1;
+    fadePos_ = kFadeSize - 1;
     tapId_ ^= 1;
 
-    if (mode_ == Normal) {
+    if (mode_ == kNormal) {
         tapTape_[tapId_].search(tapePos_);
-    } else if (mode_ == BackForth || mode == Reverse) {
+    } else if (mode_ == kBackForth || mode == kReverse) {
         reverseDist_[tapId_] = 0;
         tapTape_[tapId_].reset(tapePos_);
     }
@@ -143,18 +144,18 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
     auto &tapTape = tapTape_[tapId];
     auto &x       = ctxt.getSignal();
 
-    if constexpr (M == Normal) {
+    if constexpr (M == kNormal) {
         x = tapTape.read(ctxt, delayline_, tapePos_);
-    } else if constexpr (M == BackForth || M == Reverse) {
+    } else if constexpr (M == kBackForth || M == kReverse) {
         auto &reverseDist = reverseDist_[tapId];
 
         reverseDist += speed + speed; // 2*speed
 
         // read tape
-        x = tapTape.read<TapTape::Reverse>(ctxt, delayline_, tapePos_,
-                                           reverseDist);
+        x = tapTape.read<TapTape::kReverse>(ctxt, delayline_, tapePos_,
+                                            reverseDist);
 
-        if constexpr (M == Reverse) {
+        if constexpr (M == kReverse) {
             auto xreverse = tapReverse_.read(ctxt, delaylineReverse_, tapePos_);
             inFor(x, k, i) { x[k][i] += xreverse[k][i]; }
         }
@@ -163,17 +164,17 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
         if constexpr (check) {
 
             /* get reverse distance limit */
-            constexpr auto limit = [] {
-                if constexpr (M == BackForth)
-                    return static_cast<int>(TapePosition::Unity);
-                else if constexpr (M == Reverse)
-                    return static_cast<int>(TapePosition::Unity * 2);
+            constexpr auto kLimit = [] {
+                if constexpr (M == kBackForth)
+                    return static_cast<int>(TapePosition::kUnity);
+                else if constexpr (M == kReverse)
+                    return static_cast<int>(TapePosition::kUnity * 2);
             }();
 
-            if (reverseDist > limit) {
+            if (reverseDist > kLimit) {
                 switchTap(M);
                 reverseDist_[tapId_] =
-                    reverseDist - limit + speed * KernelSize * 2;
+                    reverseDist - kLimit + speed * kKernelSize * 2;
                 return false;
             }
         }
@@ -226,15 +227,15 @@ void TapeDelay::process(const float *const *__restrict in,
         if (fadePos_ < 0) {
             // blockSize use in tape read part
             switch (mode_) {
-            case BackForth:
-                blockSize = readBlock<BackForth>(ctxt);
+            case kBackForth:
+                blockSize = readBlock<kBackForth>(ctxt);
                 break;
-            case Reverse:
-                blockSize = readBlock<Reverse>(ctxt);
+            case kReverse:
+                blockSize = readBlock<kReverse>(ctxt);
                 break;
-            case Normal:
+            case kNormal:
             default:
-                blockSize = readBlock<Normal>(ctxt);
+                blockSize = readBlock<kNormal>(ctxt);
                 break;
             }
 
@@ -249,29 +250,29 @@ void TapeDelay::process(const float *const *__restrict in,
 
                 auto &x = c.getSignal();
                 switch (mode_) {
-                case BackForth:
-                    read<BackForth, false>(c, tapId_, speed);
+                case kBackForth:
+                    read<kBackForth, false>(c, tapId_, speed);
                     break;
-                case Reverse:
-                    read<Reverse, false>(c, tapId_, speed);
+                case kReverse:
+                    read<kReverse, false>(c, tapId_, speed);
                     break;
-                case Normal:
+                case kNormal:
                 default:
-                    read<Normal, false>(c, tapId_, speed);
+                    read<kNormal, false>(c, tapId_, speed);
                     break;
                 }
 
                 auto xIn = x;
                 switch (oldMode_) {
-                case BackForth:
-                    read<BackForth, false>(c, tapId_ ^ 1, speed);
+                case kBackForth:
+                    read<kBackForth, false>(c, tapId_ ^ 1, speed);
                     break;
-                case Reverse:
-                    read<Reverse, false>(c, tapId_ ^ 1, speed);
+                case kReverse:
+                    read<kReverse, false>(c, tapId_ ^ 1, speed);
                     break;
-                case Normal:
+                case kNormal:
                 default:
-                    read<Normal, false>(c, tapId_ ^ 1, speed);
+                    read<kNormal, false>(c, tapId_ ^ 1, speed);
                     break;
                 }
 
@@ -290,7 +291,8 @@ void TapeDelay::process(const float *const *__restrict in,
         // distortion
         if (saturation_.isActive() ||
             // check if its possible to vectorize given blocksize
-            static_cast<size_t>(blockSize) % dsp::fSample<N>::VectorSize != 0) {
+            static_cast<size_t>(blockSize) % dsp::fSample<kN>::kVectorSize !=
+                0) {
             float pregain  = 1.f;
             float postgain = 1.f;
             contextFor(ctxt)
@@ -298,7 +300,7 @@ void TapeDelay::process(const float *const *__restrict in,
                 saturation_.step();
                 auto saturation = saturation_.get()[0][0];
                 pregain         = dsp::db2gain(saturation);
-                postgain = dsp::db2gain(-saturation / (saturation > 0 ? 2 : 1));
+                postgain = dsp::db2gain(-saturation / (saturation > 0.f ? 2.f : 1.f));
                 auto &x  = c.getSignal();
                 inFor(x, k, i)
                 {
@@ -344,7 +346,7 @@ void TapeDelay::process(const float *const *__restrict in,
             auto feedback = feedbackCompensated_.get();
             decltype(c)::Type inloop;
 
-            if (mode == Reverse) {
+            if (mode == kReverse) {
                 delayline_.write(c, xin);
                 inFor(xin, k, i) { inloop[k][i] = loop[k][i] * feedback[k][i]; }
                 delaylineReverse_.write(c, inloop);
@@ -370,9 +372,9 @@ void TapeDelay::process(const float *const *__restrict in,
         saturation_.reset();
         inFor(pregain_, k, i)
         {
-            auto K          = pregain_.size();
-            pregain_[k][i]  = pregain_[K - 1][i];
-            postgain_[k][i] = postgain_[K - 1][i];
+            auto vecSize          = pregain_.size();
+            pregain_[k][i]  = pregain_[vecSize - 1][i];
+            postgain_[k][i] = postgain_[vecSize - 1][i];
         }
     }
 }

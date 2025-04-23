@@ -24,34 +24,35 @@ class Springs
   public:
     static constexpr auto N = 4;
 
-    static constexpr auto MaxBlockSize = 512;
-    static constexpr auto MaxDecimate  = 8;
-    static constexpr int LoopLength    = static_cast<int>(0.25 * 48000);
-    static constexpr auto CascadeL     = 160;
+    static constexpr auto kMaxBlockSize = 512;
+    static constexpr auto kMaxDecimate  = 8;
+    static constexpr int kLoopLength    = static_cast<int>(0.25 * 48000);
+    static constexpr auto kCascadeL     = 160;
 
-    static constexpr auto DecimateMaxFreq = 0.78f;
-    static constexpr auto DCBlockFreq     = 10.f;
+    static constexpr auto kDecimateMaxFreq = 0.78f;
+    static constexpr auto kDcBlockFreq     = 10.f;
 
-    static constexpr auto EQBandWidth = 5.f;
+    static constexpr auto kEqBandWidth = 5.f;
 
-    static constexpr auto LowPassRes = 0.6f;
+    static constexpr auto kLowPassRes = 0.6f;
 
-    static constexpr auto MinRWithMaxCascadeL = 0.1f;
+    static constexpr auto kMinRWithMaxCascadeL = 0.1f;
 
-    static constexpr auto NonLinearityGain = 0.2f;
+    static constexpr auto kNonLinearityGain = 0.2f;
 
-    static constexpr auto ToneMin = 80.f;
-    static constexpr auto ToneMax = 5000.f;
+    static constexpr auto kToneMin = 80.f;
+    static constexpr auto kToneMax = 5000.f;
 
-    static constexpr auto loopEchoAp = 0.12f;
+    static constexpr auto kLoopEchoAp = 0.12f;
 
-    static constexpr float freqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
-    static constexpr float RFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
-    static constexpr float loopTdFactor[] = {
+    static constexpr float kFreqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
+    static constexpr float kRFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
+    static constexpr float kLoopTdFactor[] = {
         0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
-    static constexpr float loopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
-    static constexpr float loopModFactor[] = {0.0045f, 0.003f, 0.005f, 0.0037f};
-    static constexpr float loopRippleGain  = 0.016f;
+    static constexpr float kLoopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
+    static constexpr float kLoopModFactor[] = {0.0045f, 0.003f, 0.005f,
+                                               0.0037f};
+    static constexpr float kLoopRippleGain  = 0.016f;
 
     // use simd to improve all pass chain
     // for example
@@ -61,14 +62,14 @@ class Springs
     // with y as intermediary values and z as final values
     // reducing the number of computation by 2
     // introduce a delay in chain of size APChainSize
-    static constexpr auto APChainSize = SIMDSIZE / sizeof(float) / N;
-    static constexpr auto NAP         = N * APChainSize;
-    static constexpr auto APCascadeL  = CascadeL / APChainSize;
+    static constexpr auto kApChainSize = SIMDSIZE / sizeof(float) / N;
+    static constexpr auto kNap         = N * kApChainSize;
+    static constexpr auto kApCascadeL  = kCascadeL / kApChainSize;
 
     Springs()
     {
         /* loop modulation */
-        dsp::iNoise<N> noise;
+        dsp::INoise<N> noise;
         loopMod_.setPhase(noise.process());
     }
 
@@ -84,25 +85,25 @@ class Springs
     [[nodiscard]] float getDryWet() const { return drywet_; }
     [[nodiscard]] float getWidth() const { return width_; }
     [[nodiscard]] float getFreq() const { return freq_; }
-    [[nodiscard]] float getR() const { return R_; }
-    [[nodiscard]] float getTd() const { return Td_; }
+    [[nodiscard]] float getR() const { return r_; }
+    [[nodiscard]] float getTd() const { return td_; }
     [[nodiscard]] float getChaos() const { return chaos_; }
-    [[nodiscard]] float getT60() const { return T60_; }
+    [[nodiscard]] float getT60() const { return t60_; }
     [[nodiscard]] float getTone() const { return tone_; }
 
     // setters
     void setFreq(float freq, int blockSize);
-    void setRes(float R, int blockSize);
-    void setTd(float Td, int blockSize);
+    void setRes(float r, int blockSize);
+    void setTd(float td, int blockSize);
     void setChaos(float chaos, int blockSize);
-    void setT60(float T60, int blockSize);
+    void setT60(float t60, int blockSize);
     void setTone(float tone, int blockSize);
     void setScatter(float scatter, int blockSize);
     void setDryWet(float drywet, int blockSize);
     void setWidth(float width, int blockSize);
 
     // update
-    void update(float R, float freq, float Td, float T60, float tone,
+    void update(float r, float freq, float td, float t60, float tone,
                 float chaos, float scatter, float width, float drywet,
                 int blockSize);
 
@@ -111,17 +112,17 @@ class Springs
                  float *const *__restrict out, int count);
 
   private:
-    int M_{1};
+    int rateFactor_{1};
     float sampleRate_{48000.f};
     float freqScale_{2.f / 48000.f};
     int maxBlockSize_{};
 
     float drywet_{0.f};
     float width_{1.f};
-    float R_{0.f};
+    float r_{0.f};
     float freq_{0.f};
-    float Td_{0.f};
-    float T60_{0.f};
+    float td_{0.f};
+    float t60_{0.f};
     float tone_{0.f};
     float chaos_{0.f};
     float scatter_{1.f};
@@ -129,67 +130,67 @@ class Springs
     dsp::ControlSmoother<1> dry_{{1.f}};
     dsp::ControlSmoother<2> wet_{{}};
 
-    static constexpr auto minScatter = 0.1f;
+    static constexpr auto kMinScatter = 0.1f;
     [[nodiscard]] auto getScatterFactor() const
     {
-        return minScatter + scatter_;
+        return kMinScatter + scatter_;
     }
 
     // allpass
-    dsp::AllPass2<NAP> allpass_{};
-    dsp::fSample<NAP> allpassIntermediary_{};
-    typename decltype(allpass_)::State allpassState_[APCascadeL]{};
-    unsigned int apNStages_{APCascadeL};
+    dsp::AllPass2<kNap> allpass_{};
+    dsp::fSample<kNap> allpassIntermediary_{};
+    typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
+    unsigned int apNStages_{kApCascadeL};
 
-    dsp::va::SVF<N, dsp::va::LowPass> lowpass_{};
+    dsp::va::SVF<N, dsp::va::kLowPass> lowpass_{};
     typename decltype(lowpass_)::State lowpassState_{};
 
-    dsp::va::SVF<N, dsp::va::BandPass> eq_{};
+    dsp::va::SVF<N, dsp::va::kBandPass> eq_{};
     typename decltype(eq_)::State eqState_{};
 
-    dsp::va::OnePole<N, dsp::va::HighPass> dcblocker_{};
+    dsp::va::OnePole<N, dsp::va::kHighPass> dcblocker_{};
     typename decltype(dcblocker_)::State dcblockerState_{};
 
     /* decimate and interpolate memory lines */
-    using MR = dsp::MultiRate<N, 15, MaxDecimate>;
+    using MR = dsp::MultiRate<N, 15, kMaxDecimate>;
     MR::DLDecimate dldecimate_;
     MR::DLInterpolate dlinterpolate_;
     int decimateId_{0};
 
-    static constexpr auto BufSize = nextTo(dldecimate_) + MaxBlockSize;
+    static constexpr auto kBufSize = nextTo(dldecimate_) + kMaxBlockSize;
 
     // multirate pointer
   public:
-    using MRs = MR::WithBuffer<BufSize>;
+    using MRs = MR::WithBuffer<kBufSize>;
 
   private:
     const MRs::Base *multirate_;
 
-    dsp::Buffer<dsp::fSample<N>, BufSize> buffer_;
+    dsp::Buffer<dsp::fSample<N>, kBufSize> buffer_;
 
-    dsp::DelayLine<LoopLength / 2> predelaydl_;
+    dsp::DelayLine<kLoopLength / 2> predelaydl_;
     dsp::TapNoInterp<N> predelay_;
 
     float loopGain_{0.f};
-    static constexpr auto defaultTd = LoopLength * 0.1f;
+    static constexpr auto kDefaultTd = kLoopLength * 0.1f;
     dsp::ControlSmoother<N> loopTd_{
-        {defaultTd, defaultTd, defaultTd, defaultTd}};
+        {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
     dsp::fData<N> loopModAmp_{};
     dsp::LFOParabolic<N> loopMod_{};
     dsp::Noise<N> loopChaosNoise_{};
     dsp::SmootherLin<N> loopChaos_{};
     dsp::fData<N> loopChaosMod_{};
     using LoopType = dsp::TapCubic<N>;
-    dsp::DelayLine<LoopLength, nextTo(predelaydl_)> loopdl_;
+    dsp::DelayLine<kLoopLength, nextTo(predelaydl_)> loopdl_;
 
     dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
     dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{
-        {loopEchoAp, loopEchoAp, loopEchoAp, loopEchoAp}};
-    dsp::DelayLine<LoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
+        {kLoopEchoAp, kLoopEchoAp, kLoopEchoAp, kLoopEchoAp}};
+    dsp::DelayLine<kLoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
 
-    static constexpr auto BufDecSize = nextTo(ap1dl_) + MaxBlockSize;
-    dsp::Buffer<dsp::fSample<N>, BufDecSize> bufferDec_;
+    static constexpr auto kBufDecSize = nextTo(ap1dl_) + kMaxBlockSize;
+    dsp::Buffer<dsp::fSample<N>, kBufDecSize> bufferDec_;
 
     dsp::fSample<N> *x_{};
     dsp::fSample<N> *xdecimate_{};
@@ -197,29 +198,29 @@ class Springs
 // section for rms output of springs
 #ifdef SPRINGS_RMS
   public:
-    static constexpr auto RMSSize      = 128;
-    static constexpr auto RMSOverlap   = RMSSize - 32;
-    static constexpr auto RMSStackSize = 64;
+    static constexpr auto kRmsSize      = 128;
+    static constexpr auto kRmsOverlap   = kRmsSize - 32;
+    static constexpr auto kRmsStackSize = 64;
 
-    const dsp::fSample<N> *getRMSStack() const
+    [[nodiscard]] const dsp::fSample<N> *getRMSStack() const
     {
         return rmsStack_.getSamples();
     }
-    const size_t *getRMSStackPos() const { return rmsStack_.getPos(); }
+    [[nodiscard]] const size_t *getRMSStackPos() const { return rmsStack_.getPos(); }
 
   private:
-    dsp::RMS<N, RMSSize, RMSOverlap> rms_;
-    dsp::Stack<N, RMSStackSize> rmsStack_;
+    dsp::RMS<N, kRmsSize, kRmsOverlap> rms_;
+    dsp::Stack<N, kRmsStackSize> rmsStack_;
 #endif
 
 #ifdef SPRINGS_SHAKE
   public:
-    static constexpr auto shakeEnvUp   = 0.001f;
-    static constexpr auto shakeEnvDown = 0.09f;
+    static constexpr auto kShakeEnvUp   = 0.001f;
+    static constexpr auto kShakeEnvDown = 0.09f;
     void shake()
     {
-        shakeEnv_.set({1.f}, {shakeEnvUp * sampleRate_},
-                      {shakeEnvDown * sampleRate_});
+        shakeEnv_.set({1.f}, {kShakeEnvUp * sampleRate_},
+                      {kShakeEnvDown * sampleRate_});
     }
 
   private:
@@ -233,12 +234,12 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
     sampleRate_   = sampleRate;
     freqScale_    = 2.f / sampleRate;
-    maxBlockSize_ = std::min(blockSize, MaxBlockSize);
+    maxBlockSize_ = std::min(blockSize, kMaxBlockSize);
 
     /* loop size modulation */
     dsp::fData<N> freq;
     for (size_t i = 0; i < N; ++i) {
-        freq[i] = loopModFreq[i] * freqScale_;
+        freq[i] = kLoopModFreq[i] * freqScale_;
     }
     loopMod_.setFreq(freq);
 
@@ -250,14 +251,14 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
         sizeof(dsp::fSample<N>) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
 
     // set buffers
-#define allocateBuffer(buffer)                                \
-    {                                                         \
-        auto *b = buffer.getBuffer();                         \
-        constexpr auto size =                                 \
-            sizeof(dsp::fSample<N>) * decltype(buffer)::Size; \
-        b = (dsp::fSample<N> *)realloc(b, size);              \
-        memset(b, 0, size);                                   \
-        buffer.setBuffer(b);                                  \
+#define allocateBuffer(buffer)                                 \
+    {                                                          \
+        auto *b = buffer.getBuffer();                          \
+        constexpr auto size =                                  \
+            sizeof(dsp::fSample<N>) * decltype(buffer)::kSize; \
+        b = (dsp::fSample<N> *)realloc(b, size);               \
+        memset(b, 0, size);                                    \
+        buffer.setBuffer(b);                                   \
     }
 
     allocateBuffer(buffer_);

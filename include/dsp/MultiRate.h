@@ -22,26 +22,26 @@ class BaseMultiRate : public BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
     using WithBuffer = BaseMultiRate<N, Order, MaxM, Offset, BufSize_, M>;
 
     BaseMultiRate(float cutoff = 1.f) :
-        firdecimate(cutoff), firinterpolate(cutoff)
+        firdecimate_(cutoff), firinterpolate_(cutoff)
     {
     }
 
     int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl,
                  int decimateId) const override
     {
-        auto id = firdecimate.decimate(cin.vec(), cout, dl, decimateId);
+        auto id = firdecimate_.decimate(cin.vec(), cout, dl, decimateId);
         return id;
     }
     int interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl,
                     int interpolateId) const override
     {
-        auto id = firinterpolate.interpolate(cin, cout, dl, interpolateId);
+        auto id = firinterpolate_.interpolate(cin, cout, dl, interpolateId);
         return id;
     }
 
   private:
-    const FIRDecimate<N, Order, M> firdecimate;
-    const FIRInterpolate<N, Order, M> firinterpolate;
+    const FIRDecimate<N, Order, M> firdecimate_;
+    const FIRInterpolate<N, Order, M> firinterpolate_;
 };
 
 template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
@@ -74,7 +74,7 @@ template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
 class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
 {
   public:
-    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate(cutoff) {}
+    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate_(cutoff) {}
 
     using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
     using Base = typename Next::Base;
@@ -83,14 +83,14 @@ class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
     [[nodiscard]] const typename Next::Base *get(int i) const
     {
         if (i >= static_cast<int>(M)) {
-            return &multirate;
+            return &multirate_;
         } else {
             return Next::get(i);
         }
     }
 
   private:
-    const BaseMultiRate<N, Order, MaxM, Offset, BufSize, M> multirate;
+    const BaseMultiRate<N, Order, MaxM, Offset, BufSize, M> multirate_;
 };
 
 template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
@@ -107,11 +107,11 @@ class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
     [[nodiscard]] const Base *get(int i) const
     {
         (void)i;
-        return &multirate;
+        return &multirate_;
     }
 
   private:
-    const Base multirate;
+    const Base multirate_;
 };
 
 } // namespace dsp

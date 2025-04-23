@@ -12,8 +12,8 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
 {
     SECTION("Matrix mult vector")
     {
-        constexpr size_t N              = 4;
-        dsp::linalg::Matrix<float, N> m = {
+        constexpr size_t kN              = 4;
+        dsp::linalg::Matrix<float, kN> m = {
             0.9606811539349068,  0.28769739052079435,
             0.43830855665372603, 0.07081992794185832,
 
@@ -27,10 +27,10 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
             0.12888976383945794, 0.5058441074502963,
         };
 
-        dsp::Sample<float, N> x      = {0.20873822, 0.08766247, 0.47080132,
-                                        0.14881192};
-        dsp::Sample<float, N> expect = {0.51376248, 0.40250666, 0.43466998,
-                                        0.48965005};
+        dsp::Sample<float, kN> x      = {0.20873822, 0.08766247, 0.47080132,
+                                         0.14881192};
+        dsp::Sample<float, kN> expect = {0.51376248, 0.40250666, 0.43466998,
+                                         0.48965005};
 
         auto result = m.mult(x);
 
@@ -42,8 +42,8 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
 
     SECTION("Matrix mult vector")
     {
-        constexpr size_t N               = 4;
-        dsp::linalg::Matrix<float, N> m1 = {
+        constexpr size_t kN               = 4;
+        dsp::linalg::Matrix<float, kN> m1 = {
             0.0910283384099071,   0.48987322566042635,
             0.3477358717973138,   0.14085546647215907,
 
@@ -57,7 +57,7 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
             0.5321093552441208,   0.8997876496657035,
         };
 
-        dsp::linalg::Matrix<float, N> m2 = {
+        dsp::linalg::Matrix<float, kN> m2 = {
             0.41708431543756763, 0.09330762039197038,
             0.7590547759006182,  0.8952000403914135,
 
@@ -71,7 +71,7 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
             0.8221567169377872,  0.9331338128296616,
         };
 
-        dsp::linalg::Matrix<float, N> expect = {
+        dsp::linalg::Matrix<float, kN> expect = {
             1.06967269100736,   0.7079487491212193,
             0.6485720172860362, 1.1868788114748163,
 
@@ -126,13 +126,13 @@ TEST_CASE("Linear Algebra", "[dsp][linalg]")
 
     SECTION("identity")
     {
-        constexpr auto N = 4;
-        auto id          = dsp::linalg::identity<float, N>();
-        auto x           = dsp::fSample<N>{};
-        x[0]             = GENERATE(take(2, random(0, 1)));
-        x[1]             = GENERATE(take(2, random(0, 1)));
-        x[2]             = GENERATE(take(2, random(0, 1)));
-        x[3]             = GENERATE(take(2, random(0, 1)));
+        constexpr auto kN = 4;
+        auto id           = dsp::linalg::identity<float, kN>();
+        auto x            = dsp::fSample<kN>{};
+        x[0]              = GENERATE(take(2, random(0, 1)));
+        x[1]              = GENERATE(take(2, random(0, 1)));
+        x[2]              = GENERATE(take(2, random(0, 1)));
+        x[3]              = GENERATE(take(2, random(0, 1)));
 
         auto r = id.mult(x);
 

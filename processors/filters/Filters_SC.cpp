@@ -22,19 +22,19 @@ template <class Base> struct Filter<Base, true> : public Unit {
 };
 
 template <class Base, bool hasRes>
-static void Filter_Ctor(Filter<Base, hasRes> *unit);
+static void filterCtor(Filter<Base, hasRes> *unit);
 template <class Base, bool hasRes>
-static void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples);
+static void filterNext(Filter<Base, hasRes> *unit, int inNumSamples);
 template <class Base, bool hasRes>
-static void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples);
+static void filterNextA(Filter<Base, hasRes> *unit, int inNumSamples);
 
-template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit)
+template <class Base, bool hasRes> void filterCtor(Filter<Base, hasRes> *unit)
 {
     if (INRATE(1) == calc_FullRate) {
-        auto &nextFunc = Filter_next_a<Base, hasRes>;
+        auto &nextFunc = filterNextA<Base, hasRes>;
         SETCALC(nextFunc);
     } else {
-        auto &nextFunc = Filter_next<Base, hasRes>;
+        auto &nextFunc = filterNext<Base, hasRes>;
         SETCALC(nextFunc);
     }
 
@@ -51,7 +51,7 @@ template <class Base, bool hasRes> void Filter_Ctor(Filter<Base, hasRes> *unit)
 }
 
 template <class Base, bool hasRes>
-void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples)
+void filterNextA(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
         unit->freq = IN0(1);
@@ -85,7 +85,7 @@ void Filter_next_a(Filter<Base, hasRes> *unit, int inNumSamples)
 }
 
 template <class Base, bool hasRes>
-void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
+void filterNext(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
         float freq = IN0(1) * SAMPLEDUR * 2.f;
@@ -121,22 +121,22 @@ void Filter_next(Filter<Base, hasRes> *unit, int inNumSamples)
 #define CMA ,
 #define DefineFilterUnit(name, Base, hasRes)                \
     (*ft->fDefineUnit)(#name, sizeof(Filter<Base, hasRes>), \
-                       (UnitCtorFunc) & Filter_Ctor<Base, hasRes>, 0, 0);
-extern void LoadFilters();
-void LoadFilters()
+                       (UnitCtorFunc) & filterCtor<Base, hasRes>, 0, 0);
+extern void loadFilters();
+void loadFilters()
 {
-    DefineFilterUnit(OnePoleLP, dsp::va::OnePole<1 CMA dsp::va::LowPass>,
+    DefineFilterUnit(OnePoleLP, dsp::va::OnePole<1 CMA dsp::va::kLowPass>,
                      false);
-    DefineFilterUnit(OnePoleHP, dsp::va::OnePole<1 CMA dsp::va::HighPass>,
+    DefineFilterUnit(OnePoleHP, dsp::va::OnePole<1 CMA dsp::va::kHighPass>,
                      false);
-    DefineFilterUnit(OnePoleAP, dsp::va::OnePole<1 CMA dsp::va::AllPass>,
+    DefineFilterUnit(OnePoleAP, dsp::va::OnePole<1 CMA dsp::va::kAllPass>,
                      false);
-    DefineFilterUnit(SVFLP, dsp::va::SVF<1 CMA dsp::va::LowPass>, true);
-    DefineFilterUnit(SVFHP, dsp::va::SVF<1 CMA dsp::va::HighPass>, true);
-    DefineFilterUnit(SVFAP, dsp::va::SVF<1 CMA dsp::va::AllPass>, true);
-    DefineFilterUnit(SVFBP, dsp::va::SVF<1 CMA dsp::va::BandPass>, true);
-    DefineFilterUnit(SVFNotch, dsp::va::SVF<1 CMA dsp::va::Notch>, true);
-    DefineFilterUnit(LadderLP, dsp::va::Ladder<1 CMA dsp::va::LowPass>, true);
-    DefineFilterUnit(LadderHP, dsp::va::Ladder<1 CMA dsp::va::HighPass>, true);
-    DefineFilterUnit(LadderAP, dsp::va::Ladder<1 CMA dsp::va::AllPass>, true);
+    DefineFilterUnit(SVFLP, dsp::va::SVF<1 CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(SVFHP, dsp::va::SVF<1 CMA dsp::va::kHighPass>, true);
+    DefineFilterUnit(SVFAP, dsp::va::SVF<1 CMA dsp::va::kAllPass>, true);
+    DefineFilterUnit(SVFBP, dsp::va::SVF<1 CMA dsp::va::kBandPass>, true);
+    DefineFilterUnit(SVFNotch, dsp::va::SVF<1 CMA dsp::va::kNotch>, true);
+    DefineFilterUnit(LadderLP, dsp::va::Ladder<1 CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(LadderHP, dsp::va::Ladder<1 CMA dsp::va::kHighPass>, true);
+    DefineFilterUnit(LadderAP, dsp::va::Ladder<1 CMA dsp::va::kAllPass>, true);
 }

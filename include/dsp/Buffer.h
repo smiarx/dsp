@@ -11,10 +11,10 @@ template <class In, std::size_t MinSize = 0> class Buffer
   public:
     /* let the Offset first element be free and copy and of buffer to it so that
      * we can always retrieve Vec */
-    static constexpr auto Offset   = In::VectorSize;
-    static constexpr auto BaseSize = nextPow2(MinSize);
-    static constexpr int Mask      = BaseSize - 1;
-    static constexpr auto Size     = BaseSize + Offset;
+    static constexpr auto kOffset   = In::kVectorSize;
+    static constexpr auto kBaseSize = nextPow2(MinSize);
+    static constexpr int kMask      = kBaseSize - 1;
+    static constexpr auto kSize     = kBaseSize + kOffset;
 
     using Type = In;
 
@@ -23,29 +23,29 @@ template <class In, std::size_t MinSize = 0> class Buffer
     void setBuffer(In *buffer) { buffer_ = buffer; }
     In *getBuffer() { return buffer_; }
 
-    void write(int i, const In &x) { buffer_[(bufId_ - i) & Mask] = x; }
+    void write(int i, const In &x) { buffer_[(bufId_ - i) & kMask] = x; }
     template <bool Safe = true> void write(int i, const typename In::Vector &x)
     {
-        const auto pos = (bufId_ - i) & Mask;
+        const auto pos = (bufId_ - i) & kMask;
         if constexpr (Safe) {
             /* copy at the end of buffer for vector continuity */
             if (pos == 0) {
-                buffer_[BaseSize].toVector() = x;
+                buffer_[kBaseSize].toVector() = x;
             }
         }
         buffer_[pos].toVector() = x;
     }
     void write(int i, const typename In::Scalar &x)
     {
-        buffer_[(bufId_ - i) & Mask].toScalar() = x;
+        buffer_[(bufId_ - i) & kMask].toScalar() = x;
     }
     [[nodiscard]] const In &read(int i) const
     {
         assert(i <= static_cast<int>(MinSize));
-        return buffer_[(bufId_ - i) & Mask];
+        return buffer_[(bufId_ - i) & kMask];
     }
 
-    void nextBufId(int incr) { bufId_ = (bufId_ + incr) & Mask; }
+    void nextBufId(int incr) { bufId_ = (bufId_ + incr) & kMask; }
 
     // prepare for next block given ctxt
     template <class Ctxt> void nextBlock(Ctxt ctxt)
@@ -53,11 +53,11 @@ template <class In, std::size_t MinSize = 0> class Buffer
         nextBufId(ctxt.getBlockSize());
     }
 
-    void setLimits() { buffer_[BaseSize].toVector() = buffer_[0].toVector(); }
+    void setLimits() { buffer_[kBaseSize].toVector() = buffer_[0].toVector(); }
 
   private:
     bool isBufferOffset_{false};
-    int bufId_{Offset};
+    int bufId_{kOffset};
     In *__restrict buffer_{nullptr};
 };
 
@@ -89,7 +89,7 @@ class BufferContext : public Context<In, Vectorize>
 
     Buffer &getBuffer() { return buffer_; }
 
-    void next(int incr = Parent::VecSize)
+    void next(int incr = Parent::kVecSize)
     {
         buffer_.nextBufId(incr);
         Parent::next(incr);

@@ -10,9 +10,9 @@ template <std::size_t N> class DoubleRamp
 {
   public:
     enum State {
-        Off = 0,
-        Up,
-        Down,
+        kOff = 0,
+        kUp,
+        kDown,
     };
 
     void set(fData<N> maxValue, fData<N> up, fData<N> down)
@@ -22,14 +22,14 @@ template <std::size_t N> class DoubleRamp
             target_[i]   = maxValue[i];
             stepUp_[i]   = (maxValue[i] - value_[i]) / up[i];
             stepDown_[i] = -maxValue[i] / down[i];
-            state_[i]    = Up;
+            state_[i]    = kUp;
         }
     }
 
     bool isRunning()
     {
         bool running = false;
-        arrayFor(state_, i) { running |= (state_[i] != Off); }
+        arrayFor(state_, i) { running |= (state_[i] != kOff); }
         return running;
     }
 
@@ -39,18 +39,18 @@ template <std::size_t N> class DoubleRamp
 
         arrayFor(x, i)
         {
-            if (state_[i] == Up) {
+            if (state_[i] == kUp) {
                 value_[i] += stepUp_[i];
                 if (std::abs(value_[i]) >= std::abs(target_[i])) {
                     value_[i] = 2 * target_[i] - value_[i];
-                    state_[i] = Down;
+                    state_[i] = kDown;
                 }
-            } else if (state_[i] == Down) {
+            } else if (state_[i] == kDown) {
                 value_[i] += stepDown_[i];
                 if (std::signbit(value_[i]) ^ std::signbit(target_[i]) ||
                     value_[i] == 0.f) {
                     value_[i] = 0.f;
-                    state_[i] = Off;
+                    state_[i] = kOff;
                 }
             }
             x[i] = value_[i];

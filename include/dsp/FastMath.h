@@ -8,12 +8,14 @@ namespace dsp
 {
 
 // constants
+// NOLINTBEGIN (readability-identifier-naming)
 template <typename F> struct constants {
     static constexpr auto pi      = F(3.14159265358979323846);
     static constexpr auto pi_2    = F(1.57079632679489661923);
     static constexpr auto pi_4    = F(0.78539816339744830962);
     static constexpr auto sqrt1_2 = F(0.70710678118654752440);
 };
+// NOLINTEND (readability-identifier-naming)
 
 // https://varietyofsound.wordpress.com/2011/02/14/efficient-tanh-computation-using-lamberts-continued-fraction/
 template <typename F> static inline constexpr F tanh(F x)

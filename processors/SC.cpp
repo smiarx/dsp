@@ -1,15 +1,15 @@
 #include <SC_InterfaceTable.h>
 
-extern void LoadTapeDelay();
-extern void LoadSprings();
-extern void LoadFilters();
+extern void loadTapeDelay();
+extern void loadSprings();
+extern void loadFilters();
 
 extern InterfaceTable *ft;
 InterfaceTable *ft;
 PluginLoad(Processors)
 {
     ft = inTable;
-    LoadTapeDelay();
-    LoadSprings();
-    LoadFilters();
+    loadTapeDelay();
+    loadSprings();
+    loadFilters();
 }

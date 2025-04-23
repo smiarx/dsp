@@ -10,15 +10,15 @@ TEST_CASE("DoubleRamp", "[dsp][doubleramp]")
 {
     SECTION("Reference")
     {
-        constexpr size_t N             = 2;
-        constexpr dsp::fData<N> target = {1.f, 2.f};
-        constexpr dsp::fData<N> up     = {10.f, 15.f};
-        constexpr dsp::fData<N> down   = {40.f, 45.f};
+        constexpr size_t kN              = 2;
+        constexpr dsp::fData<kN> kTarget = {1.f, 2.f};
+        constexpr dsp::fData<kN> kUp     = {10.f, 15.f};
+        constexpr dsp::fData<kN> kDown   = {40.f, 45.f};
 
-        dsp::DoubleRamp<N> ramp;
-        ramp.set(target, up, down);
+        dsp::DoubleRamp<kN> ramp;
+        ramp.set(kTarget, kUp, kDown);
 
-        const dsp::fData<N> expect[]{
+        const dsp::fData<kN> expect[]{
             {0.1f, 0.133333f},   {0.2f, 0.266667f},   {0.3f, 0.4f},
             {0.4f, 0.533333f},   {0.5f, 0.666667f},   {0.6f, 0.8f},
             {0.7f, 0.933333f},   {0.8f, 1.06667f},    {0.9f, 1.2f},
@@ -43,7 +43,7 @@ TEST_CASE("DoubleRamp", "[dsp][doubleramp]")
 
         size_t n = 0;
         while (ramp.isRunning()) {
-            dsp::fSample<N> x = ramp.process();
+            dsp::fSample<kN> x = ramp.process();
             arrayFor(x, i)
             {
                 REQUIRE_THAT(x[i],

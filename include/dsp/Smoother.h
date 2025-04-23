@@ -24,15 +24,15 @@ template <size_t N = 1, bool Vectorize = false> class ControlSmoother
 
     void set(Type target, float invBlockSize)
     {
-        static constexpr auto VecSize = OutType().size();
+        static constexpr auto kVecSize = OutType().size();
         if (target_ != target) {
             target_ = target;
 #pragma omp simd
             inFor(value_, k, i)
             {
                 auto step = (target_[i] - value_[k][i]) * invBlockSize;
-                value_[k][i] -= step * static_cast<float>(VecSize - 1 - k);
-                step_[k][i] = step * VecSize;
+                value_[k][i] -= step * static_cast<float>(kVecSize - 1 - k);
+                step_[k][i] = step * kVecSize;
             }
             active_ = true;
         }

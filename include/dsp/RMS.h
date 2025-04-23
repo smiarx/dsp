@@ -9,9 +9,9 @@ namespace dsp
 template <size_t N, size_t Size, size_t Overlap = 0> class RMS
 {
   public:
-    static constexpr size_t Shift         = Size - Overlap;
-    static constexpr bool ShiftDivideSize = Size % Shift == 0;
-    static constexpr auto NOverlaps = ShiftDivideSize ? Size / Shift : Size;
+    static constexpr size_t kShift         = Size - Overlap;
+    static constexpr bool kShiftDivideSize = Size % kShift == 0;
+    static constexpr auto kNOverlaps = kShiftDivideSize ? Size / kShift : Size;
 
     template <class Ctxt, class Stack>
     void processBlock(Ctxt ctxt, Stack &stack)
@@ -25,13 +25,13 @@ template <size_t N, size_t Size, size_t Overlap = 0> class RMS
                 auto &xk = x[k];
                 arrayFor(xk, i) { firstOverlap_[i] += xk[i] * xk[i]; }
 
-                if constexpr (!ShiftDivideSize) {
+                if constexpr (!kShiftDivideSize) {
                     moveMeanSq(c);
                 }
 
-                n_ = (n_ + 1) % Shift;
+                n_ = (n_ + 1) % kShift;
                 if (n_ == 0) {
-                    if constexpr (ShiftDivideSize) {
+                    if constexpr (kShiftDivideSize) {
                         moveMeanSq(c);
                     }
 
@@ -49,7 +49,7 @@ template <size_t N, size_t Size, size_t Overlap = 0> class RMS
   private:
     template <class Ctxt> void moveMeanSq(Ctxt c)
     {
-        static_assert(Ctxt::VecSize == 1);
+        static_assert(Ctxt::kVecSize == 1);
 
         auto &lastOverlap = overlaps_.tail(c)[0];
 
@@ -66,7 +66,7 @@ template <size_t N, size_t Size, size_t Overlap = 0> class RMS
 
     size_t n_ = 0;
     fSample<N> firstOverlap_{};
-    CopyDelayLine<N, NOverlaps> overlaps_{};
+    CopyDelayLine<N, kNOverlaps> overlaps_{};
     fSample<N> sumsq_{};
 };
 

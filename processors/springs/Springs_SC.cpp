@@ -13,11 +13,11 @@ struct Springs : public Unit {
 
 static void Springs_Ctor(Springs *unit);
 static void Springs_Dtor(Springs *unit);
-static void Springs_next(Springs *unit, int inNumSamples);
+static void springsNext(Springs *unit, int inNumSamples);
 
 void Springs_Ctor(Springs *unit)
 {
-    SETCALC(Springs_next);
+    SETCALC(springsNext);
 
     unit->springs = (processors::Springs *)RTAlloc(unit->mWorld,
                                                    sizeof(processors::Springs));
@@ -39,7 +39,7 @@ void Springs_Dtor(Springs *unit)
     RTFree(unit->mWorld, unit->springs);
 }
 
-void Springs_next(Springs *unit, int inNumSamples)
+void springsNext(Springs *unit, int inNumSamples)
 {
     float *in[2]  = {IN(9), IN(10)};
     float *out[2] = {OUT(0), OUT(1)};
@@ -49,5 +49,5 @@ void Springs_next(Springs *unit, int inNumSamples)
     unit->springs->process(in, out, inNumSamples);
 }
 
-extern void LoadSprings();
-void LoadSprings() { DefineDtorUnit(Springs); }
+extern void loadSprings();
+void loadSprings() { DefineDtorUnit(Springs); }
