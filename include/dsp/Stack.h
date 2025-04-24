@@ -12,7 +12,7 @@ template <size_t N, size_t Size> class Stack
     static constexpr auto kMask = Size - 1;
 
   public:
-    fSample<N> push(fSample<N> x)
+    fSample<N> push(const fSample<N> &x)
     {
         n_         = (n_ + 1) & kMask;
         auto y     = stack_[n_];

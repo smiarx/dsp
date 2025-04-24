@@ -3,6 +3,14 @@
 #include "Delay.h"
 #include "Signal.h"
 
+#ifdef __GNUC__
+#ifndef __clang__
+// gcc fast-math has unpredictible behavior here
+#pragma GCC push_options
+#pragma GCC optimize("no-fast-math")
+#endif
+#endif
+
 namespace dsp
 {
 
@@ -106,3 +114,9 @@ template <size_t N, size_t Size> class RMS<N, Size>
     fSample<N> sumsq_{};
 };
 } // namespace dsp
+
+#ifdef __GNUC__
+#ifndef __clang__
+#pragma GCC pop_options
+#endif
+#endif
