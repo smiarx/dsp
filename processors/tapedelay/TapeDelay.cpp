@@ -40,17 +40,18 @@ void TapeDelay::setDelay(float delay, int blockSize)
 {
     delay_ = delay;
 
+    delay *= sampleRate_;
     // limits;
     delay = std::max(delay, 0.f);
     if (mode_ == kReverse) {
         delay = std::min(delay,
-                         kMaxDelay * kDefaultSampleRate * invSampleRate_ / 3.f);
+                         kMaxDelay * kDefaultSampleRate / kReverseDelayMaxRatio);
     } else {
         delay =
-            std::min(delay, kMaxDelay * kDefaultSampleRate * invSampleRate_);
+            std::min(delay, decltype(buffer_)::kSize*(1.f-kSpeedModAmp));
     }
     // set new target speed
-    targetSpeed_ = 1.f / delay_ * invSampleRate_ * TapePosition::kUnity;
+    targetSpeed_ = 1.f / delay * static_cast<float>(TapePosition::kUnity);
 
     setDrift(getDrift(), blockSize);
 }
@@ -109,12 +110,13 @@ void TapeDelay::setDryWet(float drywet, int blockSize)
     wet_.set({wet, wet}, invBlockSize);
 }
 
-void TapeDelay::setMode(Mode mode, int /*blockSize*/)
+void TapeDelay::setMode(Mode mode, int blockSize)
 {
     if (mode == kReverse) {
         tapReverse_.search(tapePos_);
     }
     switchTap(mode);
+    setDelay(delay_, blockSize);
 }
 
 void TapeDelay::switchTap(Mode mode)

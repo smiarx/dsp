@@ -23,7 +23,9 @@ class TapeDelay
 
     static constexpr auto kMaxBlockSize      = 512;
     static constexpr auto kDefaultSampleRate = 48000.f;
-    static constexpr int kMaxDelay           = 2.f;
+    static constexpr int kMaxDelay           = 5.f;
+
+    static constexpr float kReverseDelayMaxRatio = 3.1;
 
     static constexpr auto kSpeedSmoothTime = 0.7f;
     static constexpr auto kSpeedModFreq    = 0.242f;
@@ -102,8 +104,9 @@ class TapeDelay
                  float *const *__restrict out, int count);
 
   private:
-    float freqScale_{2.f / 48000.f};
-    float invSampleRate_{1.f / 48000.f};
+    float freqScale_{2.f / kDefaultSampleRate};
+    float sampleRate_{1.f / kDefaultSampleRate};
+    float invSampleRate_{1.f / kDefaultSampleRate};
     int maxBlockSize_{};
 
     float delay_{0.f};
@@ -182,6 +185,7 @@ class TapeDelay
 template <class ReAlloc>
 void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
+    sampleRate_ = sampleRate;
     invSampleRate_ = 1.f / sampleRate;
     freqScale_     = 2.f * invSampleRate_;
     maxBlockSize_  = std::min(blockSize, kMaxBlockSize);
