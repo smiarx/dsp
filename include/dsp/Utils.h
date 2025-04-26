@@ -41,7 +41,7 @@ static constexpr unsigned int ilog2(unsigned int v)
 
 template <typename F> static constexpr auto db2gain(F db)
 {
-    return powf(F(10), db / F(20));
+    return std::pow(F(10), db / F(20));
 }
 
 template <typename F> static constexpr auto expScale(F min, F max, F x)

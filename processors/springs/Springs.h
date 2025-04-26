@@ -50,8 +50,8 @@ class Springs
     static constexpr float kLoopTdFactor[] = {
         0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
     static constexpr float kLoopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
-    static constexpr float kLoopModFactor[] = {0.0045f, 0.003f, 0.005f,
-                                               0.0037f};
+    static constexpr float kLoopModFactor[] = {0.0035f, 0.002f, 0.0038f,
+                                              0.0027f};
     static constexpr float kLoopRippleGain  = 0.016f;
 
     // use simd to improve all pass chain

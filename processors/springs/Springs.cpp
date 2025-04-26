@@ -270,6 +270,8 @@ void Springs::process(const float *const *__restrict in,
             predelaydl_.write(c, x);
 
             x = predelay_.read(c, predelaydl_);
+
+            // arrayFor(x, k) { x[k] = dsp::hadamard(x[k]); }
         }
 
         contextFor(ctxtdec)
