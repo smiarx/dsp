@@ -136,7 +136,6 @@ void Springs::setRes(float r, int blockSize)
 void Springs::setTd(float td, int blockSize)
 {
     td_ = td;
-    dsp::iData<N> loopEchoT;
     dsp::iData<N> predelayT;
     dsp::fSample<N> loopTd;
     float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
@@ -146,18 +145,12 @@ void Springs::setTd(float td, int blockSize)
 
         loopModAmp_[i]   = loopTd[i] * kLoopModFactor[i];
         loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos_, 2.5f);
-
-        loopEchoT[i] = static_cast<int>(loopTd[i] / 5.f);
-
         predelayT[i] = static_cast<int>(loopTd[i] * .5f);
-
-        loopTd[i] -= static_cast<float>(loopEchoT[i]);
     }
 
     loopTd_.set(loopTd, static_cast<float>(rateFactor_) / static_cast<float>(blockSize));
 
     predelay_.setDelay(predelayT);
-    ap1_.setDelay(loopEchoT);
 
     setT60(t60_, blockSize);
 }
@@ -297,13 +290,6 @@ void Springs::process(const float *const *__restrict in,
             looptap.setDelay(delay);
 
             auto loop = looptap.read(c, loopdl_);
-
-            // allpass diffusion
-            {
-                auto apctxt = c;
-                apctxt.setSamples(loop);
-                ap1_.process(apctxt, ap1dl_);
-            }
 
             // householder transform
             arrayFor(loop, k) { loop[k] = dsp::householder(loop[k]); }

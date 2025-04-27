@@ -43,8 +43,6 @@ class Springs
     static constexpr auto kToneMin = 80.f;
     static constexpr auto kToneMax = 5000.f;
 
-    static constexpr auto kLoopEchoAp = 0.12f;
-
     static constexpr float kFreqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr float kRFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr float kLoopTdFactor[] = {
@@ -185,11 +183,7 @@ class Springs
 
     dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
 
-    dsp::AllPass<N, dsp::TapNoInterp<N>> ap1_{
-        {kLoopEchoAp, kLoopEchoAp, kLoopEchoAp, kLoopEchoAp}};
-    dsp::DelayLine<kLoopLength / 5, nextTo(loopRippleDL_)> ap1dl_;
-
-    static constexpr auto kBufDecSize = nextTo(ap1dl_) + kMaxBlockSize;
+    static constexpr auto kBufDecSize = nextTo(loopRippleDL_) + kMaxBlockSize;
     dsp::Buffer<dsp::fSample<N>, kBufDecSize> bufferDec_;
 
     dsp::fSample<N> *x_{};
@@ -216,7 +210,7 @@ class Springs
 #ifdef SPRINGS_SHAKE
   public:
     static constexpr auto kShakeEnvUp   = 0.001f;
-    static constexpr auto kShakeEnvDown = 0.09f;
+    static constexpr auto kShakeEnvDown = 0.045f;
     void shake()
     {
         shakeEnv_.set({1.f}, {kShakeEnvUp * sampleRate_},
