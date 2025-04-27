@@ -23,14 +23,15 @@ target_include_directories(dsp_include INTERFACE
 add_library(dsp_compile_options INTERFACE)
 if(MSVC)
     target_compile_options(dsp_compile_options INTERFACE
-    $<$<CONFIG:RELEASE>:/fp:fast /fp:fast>
+    /openmp
+    $<$<CONFIG:RELEASE>: /fp:fast>
 )
 else()
     target_compile_options(dsp_compile_options INTERFACE
     -Wall -Wextra -Wpedantic -Werror -fopenmp-simd
     $<$<CONFIG:RELEASE>:-O3 -ffast-math -funsafe-math-optimizations -ffp-contract=fast>
 )
-target_compile_features(dsp_compile_options INTERFACE cxx_std_17)
 endif()
+target_compile_features(dsp_compile_options INTERFACE cxx_std_17)
 
 add_subdirectory(processors/)
