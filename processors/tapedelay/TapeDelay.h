@@ -185,7 +185,7 @@ class TapeDelay
 template <class ReAlloc>
 void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
-    sampleRate_ = sampleRate;
+    sampleRate_    = sampleRate;
     invSampleRate_ = 1.f / sampleRate;
     freqScale_     = 2.f * invSampleRate_;
     maxBlockSize_  = std::min(blockSize, kMaxBlockSize);

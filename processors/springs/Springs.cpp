@@ -51,8 +51,8 @@ void Springs::update(float r, float freq, float td, float t60, float tone,
 void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
-    auto rateFactor          = static_cast<int>(kDecimateMaxFreq / freqScaled);
-    rateFactor               = std::min(rateFactor, kMaxDecimate);
+    auto rateFactor = static_cast<int>(kDecimateMaxFreq / freqScaled);
+    rateFactor      = std::min(rateFactor, kMaxDecimate);
 
     freqScaled *= static_cast<float>(rateFactor);
     dsp::fData<N> freqs;
@@ -87,7 +87,7 @@ void Springs::setFreq(float freq, int blockSize)
 
     int oldRateFactor = rateFactor_;
     rateFactor_       = rateFactor;
-    freq_    = freq;
+    freq_             = freq;
 
     if (rateFactor != oldRateFactor) {
         auto fM = static_cast<float>(rateFactor);
@@ -104,7 +104,7 @@ void Springs::setFreq(float freq, int blockSize)
 void Springs::setRes(float r, int blockSize)
 {
     bool signChanged = std::signbit(r) != std::signbit(r_);
-    r_ = r;
+    r_               = r;
 
     dsp::fData<kNap> rs;
     for (size_t i = 0; i < N; ++i) {
@@ -127,8 +127,7 @@ void Springs::setRes(float r, int blockSize)
         apNStages_ = kApCascadeL;
     }
 
-    if(signChanged)
-    {
+    if (signChanged) {
         setFreq(freq_, blockSize);
     }
 }
@@ -145,10 +144,11 @@ void Springs::setTd(float td, int blockSize)
 
         loopModAmp_[i]   = loopTd[i] * kLoopModFactor[i];
         loopChaosMod_[i] = loopTd[i] * 0.07f * std::pow(chaos_, 2.5f);
-        predelayT[i] = static_cast<int>(loopTd[i] * .5f);
+        predelayT[i]     = static_cast<int>(loopTd[i] * .5f);
     }
 
-    loopTd_.set(loopTd, static_cast<float>(rateFactor_) / static_cast<float>(blockSize));
+    loopTd_.set(loopTd, static_cast<float>(rateFactor_) /
+                            static_cast<float>(blockSize));
 
     predelay_.setDelay(predelayT);
 
@@ -165,7 +165,8 @@ void Springs::setTone(float tone, int /*blockSize*/)
 {
     tone_ = tone;
 
-    auto eqPeak = dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ * rateFactor_;
+    auto eqPeak =
+        dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ * rateFactor_;
     static constexpr auto kMaxEqPeak = 0.95f;
     eqPeak                           = std::min(kMaxEqPeak, eqPeak);
     eq_.setFreq({eqPeak, eqPeak, eqPeak, eqPeak});

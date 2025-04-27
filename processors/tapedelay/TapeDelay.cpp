@@ -44,11 +44,11 @@ void TapeDelay::setDelay(float delay, int blockSize)
     // limits;
     delay = std::max(delay, 0.f);
     if (mode_ == kReverse) {
-        delay = std::min(delay,
-                         kMaxDelay * kDefaultSampleRate / kReverseDelayMaxRatio);
+        delay = std::min(delay, kMaxDelay * kDefaultSampleRate /
+                                    kReverseDelayMaxRatio);
     } else {
         delay =
-            std::min(delay, decltype(buffer_)::kSize*(1.f-kSpeedModAmp));
+            std::min(delay, decltype(buffer_)::kSize * (1.f - kSpeedModAmp));
     }
     // set new target speed
     targetSpeed_ = 1.f / delay * static_cast<float>(TapePosition::kUnity);
@@ -302,8 +302,9 @@ void TapeDelay::process(const float *const *__restrict in,
                 saturation_.step();
                 auto saturation = saturation_.get()[0][0];
                 pregain         = dsp::db2gain(saturation);
-                postgain = dsp::db2gain(-saturation / (saturation > 0.f ? 2.f : 1.f));
-                auto &x  = c.getSignal();
+                postgain =
+                    dsp::db2gain(-saturation / (saturation > 0.f ? 2.f : 1.f));
+                auto &x = c.getSignal();
                 inFor(x, k, i)
                 {
                     x[k][i] = postgain * dsp::tanh(x[k][i] * pregain);
@@ -374,7 +375,7 @@ void TapeDelay::process(const float *const *__restrict in,
         saturation_.reset();
         inFor(pregain_, k, i)
         {
-            auto vecSize          = pregain_.size();
+            auto vecSize    = pregain_.size();
             pregain_[k][i]  = pregain_[vecSize - 1][i];
             postgain_[k][i] = postgain_[vecSize - 1][i];
         }
