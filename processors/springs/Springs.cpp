@@ -67,7 +67,7 @@ void Springs::setFreq(float freq, int blockSize)
 
     if (r_ < 0) {
         for (size_t i = 0; i < N; ++i) {
-            freqsAP[i] = 1.f - freqsAP[i];
+            freqsAP[i] = freqsAP[i] / 2.f;
         }
     }
     for (size_t i = N; i < kNap; ++i) {
@@ -101,8 +101,9 @@ void Springs::setFreq(float freq, int blockSize)
     }
 }
 
-void Springs::setRes(float r, int /*blockSize*/)
+void Springs::setRes(float r, int blockSize)
 {
+    bool signChanged = std::signbit(r) != std::signbit(r_);
     r_ = r;
 
     dsp::fData<kNap> rs;
@@ -124,6 +125,11 @@ void Springs::setRes(float r, int /*blockSize*/)
             std::abs(r) / kMinRWithMaxCascadeL * kApCascadeL);
     } else {
         apNStages_ = kApCascadeL;
+    }
+
+    if(signChanged)
+    {
+        setFreq(freq_, blockSize);
     }
 }
 
