@@ -29,7 +29,7 @@ class TapeDelay
 
     static constexpr auto kSpeedSmoothTime = 0.7f;
     static constexpr auto kSpeedModFreq    = 0.242f;
-    static constexpr auto kSpeedModAmp     = 0.013f;
+    static constexpr auto kSpeedModAmp     = 0.02f;
 
     static constexpr auto kKernelSize = 4;
 
