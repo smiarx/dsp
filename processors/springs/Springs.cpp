@@ -75,12 +75,16 @@ void Springs::setFreq(float freq, int blockSize)
     }
 
     allpass_.setFreq(freqsAP);
-    lowpass_.setFreq(freqs, {
-                                kLowPassRes,
-                                kLowPassRes,
-                                kLowPassRes,
-                                kLowPassRes,
-                            });
+
+    /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
+    constexpr float kTfAnalog[][2][3] = {
+        {{0., 0., 0.00255383}, {1., 0.21436212, 0.0362477}},
+        {{0., 0., 1.}, {1., 0.19337886, 0.21788333}},
+        {{0., 0., 1.}, {1., 0.15346633, 0.51177596}},
+        {{0., 0., 1.}, {1., 0.09853145, 0.80566858}},
+        {{0., 0., 1.}, {1., 0.03395162, 0.98730422}},
+    };
+    lowpass_.tfAnalog(kTfAnalog, freqs);
 
     multirate_  = kMultirates.get(rateFactor);
     decimateId_ = 0;
@@ -351,7 +355,6 @@ void Springs::process(const float *const *__restrict in,
         // save intermediary values
         allpassIntermediary_ = allpassIntermediary;
 
-        contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
         contextFor(ctxtdec)
         {
             auto &x = c.getSignal();
@@ -359,6 +362,8 @@ void Springs::process(const float *const *__restrict in,
         }
 
         contextFor(ctxtdec) { eq_.process(c, eqState_); }
+
+        contextFor(ctxtdec) { lowpass_.process(c, lowpassState_); }
 
         decimateId_ =
             multirate_->interpolate(ctxtdec, ctxt, dlinterpolate_, decimateId_);

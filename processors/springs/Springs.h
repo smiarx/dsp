@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsp/AllPass.h"
+#include "dsp/IIRFilter.h"
 #include "dsp/LFO.h"
 #include "dsp/MultiRate.h"
 #include "dsp/Noise.h"
@@ -33,8 +34,6 @@ class Springs
     static constexpr auto kDcBlockFreq     = 10.f;
 
     static constexpr auto kEqBandWidth = 5.f;
-
-    static constexpr auto kLowPassRes = 0.6f;
 
     static constexpr auto kMinRWithMaxCascadeL = 0.1f;
 
@@ -140,8 +139,8 @@ class Springs
     typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
     unsigned int apNStages_{kApCascadeL};
 
-    dsp::va::SVF<N, dsp::va::kLowPass> lowpass_{};
-    typename decltype(lowpass_)::State lowpassState_{};
+    dsp::IIRFilter<N, 10> lowpass_{};
+    typename decltype(lowpass_)::Mem<N> lowpassState_{};
 
     dsp::va::SVF<N, dsp::va::kBandPass> eq_{};
     typename decltype(eq_)::State eqState_{};

@@ -11,7 +11,7 @@ namespace dsp
 template <int N, int Order> class IIRFilter
 {
   public:
-    static constexpr auto NSOS = Order / 2;
+    static constexpr auto kNsos = Order / 2;
     IIRFilter() { static_assert(Order % 2 == 0, "only pair order iirfilter"); }
 
     class SOS
@@ -31,7 +31,7 @@ template <int N, int Order> class IIRFilter
     };
 
     template <int N_ = N>
-    using Mem = std::array<typename SOS::template Mem<N_>, NSOS>;
+    using Mem = std::array<typename SOS::template Mem<N_>, kNsos>;
 
     template <class Ctxt, class Mem> void process(Ctxt c, Mem &mem) const
     {
@@ -39,12 +39,12 @@ template <int N, int Order> class IIRFilter
 
 #pragma omp simd
         inFor(x, k, i) { x[k][i] *= b0_[i % N]; }
-        for (int nsos = 0; nsos < NSOS; ++nsos) {
+        for (int nsos = 0; nsos < kNsos; ++nsos) {
             sos_[nsos].process(c, mem[nsos]);
         }
     }
 
-    void tfAnalog(const float ba[NSOS][2][3], fData<N> freq)
+    void tfAnalog(const float ba[kNsos][2][3], fData<N> freq)
     {
         arrayFor(b0_, i) { b0_[i] = 1.f; }
 
@@ -57,16 +57,16 @@ template <int N, int Order> class IIRFilter
             csq[i] = c[i] * c[i];
         }
 
-        for (int nsos = 0; nsos < NSOS; ++nsos) {
+        for (int nsos = 0; nsos < kNsos; ++nsos) {
             auto factor = sos_[nsos].tfAnalog(ba[nsos], c, csq);
             arrayFor(b0_, i) { b0_[i] *= factor[i]; }
         }
     }
 
     template <bool highpass>
-    static constexpr void butterworthTF(float ba[NSOS][2][3])
+    static constexpr void butterworthTF(float ba[kNsos][2][3])
     {
-        for (int nsos = 0; nsos < NSOS; ++nsos) {
+        for (int nsos = 0; nsos < kNsos; ++nsos) {
             ba[nsos][0][0] = highpass ? 1.f : 0.f;
             ba[nsos][0][1] = 0.f;
             ba[nsos][0][2] = highpass ? 0.f : 1.f;
@@ -79,20 +79,20 @@ template <int N, int Order> class IIRFilter
 
     void butterworthLP(fData<N> freq)
     {
-        float ba[NSOS][2][3];
+        float ba[kNsos][2][3];
         butterworthTF<false>(ba);
         tfAnalog(ba, freq);
     }
     void butterworthHP(fData<N> freq)
     {
-        float ba[NSOS][2][3];
+        float ba[kNsos][2][3];
         butterworthTF<true>(ba);
         tfAnalog(ba, freq);
     }
 
   private:
     fData<N> b0_;
-    SOS sos_[NSOS];
+    SOS sos_[kNsos];
 };
 
 template <int N, int Order>
