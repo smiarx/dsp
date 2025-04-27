@@ -25,10 +25,15 @@ class Springs
   public:
     static constexpr auto N = 4;
 
-    static constexpr auto kMaxBlockSize = 512;
-    static constexpr auto kMaxDecimate  = 8;
-    static constexpr int kLoopLength    = static_cast<int>(0.25 * 48000);
-    static constexpr auto kCascadeL     = 160;
+    static constexpr auto kDefaultSamplerRate = 48000.f;
+
+    static constexpr auto kMaxBlockSize         = 512;
+    static constexpr auto kMaxDecimate          = 8;
+    static constexpr auto kMaxLoopLengthSeconds = 0.2f;
+    static constexpr auto kLoopLengthSeconds    = 0.25f;
+    static constexpr auto kLoopLength =
+        static_cast<int>(kLoopLengthSeconds * kDefaultSamplerRate);
+    static constexpr auto kCascadeL = 160;
 
     static constexpr auto kDecimateMaxFreq = 0.78f;
     static constexpr auto kDcBlockFreq     = 10.f;
@@ -110,8 +115,8 @@ class Springs
 
   private:
     int rateFactor_{1};
-    float sampleRate_{48000.f};
-    float freqScale_{2.f / 48000.f};
+    float sampleRate_{kDefaultSamplerRate};
+    float freqScale_{2.f / kDefaultSamplerRate};
     int maxBlockSize_{};
 
     float drywet_{0.f};

@@ -142,6 +142,11 @@ void Springs::setTd(float td, int blockSize)
     dsp::iData<N> predelayT;
     dsp::fSample<N> loopTd;
     float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
+
+    // prevent from going higher than buffer size
+    sampleTd = std::min(sampleTd, kMaxLoopLengthSeconds * kDefaultSamplerRate *
+                                      kDefaultSamplerRate / sampleRate_);
+
     for (size_t i = 0; i < N; ++i) {
         auto loopFactor = 1.f + (kLoopTdFactor[i] - 1.f) * getScatterFactor();
         loopTd[i]       = sampleTd * loopFactor;
