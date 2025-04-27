@@ -54,6 +54,9 @@ void TapeDelay::setDelay(float delay, int blockSize)
     targetSpeed_ = 1.f / delay * static_cast<float>(TapePosition::kUnity);
 
     setDrift(getDrift(), blockSize);
+
+    maxBlockSizeWithDelay_ = std::min(
+        maxBlockSize_, static_cast<int>(delay / (1.f - drift_ * kSpeedModAmp)));
 }
 
 void TapeDelay::setDrift(float drift, int blockSize)
@@ -216,7 +219,7 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 void TapeDelay::process(const float *const *__restrict in,
                         float *const *__restrict out, int count)
 {
-    int blockSize = maxBlockSize_;
+    int blockSize = maxBlockSizeWithDelay_;
 
     const float *localin[] = {in[0], in[1]};
     float *localout[]      = {out[0], out[1]};

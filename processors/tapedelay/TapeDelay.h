@@ -108,6 +108,7 @@ class TapeDelay
     float sampleRate_{1.f / kDefaultSampleRate};
     float invSampleRate_{1.f / kDefaultSampleRate};
     int maxBlockSize_{};
+    int maxBlockSizeWithDelay_{};
 
     float delay_{0.f};
     float feedback_{0.f};
