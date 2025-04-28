@@ -106,7 +106,6 @@ class TapeDelay
   private:
     float freqScale_{2.f / kDefaultSampleRate};
     float sampleRate_{1.f / kDefaultSampleRate};
-    float invSampleRate_{1.f / kDefaultSampleRate};
     int maxBlockSize_{};
     int maxBlockSizeWithDelay_{};
 
@@ -186,13 +185,13 @@ class TapeDelay
 template <class ReAlloc>
 void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
-    sampleRate_    = sampleRate;
-    invSampleRate_ = 1.f / sampleRate;
-    freqScale_     = 2.f * invSampleRate_;
-    maxBlockSize_  = std::min(blockSize, kMaxBlockSize);
+    sampleRate_        = sampleRate;
+    auto invSampleRate = 1.f / sampleRate;
+    freqScale_         = 2.f * invSampleRate;
+    maxBlockSize_      = std::min(blockSize, kMaxBlockSize);
 
     speedSmooth_ =
-        1.f - std::pow(0.001f, 1.f / kSpeedSmoothTime * invSampleRate_);
+        1.f - std::pow(0.001f, 1.f / kSpeedSmoothTime * invSampleRate);
 
     speedLFO_.setFreq({freqScale_ * kSpeedModFreq});
 
