@@ -1,11 +1,15 @@
 #pragma once
 
+#if defined(__SSE__)
 #include <immintrin.h>
+#endif
 
 #ifndef SIMDSIZE
 #if defined(__AVX2__)
 #define SIMDSIZE 32
 #elif defined(__SSE__)
+#define SIMDSIZE 16
+#elif defined(__arm__) || defined(__aarch64__)
 #define SIMDSIZE 16
 #else
 #define SIMDSIZE 4
@@ -18,7 +22,17 @@ namespace dsp
 // NOLINTBEGIN (readability-identifier-naming)
 
 // class holding the simd type, loading & storing function given Type & Size
-template <typename T, int Size> struct SIMD;
+// use gcc vector by default
+template <typename T, int N> struct SIMD {
+    using type __attribute__((__vector_size__(sizeof(T) * N),
+                              __aligned__(sizeof(T) * N))) = T;
+    static constexpr type load(const T *x) { return *(const type *)x; }
+    static constexpr auto loadu = load;
+    static constexpr type set(T x) { return type{x, x}; }
+    static void store(T *x, type v) { *(type *)x = v; }
+    static constexpr auto storeu = store;
+};
+
 // easier definition of SIMD<Type,Size>::type
 template <typename T, int Size> using SIMD_t = typename SIMD<T, Size>::type;
 
