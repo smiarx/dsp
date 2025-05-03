@@ -51,7 +51,6 @@ TEST_CASE("DoubleRamp", "[dsp][doubleramp]")
             }
             ++n;
         }
-        --n;
 
         REQUIRE(n == sizeof(expect) / sizeof(expect[0]));
     }

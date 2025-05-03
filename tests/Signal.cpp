@@ -82,14 +82,14 @@ TEST_CASE("Signal Class", "[signal]")
 
         auto v = s.toSIMD();
         float result[4];
-        dsp::SIMDtoArray<float, 4, true>(result, v);
+        dsp::SIMDtoArray<float, 4, false>(result, v);
         REQUIRE(result[0] == 1.0f);
         REQUIRE(result[1] == 2.0f);
         REQUIRE(result[2] == 3.0f);
         REQUIRE(result[3] == 4.0f);
 
         // Aligned load and store
-        auto *alignedData = (float *)_mm_malloc(4 * sizeof(float), 16);
+        float alignedData alignas(4 * sizeof(float))[4];
         std::copy(data, data + 4, alignedData);
         dsp::Signal<float, 2, 2> sAligned;
         std::copy(alignedData, alignedData + 4, sAligned.data()->data());
@@ -99,7 +99,6 @@ TEST_CASE("Signal Class", "[signal]")
         REQUIRE(alignedData[1] == 2.0f);
         REQUIRE(alignedData[2] == 3.0f);
         REQUIRE(alignedData[3] == 4.0f);
-        _mm_free(alignedData);
     }
 
 #if defined(__AVX__)

@@ -60,7 +60,7 @@ Sample<F, N> hadamard(Sample<F, N> x)
     /* hadamard transform with power normalization */
 
     // first we multiply values by power normalization
-    constexpr F kPowerNorm = std::pow(F(1) / F(2), F(H) / F(2));
+    const F kPowerNorm = std::pow(F(1) / F(2), F(H) / F(2));
     for (size_t i = 0; i < N; ++i) {
         x[i] *= kPowerNorm;
     }

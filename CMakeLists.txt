@@ -3,16 +3,18 @@ cmake_minimum_required(VERSION 3.25)
 project(dsp VERSION 0.0.1)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(CTest)
     OPTION(BUILD_SC  "Build SuperCollider processors"  ON)
-
+    option(BUILD_TESTING "Build tests" ON)
 else()
     set(BUILD_SC OFF)
 endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
-    add_subdirectory(tests)
+    include(CTest)
     add_subdirectory(bench)
+endif()
+if(BUILD_TESTING)
+    add_subdirectory(tests)
 endif()
 
 add_library(dsp_include INTERFACE)

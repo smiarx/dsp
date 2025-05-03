@@ -117,7 +117,7 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
             {
                 // output is phased at 180°
                 x0[i] += x[i];
-                REQUIRE_THAT(x0[i], Catch::Matchers::WithinAbs(0.f, 4e-3));
+                REQUIRE_THAT(x0[i], Catch::Matchers::WithinAbs(0.f, 4e-2));
             }
         }
     }

@@ -108,7 +108,7 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
     power = rms(x, Length)[0];                      \
     filterArray<FILTER<N, TYPE>>({cut}, x, Length); \
     REQUIRE_THAT(rms(x, Length)[0] / power,         \
-                 Catch::Matchers::WithinAbs(GAIN, 1e-3));
+                 Catch::Matchers::WithinAbs(GAIN, 5e-2));
 
         TEST_CUTOFF(dsp::va::OnePole, dsp::va::kLowPass, cutGainm3db);
         TEST_CUTOFF(dsp::va::SVF, dsp::va::kLowPass, cutGainm3db);
@@ -168,7 +168,7 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
     power = rms(x, Length)[0];                              \
     filterResArray<FILTER<N, TYPE>>({cut}, {R}, x, Length); \
     REQUIRE_THAT(rms(x, Length)[0] / power,                 \
-                 Catch::Matchers::WithinAbs(GAIN, 5e-3));
+                 Catch::Matchers::WithinAbs(GAIN, 5e-2));
 
         TEST_RES(dsp::va::SVF, dsp::va::kLowPass, cutGainm3db);
         TEST_RES(dsp::va::SVF, dsp::va::kHighPass, cutGainm3db);

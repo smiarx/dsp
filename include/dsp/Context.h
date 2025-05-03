@@ -48,25 +48,25 @@ template <typename In, bool Vectorize = false> class Context
     In *__restrict in_;
 };
 
-template <class Ctxt, class... Ctxts>
-void ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
-{
-    blockSize = c.getBlockSize();
-    step      = c.getStep();
-    /* check if blockSize and incr are the same */
-    (
-        [&] {
-            auto cblockSize = cs.getBlockSize();
-            assert(blockSize == cblockSize);
-        }(),
-        ...);
-    (
-        [&] {
-            auto cstep = cs.getStep();
-            assert(step == cstep);
-        }(),
-        ...);
-}
+// template <class Ctxt, class... Ctxts>
+// void ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
+//{
+//     blockSize = c.getBlockSize();
+//     step      = c.getStep();
+//     /* check if blockSize and incr are the same */
+//     (
+//         [&] {
+//             auto cblockSize = cs.getBlockSize();
+//             assert(blockSize == cblockSize);
+//         }(),
+//         ...);
+//     (
+//         [&] {
+//             auto cstep = cs.getStep();
+//             assert(step == cstep);
+//         }(),
+//         ...);
+// }
 
 #define contextFor(ctxt)                                          \
     for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \

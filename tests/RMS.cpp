@@ -68,7 +68,9 @@ TEST_CASE("RMS", "[dsp][rms]")
                 rms.processBlock(dsp::Context(x, kSize), stack);
             }
 
-            REQUIRE_THAT(stack.get()[0], WithinAbs(std::abs(M_SQRT1_2f), 1e-1));
+            REQUIRE_THAT(
+                stack.get()[0],
+                WithinAbs(std::abs(dsp::constants<float>::sqrt1_2), 1e-1));
         }
     }
 

@@ -48,7 +48,7 @@ template <std::size_t N> class DoubleRamp
             } else if (state_[i] == kDown) {
                 value_[i] += stepDown_[i];
                 if (std::signbit(value_[i]) ^ std::signbit(target_[i]) ||
-                    value_[i] == 0.f) {
+                    std::abs(value_[i]) < 1e-5f) {
                     value_[i] = 0.f;
                     state_[i] = kOff;
                 }

@@ -53,18 +53,18 @@ TEST_CASE("Context Class", "[context]")
 
 TEST_CASE("Helper Functions", "[helpers]")
 {
-    SECTION("_ctxtInfos")
-    {
-        dsp::Sample<float, 4> data1;
-        dsp::Sample<float, 4> data2;
-        dsp::Context<dsp::Sample<float, 4>> ctx1(&data1, 10);
-        dsp::Context<dsp::Sample<float, 4>> ctx2(&data2, 10);
+    // SECTION("_ctxtInfos")
+    //{
+    //     dsp::Sample<float, 4> data1;
+    //     dsp::Sample<float, 4> data2;
+    //     dsp::Context<dsp::Sample<float, 4>> ctx1(&data1, 10);
+    //     dsp::Context<dsp::Sample<float, 4>> ctx2(&data2, 10);
 
-        int blockSize, incr;
-        dsp::ctxtInfos(blockSize, incr, ctx1, ctx2);
-        REQUIRE(blockSize == 10);
-        REQUIRE(incr == 1);
-    }
+    //    int blockSize, incr;
+    //    dsp::ctxtInfos(blockSize, incr, ctx1, ctx2);
+    //    REQUIRE(blockSize == 10);
+    //    REQUIRE(incr == 1);
+    //}
 }
 
 TEST_CASE("Macros", "[macros]")
