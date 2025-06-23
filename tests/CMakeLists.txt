@@ -12,7 +12,7 @@ if(NOT ${Catch2_FOUND})
 endif()
 
 set(test_sources
-    SIMD.cpp
+    simd.cpp
     Signal.cpp
     Context.cpp
     FIRFilter.cpp
