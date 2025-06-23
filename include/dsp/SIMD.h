@@ -26,7 +26,7 @@ namespace dsp
 template <typename T, int N> struct SIMD {
     using type __attribute__((__vector_size__(sizeof(T) * N),
                               __aligned__(sizeof(T) * N))) = T;
-    static constexpr type load(const T *x) { return *(const type *)x; }
+    static type load(const T *x) { return *(const type *)x; }
     static constexpr auto loadu = load;
     static constexpr type set(T x) { return type{x, x}; }
     static void store(T *x, type v) { *(type *)x = v; }
@@ -97,7 +97,7 @@ template <> struct SIMD<int, 4> {
 
 template <> struct SIMD<float, 2> {
     using type = float __attribute__((__vector_size__(8), __aligned__(8)));
-    static constexpr type load(const float *x) { return *(const type *)x; }
+    static type load(const float *x) { return *(const type *)x; }
     static constexpr auto loadu = load;
     static constexpr type set(float x) { return type{x, x}; }
     static void store(float *x, type v) { *(type *)x = v; }
