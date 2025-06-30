@@ -84,68 +84,116 @@ TEST_CASE("Context Class", "[context]")
 
 TEST_CASE("Context Run", "[context-run]")
 {
-    constexpr auto kN       = 10;
-    dsp::mfloat<4> data[kN] = {
-        {1.f, 2.f, 3.f, 4.f},     {5.f, 6.f, 7.f, 8.f},
-        {9.f, 10.f, 11.f, 12.f},  {13.f, 14.f, 15.f, 16.f},
-        {17.f, 18.f, 19.f, 20.f}, {21.f, 22.f, 23.f, 24.f},
-        {25.f, 26.f, 27.f, 28.f}, {29.f, 30.f, 31.f, 32.f},
-        {33.f, 34.f, 35.f, 36.f}, {37.f, 38.f, 39.f, 40.f},
-    };
-    dsp::Context ctxt(data, kN);
+    constexpr auto kN            = 21;
+    constexpr auto kK            = 2;
+    constexpr auto kMaxBatchSize = DSP_MAX_VEC_SIZE / 4;
+    std::array<dsp::mfloat<kK>, kN> data{{
+        {1.f, 2.f},   {3.f, 4.f},   {5.f, 6.f},   {7.f, 8.f},   {9.f, 10.f},
+        {11.f, 12.f}, {13.f, 14.f}, {15.f, 16.f}, {17.f, 18.f}, {19.f, 20.f},
+        {21.f, 22.f}, {23.f, 24.f}, {25.f, 26.f}, {27.f, 28.f}, {29.f, 30.f},
+        {31.f, 32.f}, {33.f, 34.f}, {35.f, 36.f}, {37.f, 38.f}, {39.f, 40.f},
+        {41.f, 42.f},
+    }};
+    auto orig = data;
+    dsp::Context ctxt(data.data(), kN);
     int count = 0;
 
     SECTION("Scalar")
     {
 
-        dsp::ContextRun ctxtRun(ctxt, [&count](auto c) {
+        dsp::ContextRun(ctxt, [&count](auto c) {
+            auto x = c.getInput();
             if (count == 4) {
-                auto x = c.getInput();
-                REQUIRE(x[0] == 17.f);
-                REQUIRE(x[1] == 18.f);
-                REQUIRE(x[2] == 19.f);
-                REQUIRE(x[3] == 20.f);
+                REQUIRE(x[0] == 9.f);
+                REQUIRE(x[1] == 10.f);
             }
-            if (count == 8) {
-                auto x = c.getInput();
-                x *= 2;
-                c.setOutput(x);
-            }
+            x *= 2;
+            c.setOutput(x);
             count++;
         });
 
-        REQUIRE(count == 10);
-
-        REQUIRE(data[8][0] == 66.f);
-        REQUIRE(data[8][1] == 68.f);
-        REQUIRE(data[8][2] == 70.f);
-        REQUIRE(data[8][3] == 72.f);
+        REQUIRE(count == kN);
     }
 
     SECTION("Scalar Macro")
     {
         CTXTRUN(ctxt)
         {
-            if (count == 4) {
-                auto x = ctxt.getInput();
-                REQUIRE(x[0] == 17.f);
-                REQUIRE(x[1] == 18.f);
-                REQUIRE(x[2] == 19.f);
-                REQUIRE(x[3] == 20.f);
+            auto x = ctxt.getInput();
+            if (count == 6) {
+                REQUIRE(x[0] == 13.f);
+                REQUIRE(x[1] == 14.f);
             }
-            if (count == 8) {
-                auto x = ctxt.getInput();
-                x *= 2;
-                ctxt.setOutput(x);
-            }
+            x *= 2;
+            ctxt.setOutput(x);
             count++;
         };
 
-        REQUIRE(count == 10);
+        REQUIRE(count == kN);
+    }
 
-        REQUIRE(data[8][0] == 66.f);
-        REQUIRE(data[8][1] == 68.f);
-        REQUIRE(data[8][2] == 70.f);
-        REQUIRE(data[8][3] == 72.f);
+    SECTION("Vectorized")
+    {
+        dsp::ContextRun(ctxt.vec(), [&](auto c) {
+            constexpr auto kCountCheck = 2;
+            constexpr auto kUseVec     = decltype(c)::kUseVec;
+            constexpr auto kBatchSize  = kUseVec ? kMaxBatchSize : kK;
+            auto x                     = c.getInput();
+
+            if constexpr (kUseVec)
+                static_assert(
+                    std::is_same_v<decltype(x), dsp::simd<float, kBatchSize>>);
+
+            if (count == kCountCheck) {
+                for (int i = 0; i < kBatchSize; ++i) {
+                    REQUIRE(x[i] ==
+                            data[(kCountCheck * kBatchSize + i) / kK][i % kK]);
+                }
+            }
+
+            x *= 2;
+            c.setOutput(x);
+            count++;
+        });
+
+        constexpr auto kNumElements = kN * kK;
+        REQUIRE(count == kNumElements / kMaxBatchSize +
+                             (kNumElements % kMaxBatchSize) / kK);
+    }
+
+    SECTION("Vectorized Macro")
+    {
+        CTXTRUNVEC(ctxt)
+        {
+            constexpr auto kCountCheck = 1;
+            constexpr auto kUseVec     = decltype(ctxt)::kUseVec;
+            constexpr auto kBatchSize  = kUseVec ? kMaxBatchSize : kK;
+            auto x                     = ctxt.getInput();
+
+            if constexpr (kUseVec)
+                static_assert(
+                    std::is_same_v<decltype(x), dsp::simd<float, kBatchSize>>);
+
+            if (count == kCountCheck) {
+                for (int i = 0; i < kBatchSize; ++i) {
+                    REQUIRE(x[i] ==
+                            data[(kCountCheck * kBatchSize + i) / kK][i % kK]);
+                }
+            }
+
+            x *= 2;
+            ctxt.setOutput(x);
+            count++;
+        };
+
+        constexpr auto kNumElements = kN * kK;
+        REQUIRE(count == kNumElements / kMaxBatchSize +
+                             (kNumElements % kMaxBatchSize) / kK);
+    }
+
+    for (int i = 0; i < kN; ++i) {
+        for (int j = 0; j < kK; ++j) {
+            REQUIRE(data[i][j] == orig[i][j] * 2);
+        }
     }
 }

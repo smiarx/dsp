@@ -25,7 +25,17 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
         return simdtype::load((T *)this->data());
     }
 
+    [[nodiscard]] static always_inline simdtype loadu(const MultiVal *data)
+    {
+        return simdtype::loadu(data->data());
+    }
+
     always_inline void store(simdtype val) { val.store(this->data()); }
+
+    static always_inline void storeu(MultiVal *dest, simdtype val)
+    {
+        return val.storeu(dest->data());
+    }
 
     always_inline operator simdtype() const { return load(); }
 
@@ -70,6 +80,10 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     }
 };
 
+// load and store functions
+template <typename T> always_inline T load(T x) { return x; }
+template <typename T> always_inline void store(T &dest, T val) { dest = val; }
+
 template <typename T, size_t N>
 always_inline auto load(const MultiVal<T, N> &mval)
 {
@@ -82,12 +96,25 @@ always_inline auto store(MultiVal<T, N> &dest, simd<T, N> val)
     return dest.store(val);
 }
 
-template <size_t N = (size_t)DSP_VEC_SIZE * 4 / sizeof(float)>
+// default float, double and int multivals
+template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(float)>
 using mfloat = MultiVal<float, N>;
 
-template <size_t N = (size_t)DSP_VEC_SIZE * 4 / sizeof(double)>
+template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(double)>
 using mdouble = MultiVal<double, N>;
 
-template <size_t N = (size_t)DSP_VEC_SIZE * 4 / sizeof(int)>
+template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(int)>
 using mint = MultiVal<int, N>;
+
+// batch from bas value
+template <typename T> struct Batch {
+    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
+};
+
+template <typename T, size_t N> struct Batch<MultiVal<T, N>> {
+    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
+};
+
+template <typename T> using batch = typename Batch<T>::type;
+
 } // namespace dsp
