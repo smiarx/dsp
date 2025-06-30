@@ -109,6 +109,13 @@ template <typename T, size_t N> class TestSimd
             loop(i) { any2 |= x[i] > y[i]; }
             REQUIRE((any1 == any2));
         }
+
+        SECTION("store")
+        {
+            T data[16];
+            x.store(data);
+            loop(i) { REQUIRE(x[i] == data[i]); }
+        }
     }
 };
 
