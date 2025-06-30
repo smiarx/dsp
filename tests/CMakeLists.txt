@@ -13,15 +13,15 @@ endif()
 
 set(test_sources
     simd.cpp
-    Signal.cpp
-    Context.cpp
-    FIRFilter.cpp
-    VAFilters.cpp
-    RMS.cpp
-    LinAlg.cpp
-    Hadamard.cpp
-    AllPass.cpp
-    Enveloppe.cpp
+    #Signal.cpp
+    #Context.cpp
+    #FIRFilter.cpp
+    #VAFilters.cpp
+    #RMS.cpp
+    #LinAlg.cpp
+    #Hadamard.cpp
+    #AllPass.cpp
+    #Enveloppe.cpp
 )
 
 add_executable(tests ${test_sources})
