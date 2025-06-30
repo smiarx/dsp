@@ -7,12 +7,12 @@
 #include <immintrin.h>
 
 #if __AVX__
-#define DSP_AVX      1
-#define DSP_SSE2     1
-#define DSP_VEC_SIZE 8
+#define DSP_AVX          1
+#define DSP_SSE2         1
+#define DSP_MAX_VEC_SIZE 32
 #elif __SSE2__
-#define DSP_SSE2     1
-#define DSP_VEC_SIZE 4
+#define DSP_SSE2         1
+#define DSP_MAX_VEC_SIZE 16
 #endif
 
 namespace dsp

@@ -1,33 +1,49 @@
 #pragma once
 
 #include <cassert>
-#include <cstdlib>
-#include <tuple>
 
-template <typename T> T load(T x) { return x; }
-template <typename T> void store(T &dest, T val) { dest = val; }
+#include "MultiVal.h"
 
 namespace dsp
 {
-template <typename T> class Context
+template <typename T, bool Vec = false> class Context
 {
   public:
     Context(T *data, int blockSize = 1) : blockSize_(blockSize), data_(data) {}
     Context(const Context &ctxt)            = default;
     Context &operator=(const Context &ctxt) = default;
 
+    static constexpr auto kIncrSize = Vec ? sizeof(batch<T>) / sizeof(T) : 1;
+    static constexpr bool kUseVec   = Vec;
+
     using Type = T;
 
-    auto getInput() const { return load(*data_); }
-    template <typename S> void setOutput(S value) { store(*data_, value); }
+    auto getInput() const
+    {
+        if constexpr (Vec)
+            return batch<T>::loadu(
+                reinterpret_cast<const batch<T> *const __restrict>(data_));
+        else
+            return load(*data_);
+    }
+    template <typename S> void setOutput(S value)
+    {
+        if constexpr (Vec)
+            batch<T>::storeu(reinterpret_cast<batch<T> *>(data_), value);
+        else
+            store(*data_, value);
+    }
 
-    void next(int incr = 1) { nextData(incr); }
+    void next(int incr = kIncrSize) { nextData(incr); }
 
     [[nodiscard]] int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 
     void setData(T *data) { data_ = data; }
     [[nodiscard]] const T *getData() const { return data_; }
+
+    [[nodiscard]] auto vec() { return Context<T, true>(data_, blockSize_); }
+    [[nodiscard]] auto scalar() { return Context<T, false>(data_, blockSize_); }
 
   protected:
     void nextData(int incr) { data_ += incr; }
@@ -50,9 +66,19 @@ template <class Ctxt> class ContextRun
 
     template <typename Func> void run(Func func)
     {
-        for (auto [c, n] = std::tuple{ctxt_, 0}; n < c.getBlockSize();
-             n += 1, c.next()) {
-            func(c);
+        auto n                  = 0;
+        constexpr int kIncrSize = Ctxt::kIncrSize;
+        for (; n < ctxt_.getBlockSize() - kIncrSize + 1;
+             n += kIncrSize, ctxt_.next()) {
+            func(ctxt_);
+        }
+
+        if (Ctxt::kUseVec) {
+            auto ctxtScal = ctxt_.scalar();
+
+            for (; n < ctxtScal.getBlockSize(); n += 1, ctxtScal.next()) {
+                func(ctxtScal);
+            }
         }
     }
 
@@ -70,12 +96,15 @@ template <class Ctxt> class ContextRun
 
 #define CTXTRUN(ctxt) \
     if (dsp::ContextRun contextRun{ctxt}) contextRun = [&](auto ctxt)
+#define CTXTRUNVEC(ctxt)                           \
+    if (dsp::ContextRun contextRunVec{ctxt.vec()}) \
+    contextRunVec = [&](auto ctxt)
 
 #define PROCESSBLOCK_                                \
     template <class Ctxt, class State>               \
     void processBlock(Ctxt ctxt, State &state) const \
     {                                                \
-        contextFor(ctxt) { process(c, state); }      \
+        CTXTRUN(ctxt) { process(c, state); }         \
     }
 
 } // namespace dsp

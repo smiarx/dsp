@@ -5,7 +5,7 @@
 #include "simd_default.h"
 #include <arm_neon.h>
 
-#define DSP_VEC_SIZE 4
+#define DSP_MAX_VEC_SIZE 16
 
 namespace dsp
 {
