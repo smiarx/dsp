@@ -82,22 +82,23 @@ TEST_CASE("Context Class", "[context]")
     }
 }
 
-TEST_CASE("Macros", "[macros]")
+TEST_CASE("Context Run", "[context-run]")
 {
-    SECTION("contextFor")
+    constexpr auto kN       = 10;
+    dsp::mfloat<4> data[kN] = {
+        {1.f, 2.f, 3.f, 4.f},     {5.f, 6.f, 7.f, 8.f},
+        {9.f, 10.f, 11.f, 12.f},  {13.f, 14.f, 15.f, 16.f},
+        {17.f, 18.f, 19.f, 20.f}, {21.f, 22.f, 23.f, 24.f},
+        {25.f, 26.f, 27.f, 28.f}, {29.f, 30.f, 31.f, 32.f},
+        {33.f, 34.f, 35.f, 36.f}, {37.f, 38.f, 39.f, 40.f},
+    };
+    dsp::Context ctxt(data, kN);
+    int count = 0;
+
+    SECTION("Scalar")
     {
-        constexpr auto kN       = 10;
-        dsp::mfloat<4> data[kN] = {
-            {1.f, 2.f, 3.f, 4.f},     {5.f, 6.f, 7.f, 8.f},
-            {9.f, 10.f, 11.f, 12.f},  {13.f, 14.f, 15.f, 16.f},
-            {17.f, 18.f, 19.f, 20.f}, {21.f, 22.f, 23.f, 24.f},
-            {25.f, 26.f, 27.f, 28.f}, {29.f, 30.f, 31.f, 32.f},
-            {33.f, 34.f, 35.f, 36.f}, {37.f, 38.f, 39.f, 40.f},
-        };
-        dsp::Context ctxt(data, kN);
-        int count = 0;
-        contextFor(ctxt)
-        {
+
+        dsp::ContextRun ctxtRun(ctxt, [&count](auto c) {
             if (count == 4) {
                 auto x = c.getInput();
                 REQUIRE(x[0] == 17.f);
@@ -111,7 +112,35 @@ TEST_CASE("Macros", "[macros]")
                 c.setOutput(x);
             }
             count++;
-        }
+        });
+
+        REQUIRE(count == 10);
+
+        REQUIRE(data[8][0] == 66.f);
+        REQUIRE(data[8][1] == 68.f);
+        REQUIRE(data[8][2] == 70.f);
+        REQUIRE(data[8][3] == 72.f);
+    }
+
+    SECTION("Scalar Macro")
+    {
+        CTXTRUN(ctxt)
+        {
+            if (count == 4) {
+                auto x = ctxt.getInput();
+                REQUIRE(x[0] == 17.f);
+                REQUIRE(x[1] == 18.f);
+                REQUIRE(x[2] == 19.f);
+                REQUIRE(x[3] == 20.f);
+            }
+            if (count == 8) {
+                auto x = ctxt.getInput();
+                x *= 2;
+                ctxt.setOutput(x);
+            }
+            count++;
+        };
+
         REQUIRE(count == 10);
 
         REQUIRE(data[8][0] == 66.f);

@@ -37,16 +37,39 @@ template <typename T> class Context
     T *__restrict data_;
 };
 
-#define contextFor(ctxt)                                          \
-    for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \
-         n += 1, c.next())
+template <class Ctxt> class ContextRun
+{
+  public:
+    ContextRun(Ctxt ctxt) : ctxt_(std::move(ctxt)) {}
 
-#define vecFor(ctxt) for (auto i = 0; i < ctxt.getStep(); ++i)
+    template <typename Func>
+    ContextRun(Ctxt ctxt, Func func) : ContextRun(std::move(ctxt))
+    {
+        run(func);
+    }
 
-#define arrayFor(x, k) for (size_t k = 0; k < x.size(); ++k)
-#define inFor(x, k, i)                    \
-    for (size_t k = 0; k < x.size(); ++k) \
-        for (size_t i = 0; i < x[0].size(); ++i)
+    template <typename Func> void run(Func func)
+    {
+        for (auto [c, n] = std::tuple{ctxt_, 0}; n < c.getBlockSize();
+             n += 1, c.next()) {
+            func(c);
+        }
+    }
+
+    template <typename Func> ContextRun &operator=(Func func)
+    {
+        run(func);
+        return *this;
+    }
+
+    explicit operator bool() { return true; }
+
+  private:
+    Ctxt ctxt_;
+};
+
+#define CTXTRUN(ctxt) \
+    if (dsp::ContextRun contextRun{ctxt}) contextRun = [&](auto ctxt)
 
 #define PROCESSBLOCK_                                \
     template <class Ctxt, class State>               \
