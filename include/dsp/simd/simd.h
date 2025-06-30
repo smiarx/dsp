@@ -7,8 +7,8 @@
 #include "simd_default.h"
 #include "simd_x86_64.h"
 
-#ifndef DSP_VEC_SIZE
-#define DSP_VEC_SIZE 1
+#ifndef DSP_MAX_VEC_SIZE
+#define DSP_MAX_VEC_SIZE 16
 #endif
 
 namespace dsp
@@ -72,10 +72,16 @@ template <typename T, size_t N> struct simd {
     }
 
     static always_inline simd load(const T *data) { return def::load(data); }
+    static always_inline simd loadu(const T *data) { return def::loadu(data); }
 
     always_inline void store vectorcall(basetype *dest) const noexcept
     {
         def::store(dest, value_);
+    }
+
+    always_inline void storeu vectorcall(basetype *dest) const noexcept
+    {
+        def::storeu(dest, value_);
     }
 
     always_inline basetype vectorcall get(size_t index) const noexcept
