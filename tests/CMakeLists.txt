@@ -13,8 +13,7 @@ endif()
 
 set(test_sources
     simd.cpp
-    #Signal.cpp
-    #Context.cpp
+    Context.cpp
     #FIRFilter.cpp
     #VAFilters.cpp
     #RMS.cpp
