@@ -1,6 +1,7 @@
 #pragma once
 
 #include "simd/simd.h"
+#include "simd/simd_math.h"
 #include <array>
 
 namespace dsp
@@ -23,6 +24,8 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     {
         return simdtype::load((T *)this->data());
     }
+
+    always_inline void store(simdtype val) { val.store(this->data()); }
 
     always_inline operator simdtype() const { return load(); }
 
@@ -66,6 +69,18 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
         return static_cast<simd<T2, N2>>(*this) / other;
     }
 };
+
+template <typename T, size_t N>
+always_inline auto load(const MultiVal<T, N> &mval)
+{
+    return mval.load();
+}
+
+template <typename T, size_t N>
+always_inline auto store(MultiVal<T, N> &dest, simd<T, N> val)
+{
+    return dest.store(val);
+}
 
 template <size_t N = (size_t)DSP_VEC_SIZE * 4 / sizeof(float)>
 using mfloat = MultiVal<float, N>;

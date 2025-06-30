@@ -4,73 +4,42 @@
 #include <cstdlib>
 #include <tuple>
 
+template <typename T> T load(T x) { return x; }
+template <typename T> void store(T &dest, T val) { dest = val; }
+
 namespace dsp
 {
-template <typename In, bool Vectorize = false> class Context
+template <typename T> class Context
 {
   public:
-    Context(In *in, int blockSize = 1) : blockSize_(blockSize), in_(in) {}
+    Context(T *data, int blockSize = 1) : blockSize_(blockSize), data_(data) {}
     Context(const Context &ctxt)            = default;
     Context &operator=(const Context &ctxt) = default;
 
-    static constexpr auto kVecSize       = Vectorize ? In::kVectorSize : 1;
-    static constexpr auto kIsUsingVector = Vectorize;
-    using BaseType                       = In;
-    using Type =
-        std::conditional_t<Vectorize, typename In::Vector, typename In::Scalar>;
+    using Type = T;
 
-    [[nodiscard]] auto vec() const
-    {
-        return Context<In, true>(in_, blockSize_);
-    }
-    [[nodiscard]] auto scalar() const
-    {
-        return Context<In, false>(in_, blockSize_);
-    }
+    auto getInput() const { return load(*data_); }
+    template <typename S> void setOutput(S value) { store(*data_, value); }
 
-    [[nodiscard]] int vecSize() const { return kVecSize; }
-    [[nodiscard]] int getStep() const { return kVecSize; }
-
-    auto &getSignal() { return in_->template toSignal<Vectorize>(); }
-
-    template <typename T> void setSamples(T &x) { in_ = &x[0]; }
-
-    void next(int incr = kVecSize) { nextIn(incr); }
+    void next(int incr = 1) { nextData(incr); }
 
     [[nodiscard]] int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 
+    void setData(T *data) { data_ = data; }
+    [[nodiscard]] const T *getData() const { return data_; }
+
   protected:
-    void nextIn(int incr) { in_ += incr; }
+    void nextData(int incr) { data_ += incr; }
 
   private:
     int blockSize_;
-    In *__restrict in_;
+    T *__restrict data_;
 };
-
-// template <class Ctxt, class... Ctxts>
-// void ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
-//{
-//     blockSize = c.getBlockSize();
-//     step      = c.getStep();
-//     /* check if blockSize and incr are the same */
-//     (
-//         [&] {
-//             auto cblockSize = cs.getBlockSize();
-//             assert(blockSize == cblockSize);
-//         }(),
-//         ...);
-//     (
-//         [&] {
-//             auto cstep = cs.getStep();
-//             assert(step == cstep);
-//         }(),
-//         ...);
-// }
 
 #define contextFor(ctxt)                                          \
     for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \
-         n += c.getStep(), c.next())
+         n += 1, c.next())
 
 #define vecFor(ctxt) for (auto i = 0; i < ctxt.getStep(); ++i)
 
