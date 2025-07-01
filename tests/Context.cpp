@@ -13,13 +13,13 @@ TEST_CASE("Context Class", "[context]")
         // check type
         static_assert(std::is_same_v<decltype(ctxt)::Type, dsp::mfloat<>>);
 
-        REQUIRE(ctxt.getBlockSize() == 1);
-        REQUIRE(ctxt.getData() == &data);
+        REQUIRE((ctxt.getBlockSize() == 1));
+        REQUIRE((ctxt.getData() == &data));
 
         // Copy construction
         dsp::Context ctxtCopy(ctxt);
-        REQUIRE(ctxtCopy.getBlockSize() == 1);
-        REQUIRE(ctxt.getData() == &data);
+        REQUIRE((ctxtCopy.getBlockSize() == 1));
+        REQUIRE((ctxt.getData() == &data));
     }
 
     SECTION("Next Method")
@@ -31,9 +31,9 @@ TEST_CASE("Context Class", "[context]")
         // check type
         static_assert(std::is_same_v<decltype(ctxt)::Type, dsp::mfloat<>>);
 
-        REQUIRE(ctxt.getBlockSize() == kN);
+        REQUIRE((ctxt.getBlockSize() == kN));
         ctxt.next();
-        REQUIRE(ctxt.getData() == &data[1]);
+        REQUIRE((ctxt.getData() == &data[1]));
     }
 
     SECTION("Data Method")
@@ -43,9 +43,9 @@ TEST_CASE("Context Class", "[context]")
         dsp::mfloat<> data2[kN];
         dsp::Context ctxt(data1, kN);
 
-        REQUIRE(ctxt.getData() == data1);
+        REQUIRE((ctxt.getData() == data1));
         ctxt.setData(data2);
-        REQUIRE(ctxt.getData() == data2);
+        REQUIRE((ctxt.getData() == data2));
     }
 
     SECTION("Get Input/Output Method")
@@ -54,9 +54,9 @@ TEST_CASE("Context Class", "[context]")
         float xf      = 0.435f;
         float testVal = 2.34f;
         dsp::Context ctxtf(&xf);
-        REQUIRE(xf == ctxtf.getInput());
+        REQUIRE((xf == ctxtf.getInput()));
         ctxtf.setOutput(testVal);
-        REQUIRE(testVal == *ctxtf.getData());
+        REQUIRE((testVal == *ctxtf.getData()));
 
         // simd
         dsp::mfloat<4> xmf{1, 2, 3, 4};
@@ -66,19 +66,19 @@ TEST_CASE("Context Class", "[context]")
         // check type
         static_assert(std::is_same_v<decltype(in), dsp::simd<float, 4>>);
 
-        REQUIRE(in[0] == xmf[0]);
-        REQUIRE(in[1] == xmf[1]);
-        REQUIRE(in[2] == xmf[2]);
-        REQUIRE(in[3] == xmf[3]);
+        REQUIRE((in[0] == xmf[0]));
+        REQUIRE((in[1] == xmf[1]));
+        REQUIRE((in[2] == xmf[2]));
+        REQUIRE((in[3] == xmf[3]));
 
         in = sin(in) * 2.f;
         ctxt.setOutput(in);
 
         auto *data = ctxt.getData();
-        REQUIRE(data[0][0] == in[0]);
-        REQUIRE(data[0][1] == in[1]);
-        REQUIRE(data[0][2] == in[2]);
-        REQUIRE(data[0][3] == in[3]);
+        REQUIRE((data[0][0] == in[0]));
+        REQUIRE((data[0][1] == in[1]));
+        REQUIRE((data[0][2] == in[2]));
+        REQUIRE((data[0][3] == in[3]));
     }
 }
 
@@ -104,15 +104,15 @@ TEST_CASE("Context Run", "[context-run]")
         dsp::ContextRun(ctxt, [&count](auto c) {
             auto x = c.getInput();
             if (count == 4) {
-                REQUIRE(x[0] == 9.f);
-                REQUIRE(x[1] == 10.f);
+                REQUIRE((x[0] == 9.f));
+                REQUIRE((x[1] == 10.f));
             }
             x *= 2;
             c.setOutput(x);
             count++;
         });
 
-        REQUIRE(count == kN);
+        REQUIRE((count == kN));
     }
 
     SECTION("Scalar Macro")
@@ -121,15 +121,15 @@ TEST_CASE("Context Run", "[context-run]")
         {
             auto x = ctxt.getInput();
             if (count == 6) {
-                REQUIRE(x[0] == 13.f);
-                REQUIRE(x[1] == 14.f);
+                REQUIRE((x[0] == 13.f));
+                REQUIRE((x[1] == 14.f));
             }
             x *= 2;
             ctxt.setOutput(x);
             count++;
         };
 
-        REQUIRE(count == kN);
+        REQUIRE((count == kN));
     }
 
     SECTION("Vectorized")
@@ -146,8 +146,9 @@ TEST_CASE("Context Run", "[context-run]")
 
             if (count == kCountCheck) {
                 for (int i = 0; i < kBatchSize; ++i) {
-                    REQUIRE(x[i] ==
-                            data[(kCountCheck * kBatchSize + i) / kK][i % kK]);
+                    REQUIRE(
+                        (x[i] ==
+                         data[(kCountCheck * kBatchSize + i) / kK][i % kK]));
                 }
             }
 
@@ -157,8 +158,8 @@ TEST_CASE("Context Run", "[context-run]")
         });
 
         constexpr auto kNumElements = kN * kK;
-        REQUIRE(count == kNumElements / kMaxBatchSize +
-                             (kNumElements % kMaxBatchSize) / kK);
+        REQUIRE((count == kNumElements / kMaxBatchSize +
+                              (kNumElements % kMaxBatchSize) / kK));
     }
 
     SECTION("Vectorized Macro")
@@ -176,8 +177,9 @@ TEST_CASE("Context Run", "[context-run]")
 
             if (count == kCountCheck) {
                 for (int i = 0; i < kBatchSize; ++i) {
-                    REQUIRE(x[i] ==
-                            data[(kCountCheck * kBatchSize + i) / kK][i % kK]);
+                    REQUIRE(
+                        (x[i] ==
+                         data[(kCountCheck * kBatchSize + i) / kK][i % kK]));
                 }
             }
 
@@ -187,13 +189,13 @@ TEST_CASE("Context Run", "[context-run]")
         };
 
         constexpr auto kNumElements = kN * kK;
-        REQUIRE(count == kNumElements / kMaxBatchSize +
-                             (kNumElements % kMaxBatchSize) / kK);
+        REQUIRE((count == kNumElements / kMaxBatchSize +
+                              (kNumElements % kMaxBatchSize) / kK));
     }
 
     for (int i = 0; i < kN; ++i) {
         for (int j = 0; j < kK; ++j) {
-            REQUIRE(data[i][j] == orig[i][j] * 2);
+            REQUIRE((data[i][j] == orig[i][j] * 2));
         }
     }
 }
