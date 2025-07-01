@@ -97,6 +97,7 @@ class BufferContext : public Context<T, Vec>
 {
     using Parent  = Context<T, Vec>;
     using BufferT = Buffer<T, MinSize>;
+    using SigType = typename Parent::SigType;
 
   public:
     BufferContext(T *in, int blockSize, const BufferT &buffer) :
@@ -133,9 +134,9 @@ class BufferContext : public Context<T, Vec>
         return buffer_.template read<Vec>(i);
     }
 
-    template <typename V> void write(int i, V val)
+    void write(int i, SigType val)
     {
-        return buffer_.template write<V, Vec>(i, val);
+        return buffer_.template write<SigType, Vec>(i, val);
     }
 
   private:
