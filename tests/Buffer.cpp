@@ -52,7 +52,7 @@ TEST_CASE("Buffer Class", "[buffer]")
         buf.setData(data);
 
         using mfv = dsp::mfloat<>;
-#define loopv(i) for (size_t i = 0; i < mfv::kSize; ++i)
+#define loopv(i) for (size_t i = 0; i < mfv::kWidth; ++i)
 
         mfv x, y, z;
 
@@ -195,7 +195,7 @@ TEST_CASE("Buffer Context", "[buffer][context]")
                         REQUIRE((v == data[i - delay]));
                     ++i;
                 } else {
-                    for (size_t j = 0; j < decltype(v)::kSize; ++j) {
+                    for (size_t j = 0; j < decltype(v)::kWidth; ++j) {
 
                         if (i < delay) REQUIRE((v[j] == 0.f));
                         else
