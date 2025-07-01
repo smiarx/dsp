@@ -14,6 +14,7 @@ endif()
 set(test_sources
     simd.cpp
     Context.cpp
+    Buffer.cpp
     #FIRFilter.cpp
     #VAFilters.cpp
     #RMS.cpp
