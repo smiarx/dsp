@@ -42,8 +42,14 @@ template <typename T, bool Vec = false> class Context
     void setData(T *data) { data_ = data; }
     [[nodiscard]] const T *getData() const { return data_; }
 
-    [[nodiscard]] auto vec() { return Context<T, true>(data_, blockSize_); }
-    [[nodiscard]] auto scalar() { return Context<T, false>(data_, blockSize_); }
+    [[nodiscard]] auto vec() const
+    {
+        return Context<T, true>(data_, blockSize_);
+    }
+    [[nodiscard]] auto scalar() const
+    {
+        return Context<T, false>(data_, blockSize_);
+    }
 
   protected:
     void nextData(int incr) { data_ += incr; }
@@ -73,7 +79,7 @@ template <class Ctxt> class ContextRun
             func(ctxt_);
         }
 
-        if (Ctxt::kUseVec) {
+        if constexpr (Ctxt::kUseVec) {
             auto ctxtScal = ctxt_.scalar();
 
             for (; n < ctxtScal.getBlockSize(); n += 1, ctxtScal.next()) {
