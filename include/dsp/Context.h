@@ -18,21 +18,26 @@ template <typename T, bool Vec = false> class Context
 
     using Type = T;
 
-    auto getInput() const
+    [[nodiscard]] auto load(T &x) const
     {
-        if constexpr (Vec)
-            return batch<T>::loadu(
-                reinterpret_cast<const batch<T> *const __restrict>(data_));
-        else
-            return load(*data_);
+        if constexpr (Vec) {
+            return loadfuncs::loadBatch(x);
+        } else {
+            return loadfuncs::load(x);
+        }
     }
-    template <typename S> void setOutput(S value)
+
+    template <typename V> [[nodiscard]] auto store(T &dest, V val) const
     {
-        if constexpr (Vec)
-            batch<T>::storeu(reinterpret_cast<batch<T> *>(data_), value);
-        else
-            store(*data_, value);
+        if constexpr (Vec) {
+            return loadfuncs::storeBatch(dest, val);
+        } else {
+            return loadfuncs::store(dest, val);
+        }
     }
+
+    [[nodiscard]] auto getInput() const { return load(*data_); }
+    template <typename S> void setOutput(S value) { store(*data_, value); }
 
     void next(int incr = kIncrSize) { nextData(incr); }
 

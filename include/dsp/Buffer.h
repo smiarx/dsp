@@ -27,21 +27,21 @@ template <class T, std::size_t MinSize> class Buffer
 
     template <typename V, bool Vec = false> void write(int i, V val)
     {
+        using namespace loadfuncs;
+
         assert(data_ != nullptr);
         assert((0 <= i) && (i <= static_cast<int>(MinSize)));
 
         const auto pos = position(i);
         if constexpr (Vec) {
-            batch<T>::storeu(asBatch(pos), val);
+            storeBatch(data_[pos], val);
             /* copy end to beginning of buffer for vector continuity */
             if (static_cast<size_t>(pos) < V::kSize) {
                 // copy begining to end
-                batch<T>::storeu(asBatch(kBaseSize),
-                                 batch<T>::loadu(asBatch(0)));
+                storeBatch(data_[kBaseSize], loadBatch(data_[0]));
             } else if (static_cast<size_t>(pos) > kBaseSize - V::kSize) {
                 // copy end to begining
-                batch<T>::storeu(asBatch(0),
-                                 batch<T>::loadu(asBatch(kBaseSize)));
+                storeBatch(data_[0], loadBatch(data_[kBaseSize]));
             }
         } else {
             store(data_[pos], val);
@@ -54,12 +54,14 @@ template <class T, std::size_t MinSize> class Buffer
 
     template <bool Vec = false> [[nodiscard]] auto read(int i) const
     {
+        using namespace loadfuncs;
+
         assert(data_ != nullptr);
         assert((0 <= i) && (i <= static_cast<int>(MinSize)));
 
         const auto pos = position(i);
         if constexpr (Vec) {
-            return batch<T>::loadu(asBatch(pos));
+            return loadBatch(data_[pos]);
         } else {
             return load(data_[pos]);
         }
@@ -71,11 +73,13 @@ template <class T, std::size_t MinSize> class Buffer
     // prepare for next block given ctxt
     template <class Ctxt> void nextBlock(Ctxt ctxt, bool checkLimits = false)
     {
+        using namespace loadfuncs;
+
         nextId(ctxt.getBlockSize());
 
         if (checkLimits && static_cast<size_t>(id_) < batch<T>::kSize)
             // copy begining to end
-            batch<T>::storeu(asBatch(kBaseSize), batch<T>::loadu(asBatch(0)));
+            storeBatch(data_[kBaseSize], loadBatch(data_[0]));
     }
 
     [[nodiscard]] int getId() const { return id_; }
@@ -86,15 +90,6 @@ template <class T, std::size_t MinSize> class Buffer
 
     // give data position given i
     inline auto position(int i) const { return (id_ - i) & kMask; }
-
-    inline auto *asBatch(int i)
-    {
-        return reinterpret_cast<batch<T> *>(&data_[i]);
-    }
-    inline const auto *asBatch(int i) const
-    {
-        return reinterpret_cast<batch<T> *>(&data_[i]);
-    }
 };
 
 template <class T, size_t MinSize, bool Vec = false>
