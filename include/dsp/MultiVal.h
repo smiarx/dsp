@@ -11,8 +11,8 @@ template <typename T, size_t N>
 struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
 
   public:
-    static constexpr auto kSize = N;
-    using simdtype              = simd<T, N>;
+    static constexpr auto kWidth = N;
+    using simdtype               = simd<T, N>;
 
     always_inline MultiVal() = default;
     always_inline MultiVal(simdtype value) { value.store((T *)this->data()); }
@@ -81,6 +81,8 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     }
 };
 
+//=============================================================
+
 // batch from value
 template <typename T> struct Batch {
     using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
@@ -91,6 +93,8 @@ template <typename T, size_t N> struct Batch<MultiVal<T, N>> {
 };
 
 template <typename T> using batch = typename Batch<T>::type;
+
+//=============================================================
 
 namespace loadfuncs
 {
@@ -128,6 +132,19 @@ template <typename T, typename V> void storeBatch(T &dest, V x)
     batch<T>::storeu(asBatch(&dest), x);
 }
 } // namespace loadfuncs
+
+//=============================================================
+
+// type Width
+template <typename T> struct TypeWidth {
+    static constexpr auto kWidth = 1;
+};
+template <typename T, size_t N> struct TypeWidth<MultiVal<T, N>> {
+    static constexpr auto kWidth = N;
+};
+template <typename T> constexpr auto kTypeWidth = TypeWidth<T>::kWidth;
+
+//=============================================================
 
 // default float, double and int multivals
 template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(float)>

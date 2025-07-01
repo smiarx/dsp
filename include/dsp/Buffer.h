@@ -36,10 +36,10 @@ template <class T, std::size_t MinSize> class Buffer
         if constexpr (Vec) {
             storeBatch(data_[pos], val);
             /* copy end to beginning of buffer for vector continuity */
-            if (static_cast<size_t>(pos) < V::kSize) {
+            if (static_cast<size_t>(pos) < V::kWidth) {
                 // copy begining to end
                 storeBatch(data_[kBaseSize], loadBatch(data_[0]));
-            } else if (static_cast<size_t>(pos) > kBaseSize - V::kSize) {
+            } else if (static_cast<size_t>(pos) > kBaseSize - V::kWidth) {
                 // copy end to begining
                 storeBatch(data_[0], loadBatch(data_[kBaseSize]));
             }
@@ -77,7 +77,7 @@ template <class T, std::size_t MinSize> class Buffer
 
         nextId(ctxt.getBlockSize());
 
-        if (checkLimits && static_cast<size_t>(id_) < batch<T>::kSize)
+        if (checkLimits && static_cast<size_t>(id_) < batch<T>::kWidth)
             // copy begining to end
             storeBatch(data_[kBaseSize], loadBatch(data_[0]));
     }
