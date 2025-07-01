@@ -16,7 +16,11 @@ template <typename T, bool Vec = false> class Context
     static constexpr auto kIncrSize = Vec ? sizeof(batch<T>) / sizeof(T) : 1;
     static constexpr bool kUseVec   = Vec;
 
-    using Type = T;
+    using BaseType = T;
+    using Type     = std::conditional_t<Vec, batch<T>, T>;
+    // input and output type
+    using SigType = std::conditional_t<Vec, decltype(loadfuncs::loadBatch(T{})),
+                                       decltype(loadfuncs::load(T{}))>;
 
     [[nodiscard]] auto load(T &x) const
     {
@@ -27,7 +31,7 @@ template <typename T, bool Vec = false> class Context
         }
     }
 
-    template <typename V> [[nodiscard]] auto store(T &dest, V val) const
+    [[nodiscard]] auto store(T &dest, SigType val) const
     {
         if constexpr (Vec) {
             return loadfuncs::storeBatch(dest, val);
