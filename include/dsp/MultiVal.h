@@ -81,6 +81,28 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     }
 };
 
+// batch from value
+template <typename T> struct Batch {
+    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
+};
+
+template <typename T, size_t N> struct Batch<MultiVal<T, N>> {
+    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
+};
+
+template <typename T> using batch = typename Batch<T>::type;
+
+namespace loadfuncs
+{
+template <typename T> auto *asBatch(T *ptr)
+{
+    return reinterpret_cast<batch<T> *>(ptr);
+}
+template <typename T> const auto *asBatch(const T *ptr)
+{
+    return reinterpret_cast<const batch<T> *>(ptr);
+}
+
 // load and store functions
 template <typename T> always_inline T load(T x) { return x; }
 template <typename T> always_inline void store(T &dest, T val) { dest = val; }
@@ -97,6 +119,16 @@ always_inline auto store(MultiVal<T, N> &dest, simd<T, N> val)
     return dest.store(val);
 }
 
+template <typename T> auto loadBatch(const T &x)
+{
+    return batch<T>::loadu(asBatch(&x));
+}
+template <typename T, typename V> void storeBatch(T &dest, V x)
+{
+    batch<T>::storeu(asBatch(&dest), x);
+}
+} // namespace loadfuncs
+
 // default float, double and int multivals
 template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(float)>
 using mfloat = MultiVal<float, N>;
@@ -106,16 +138,5 @@ using mdouble = MultiVal<double, N>;
 
 template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(int)>
 using mint = MultiVal<int, N>;
-
-// batch from bas value
-template <typename T> struct Batch {
-    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
-};
-
-template <typename T, size_t N> struct Batch<MultiVal<T, N>> {
-    using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
-};
-
-template <typename T> using batch = typename Batch<T>::type;
 
 } // namespace dsp
