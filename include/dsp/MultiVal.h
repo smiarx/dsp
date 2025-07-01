@@ -11,7 +11,8 @@ template <typename T, size_t N>
 struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
 
   public:
-    using simdtype = simd<T, N>;
+    static constexpr auto kSize = N;
+    using simdtype              = simd<T, N>;
 
     always_inline MultiVal() = default;
     always_inline MultiVal(simdtype value) { value.store((T *)this->data()); }

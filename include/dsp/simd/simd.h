@@ -45,6 +45,8 @@ template <typename T, size_t N> struct simd {
     using basetype = typename def::basetype;
     using mask     = simdmask<T, N>;
 
+    static constexpr auto kSize = N;
+
     union simdunion {
         type simd;
         alignas(sizeof(basetype) * N) basetype scalar[N];
