@@ -8,10 +8,23 @@
 namespace dsp
 {
 
-template <typename T, size_t N> simd<T, N> operator+(T s, simd<T, N> x)
+////////////////////// operators ////////////////////////
+template <typename T, size_t N>
+simd<T, N> always_inline operator+(T s, simd<T, N> x)
 {
     return x + s;
 }
+template <typename T, size_t N>
+simd<T, N> always_inline operator*(T s, simd<T, N> x)
+{
+    return x * s;
+}
+template <typename T, size_t N>
+simd<T, N> always_inline operator-(T s, simd<T, N> x)
+{
+    return simd<T, N>(s) - x;
+}
+
 ////////////////////// max ////////////////////////
 template <typename T> always_inline T max(T x, T y) { return std::max(x, y); }
 template <typename T, size_t N>
@@ -40,6 +53,22 @@ template <typename T> always_inline T sum(T x) { return x; }
 template <typename T, size_t N> always_inline T sum(simd<T, N> x)
 {
     return x.sum();
+}
+
+/////////////////// Logic ////////////////////////////
+
+/////////////////// any ////////////////////////////
+template <typename T> always_inline T any(T x) { return x; }
+template <typename T, size_t N> always_inline T any(simdmask<T, N> x)
+{
+    return x.any();
+}
+
+/////////////////// all ////////////////////////////
+template <typename T> always_inline T all(T x) { return x; }
+template <typename T, size_t N> always_inline T all(simdmask<T, N> x)
+{
+    return x.all();
 }
 
 /////////////////// Math ////////////////////////////
