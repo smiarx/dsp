@@ -102,12 +102,65 @@ template <typename T, size_t N> class TestSimd
             loop(i) { cmp(z[i], std::max(x[i], y[i])); }
         }
 
+        SECTION("cmpgt")
+        {
+            auto cmp = x == y;
+            loop(i) { REQUIRE((cmp[i] == (x[i] == y[i]))); }
+        }
+        SECTION("cmpgt")
+        {
+            auto cmp = x > y;
+            loop(i) { REQUIRE((cmp[i] == (x[i] > y[i]))); }
+        }
+        SECTION("cmpge")
+        {
+            auto cmp = x >= y;
+            loop(i) { REQUIRE((cmp[i] == (x[i] >= y[i]))); }
+            cmp = x >= x;
+            loop(i) { REQUIRE((cmp[i])); }
+        }
+        SECTION("cmplt")
+        {
+            auto cmp = x < y;
+            loop(i) { REQUIRE((cmp[i] == (x[i] < y[i]))); }
+        }
+        SECTION("cmple")
+        {
+            auto cmp = x <= y;
+            loop(i) { REQUIRE((cmp[i] == (x[i] <= y[i]))); }
+            cmp = x <= x;
+            loop(i) { REQUIRE((cmp[i])); }
+        }
+
         SECTION("any")
         {
-            auto any1 = x.cmpgt(y).any();
+            auto any1 = any(x > y);
             bool any2 = false;
             loop(i) { any2 |= x[i] > y[i]; }
             REQUIRE((any1 == any2));
+
+            constexpr T kA[] = {1, 0, 0, 0, 0, 0, 0, 0};
+            constexpr T kB[] = {0, 0, 0, 0, 0, 0, 0, 0};
+            auto a           = dsp::simd<T, N>::load(kA);
+            auto b           = dsp::simd<T, N>::load(kB);
+            REQUIRE(any(a > b));
+            REQUIRE(any(a >= b));
+            REQUIRE(!any(b > a));
+        }
+        SECTION("all")
+        {
+            auto all1 = all(x > y);
+            bool all2 = true;
+            loop(i) { all2 &= x[i] > y[i]; }
+            REQUIRE((all1 == all2));
+
+            constexpr T kA[] = {0, 1, 1, 1, 1, 1, 1, 1};
+            constexpr T kB[] = {0, 0, 0, 0, 0, 0, 0, 0};
+            auto a           = dsp::simd<T, N>::load(kA);
+            auto b           = dsp::simd<T, N>::load(kB);
+            REQUIRE(!all(a > b));
+            REQUIRE(all(a >= b));
+            REQUIRE(!all(b > a));
         }
 
         SECTION("store")

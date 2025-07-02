@@ -108,6 +108,15 @@ template <> struct intrin<int32_t, 4> {
 
     static constexpr auto cmpeq = _mm_cmpeq_epi32;
     static constexpr auto cmpgt = _mm_cmpgt_epi32;
+    static constexpr auto cmplt = _mm_cmplt_epi32;
+    static always_inline masktype vectorcall cmpge(type x2, type x1)
+    {
+        return bitNeg(cmpgt(x1, x2));
+    }
+    static always_inline masktype vectorcall cmple(type x2, type x1)
+    {
+        return bitNeg(cmplt(x1, x2));
+    }
 
     // blend
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
@@ -120,6 +129,14 @@ template <> struct intrin<int32_t, 4> {
     }
 
     static constexpr auto any = _mm_movemask_epi8;
+    static always_inline bool vectorcall all(masktype m)
+    {
+#if defined(__SSE4_1__)
+        return _mm_test_all_ones(m);
+#else
+        return any(m) == std::numeric_limits<basetype>::max();
+#endif
+    }
 
     // convert
     static always_inline type convert(float value)
@@ -208,6 +225,9 @@ template <> struct intrin<float, 4> {
 
     static constexpr auto cmpeq = _mm_cmpeq_ps;
     static constexpr auto cmpgt = _mm_cmpgt_ps;
+    static constexpr auto cmplt = _mm_cmplt_ps;
+    static constexpr auto cmpge = _mm_cmpge_ps;
+    static constexpr auto cmple = _mm_cmple_ps;
 
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
     {
@@ -219,6 +239,14 @@ template <> struct intrin<float, 4> {
     }
 
     static constexpr auto any = _mm_movemask_ps;
+    static always_inline bool vectorcall all(masktype m)
+    {
+#if defined(__SSE4_1__)
+        return _mm_test_all_ones((__m128i)m);
+#else
+        return any(m) == std::numeric_limits<basetype>::max();
+#endif
+    }
 
     // convert
     static always_inline type convert(float value) { return init(value); }
@@ -329,6 +357,18 @@ template <> struct intrin<float, 2> {
     {
         return base::cmpgt(x1, x2);
     }
+    static always_inline type vectorcall cmplt(type x1, type x2)
+    {
+        return base::cmplt(x1, x2);
+    }
+    static always_inline type vectorcall cmpge(type x1, type x2)
+    {
+        return base::cmpge(x1, x2);
+    }
+    static always_inline type vectorcall cmple(type x1, type x2)
+    {
+        return base::cmple(x1, x2);
+    }
     static always_inline type vectorcall blend(masktype m, type x1, type x2)
     {
         return base::blend(m, x1, x2);
@@ -336,6 +376,10 @@ template <> struct intrin<float, 2> {
     static always_inline bool vectorcall any(masktype m)
     {
         return base::any(m);
+    }
+    static always_inline bool vectorcall all(masktype m)
+    {
+        return base::all(m);
     }
 
     // convert
@@ -391,6 +435,9 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto cmpeq = _mm_cmpeq_pd;
     static constexpr auto cmpgt = _mm_cmpgt_pd;
+    static constexpr auto cmplt = _mm_cmplt_pd;
+    static constexpr auto cmpge = _mm_cmpge_pd;
+    static constexpr auto cmple = _mm_cmple_pd;
 
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
     {
@@ -402,6 +449,14 @@ template <> struct intrin<double, 2> {
     }
 
     static constexpr auto any = _mm_movemask_pd;
+    static always_inline bool vectorcall all(masktype m)
+    {
+#if defined(__SSE4_1__)
+        return _mm_test_all_ones((__m128i)m);
+#else
+        return any(m) == 0x00ff;
+#endif
+    }
 
     // convert
     static always_inline type convert(float value)
@@ -506,6 +561,19 @@ template <> struct intrin<int32_t, 8> {
 
     static constexpr auto cmpeq = _mm256_cmpeq_epi32;
     static constexpr auto cmpgt = _mm256_cmpgt_epi32;
+    static always_inline masktype vectorcall cmpge(type x2, type x1)
+    {
+        // x2 >= x1 <==> ~(x1 > x2)
+        return bitNeg(cmpgt(x1, x2));
+    }
+    static always_inline masktype vectorcall cmplt(type x2, type x1)
+    {
+        return cmpgt(x1, x2);
+    }
+    static always_inline masktype vectorcall cmple(type x2, type x1)
+    {
+        return cmpge(x1, x2);
+    }
 
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
     {
@@ -513,6 +581,10 @@ template <> struct intrin<int32_t, 8> {
     }
 
     static constexpr auto any = _mm256_movemask_epi8;
+    static always_inline bool vectorcall all(masktype m)
+    {
+        return _mm256_testz_si256(m, m);
+    }
 
     // convert
     static always_inline type convert(basetype value) { return init(value); }
@@ -609,6 +681,18 @@ template <> struct intrin<float, 8> {
     {
         return _mm256_cmp_ps(x1, x2, 0x0E);
     }
+    static always_inline type vectorcall cmpge(type x1, type x2)
+    {
+        return _mm256_cmp_ps(x1, x2, 0x0D);
+    }
+    static always_inline type vectorcall cmplt(type x1, type x2)
+    {
+        return _mm256_cmp_ps(x1, x2, 0x11);
+    }
+    static always_inline type vectorcall cmple(type x1, type x2)
+    {
+        return _mm256_cmp_ps(x1, x2, 0x12);
+    }
 
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
     {
@@ -616,6 +700,10 @@ template <> struct intrin<float, 8> {
     }
 
     static constexpr auto any = _mm256_movemask_ps;
+    static always_inline bool vectorcall all(masktype m)
+    {
+        return _mm256_testz_si256((__m256i)m, (__m256i)m);
+    }
 
     // convert
     static always_inline type convert(float value) { return init(value); }
@@ -712,6 +800,18 @@ template <> struct intrin<double, 4> {
     {
         return _mm256_cmp_pd(x1, x2, 0x0E);
     }
+    static always_inline type vectorcall cmpge(type x1, type x2)
+    {
+        return _mm256_cmp_pd(x1, x2, 0x0D);
+    }
+    static always_inline type vectorcall cmplt(type x1, type x2)
+    {
+        return _mm256_cmp_pd(x1, x2, 0x11);
+    }
+    static always_inline type vectorcall cmple(type x1, type x2)
+    {
+        return _mm256_cmp_pd(x1, x2, 0x12);
+    }
 
     static always_inline type vectorcall blend(masktype m, type x2, type x1)
     {
@@ -719,6 +819,10 @@ template <> struct intrin<double, 4> {
     }
 
     static constexpr auto any = _mm256_movemask_pd;
+    static always_inline bool vectorcall all(masktype m)
+    {
+        return _mm256_testz_si256((__m256i)m, (__m256i)m);
+    }
 
     // convert
     static always_inline type convert(float value)

@@ -93,10 +93,20 @@ template <typename T, size_t N> struct intrin {
         return x;
     }
 
-    static always_inline type bitAnd(type x1, type x2) { return x1 & x2; }
-    static always_inline type bitOr(type x1, type x2) { return x1 | x2; }
-    static always_inline type bitXor(type x1, type x2) { return x1 ^ x2; }
-    static always_inline type bitNot(type x) { return ~x; }
+    static always_inline masktype bitAnd(masktype x1, masktype x2)
+    {
+        return x1 & x2;
+    }
+    static always_inline masktype bitOr(masktype x1, masktype x2)
+    {
+        return x1 | x2;
+    }
+    static always_inline masktype bitXor(masktype x1, masktype x2)
+    {
+        return x1 ^ x2;
+    }
+    static always_inline masktype bitNot(masktype x) { return ~x; }
+
     static always_inline type max(type x1, type x2)
     {
         loop(i) x1[i] = std::max(x1[i], x2[i]);
@@ -131,6 +141,24 @@ template <typename T, size_t N> struct intrin {
         loop(i) mask[i] = x1[i] > x2[i];
         return mask;
     }
+    static always_inline masktype cmpge(type x1, type x2)
+    {
+        masktype mask;
+        loop(i) mask[i] = x1[i] >= x2[i];
+        return mask;
+    }
+    static always_inline masktype cmplt(type x1, type x2)
+    {
+        masktype mask;
+        loop(i) mask[i] = x1[i] < x2[i];
+        return mask;
+    }
+    static always_inline masktype cmple(type x1, type x2)
+    {
+        masktype mask;
+        loop(i) mask[i] = x1[i] <= x2[i];
+        return mask;
+    }
     static always_inline type blend(masktype mask, type x2, type x1)
     {
         loop(i) x1[i] = mask[i] == maskbasetype(0) ? x1[i] : x2[i];
@@ -141,6 +169,13 @@ template <typename T, size_t N> struct intrin {
     {
         bool val = false;
         loop(i) val |= static_cast<bool>(x[i]);
+        return val;
+    }
+
+    static always_inline bool all(masktype x)
+    {
+        bool val = true;
+        loop(i) val &= static_cast<bool>(x[i]);
         return val;
     }
 
@@ -224,11 +259,27 @@ template <typename T> struct intrin<T, 1> {
     {
         return x1 > x2;
     }
+    static always_inline type vectorcall cmpge(type x1, type x2)
+    {
+        return x1 >= x2;
+    }
+    static always_inline type vectorcall cmplt(type x1, type x2)
+    {
+        return x1 < x2;
+    }
+    static always_inline type vectorcall cmple(type x1, type x2)
+    {
+        return x1 <= x2;
+    }
     static always_inline type vectorcall blend(masktype mask, type x2, type x1)
     {
         return mask == basetype(0) ? x1 : x2;
     }
     static always_inline bool vectorcall any(type mask)
+    {
+        return mask != basetype(0);
+    }
+    static always_inline bool vectorcall all(type mask)
     {
         return mask != basetype(0);
     }
