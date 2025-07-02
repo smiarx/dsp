@@ -25,7 +25,42 @@ template <typename T, size_t N> struct simdmask {
     always_inline simdmask(masktype value) noexcept : value_(value) {}
 
     always_inline operator masktype() const { return value_; }
+
     always_inline bool vectorcall any() { return def::any(value_); }
+    always_inline bool vectorcall all() { return def::all(value_); }
+
+    always_inline bool vectorcall operator[](size_t index) const noexcept
+    {
+        return get(index);
+    }
+    union simdunion {
+        masktype simd;
+        alignas(sizeof(maskbasetype) * N) maskbasetype scalar[N];
+    };
+
+    [[nodiscard]] always_inline bool vectorcall get(size_t index) const noexcept
+    {
+        simdunion u{value_};
+        return u.scalar[index];
+    }
+
+    always_inline simdmask vectorcall operator&&(simdmask other)
+    {
+        return def::bitAnd(value_, other);
+    }
+    always_inline simdmask vectorcall operator||(simdmask other)
+    {
+        return def::bitOr(value_, other);
+    }
+    always_inline simdmask vectorcall operator^(simdmask other)
+    {
+        return def::bitXor(value_, other);
+    }
+
+    always_inline simdmask vectorcall operator~() const noexcept
+    {
+        return def::bitNot(value_);
+    }
 
     always_inline simd<T, N> vectorcall blend(simd<T, N> x2, simd<T, N> x1)
     {
@@ -104,6 +139,8 @@ template <typename T, size_t N> struct simd {
         value_          = u.simd;
     }
 
+    // increment operators
+
     always_inline simd &vectorcall operator+=(simd other) noexcept
     {
         value_ = def::add(value_, other);
@@ -128,24 +165,6 @@ template <typename T, size_t N> struct simd {
         return *this;
     }
 
-    always_inline simd &vectorcall operator&=(simd other) noexcept
-    {
-        value_ = def::bitAnd(value_, other);
-        return *this;
-    }
-
-    always_inline simd &vectorcall operator|=(simd other) noexcept
-    {
-        value_ = def::bitOr(value_, other);
-        return *this;
-    }
-
-    always_inline simd &vectorcall operator^=(simd other) noexcept
-    {
-        value_ = def::bitXor(value_, other);
-        return *this;
-    }
-
     always_inline simd &vectorcall operator+=(basetype scalar) noexcept
     {
         value_ = def::add(value_, def::init(scalar));
@@ -163,6 +182,8 @@ template <typename T, size_t N> struct simd {
         value_ = def::mul(value_, def::init(scalar));
         return *this;
     }
+
+    // operators
 
     always_inline simd vectorcall operator+(simd other) const noexcept
     {
@@ -204,10 +225,32 @@ template <typename T, size_t N> struct simd {
         return def::neg(value_);
     }
 
-    always_inline simd vectorcall operator~() const noexcept
+    always_inline mask vectorcall operator<(simd other) const noexcept
     {
-        return def::bitNot(value_);
+        return def::cmplt(value_, other);
     }
+
+    always_inline mask vectorcall operator>(simd other) const noexcept
+    {
+        return def::cmpgt(value_, other);
+    }
+
+    always_inline mask vectorcall operator<=(simd other) const noexcept
+    {
+        return def::cmple(value_, other);
+    }
+
+    always_inline mask vectorcall operator>=(simd other) const noexcept
+    {
+        return def::cmpge(value_, other);
+    }
+
+    always_inline mask vectorcall operator==(simd other) const noexcept
+    {
+        return def::cmpeq(value_, other);
+    }
+
+    // scalar operators
 
     always_inline simd vectorcall operator+(basetype scalar) const noexcept
     {
@@ -277,6 +320,11 @@ template <typename T, size_t N> struct simd {
             u1.scalar[i] = func(u1.scalar[i], u2.scalar[i]);
         }
         return u1.simd;
+    }
+
+    always_inline auto vectorcall toInt()
+    {
+        return static_cast<simd<int, N>>(*this);
     }
 
   private:

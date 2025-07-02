@@ -54,11 +54,18 @@ template <> struct intrin<float, 2> {
 
     static constexpr auto cmpeq = vceq_f32;
     static constexpr auto cmpgt = vcgt_f32;
+    static constexpr auto cmpge = vcge_f32;
+    static constexpr auto cmplt = vclt_f32;
+    static constexpr auto cmple = vcle_f32;
     static constexpr auto blend = vbsl_f32;
 
     static always_inline auto vectorcall any(masktype x)
     {
         return vmaxv_u32(x) != 0;
+    }
+    static always_inline auto vectorcall all(masktype x)
+    {
+        return vminv_u32(x) != 0;
     }
 
     // convert
@@ -123,11 +130,18 @@ template <> struct intrin<float, 4> {
 
     static constexpr auto cmpeq = vceqq_f32;
     static constexpr auto cmpgt = vcgtq_f32;
+    static constexpr auto cmpge = vcgeq_f32;
+    static constexpr auto cmplt = vcltq_f32;
+    static constexpr auto cmple = vcleq_f32;
     static constexpr auto blend = vbslq_f32;
 
     static always_inline auto vectorcall any(masktype x)
     {
         return vmaxvq_u32(x) != 0;
+    }
+    static always_inline auto vectorcall all(masktype x)
+    {
+        return vminvq_u32(x) != 0;
     }
 
     // convert
@@ -196,11 +210,18 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto cmpeq = vceqq_f64;
     static constexpr auto cmpgt = vcgtq_f64;
+    static constexpr auto cmpge = vcgeq_f64;
+    static constexpr auto cmplt = vcltq_f64;
+    static constexpr auto cmple = vcleq_f64;
     static constexpr auto blend = vbslq_f64;
 
     static always_inline auto vectorcall any(masktype x)
     {
-        return vmaxvq_f64(vreinterpretq_f64_u64(x)) != 0;
+        return vmaxvq_u32(vreinterpretq_u32_u64(x));
+    }
+    static always_inline auto vectorcall all(masktype x)
+    {
+        return vminvq_u32(vreinterpretq_u32_u64(x));
     }
 
     // convert
@@ -260,11 +281,18 @@ template <> struct intrin<int32_t, 4> {
 
     static constexpr auto cmpeq = vceqq_s32;
     static constexpr auto cmpgt = vcgtq_s32;
+    static constexpr auto cmpge = vcgeq_s32;
+    static constexpr auto cmplt = vcltq_s32;
+    static constexpr auto cmple = vcleq_s32;
     static constexpr auto blend = vbslq_s32;
 
     static always_inline auto vectorcall any(masktype x)
     {
         return vmaxvq_u32(x) != 0;
+    }
+    static always_inline auto vectorcall all(masktype x)
+    {
+        return vminvq_u32(x) != 0;
     }
 
     // convert
