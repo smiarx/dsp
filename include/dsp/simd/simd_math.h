@@ -71,6 +71,18 @@ template <typename T, size_t N> always_inline T all(simdmask<T, N> x)
     return x.all();
 }
 
+/////////////////// Convert ////////////////////////////
+
+/////////////////// int ////////////////////////////
+template <typename T> always_inline auto toInt(T x)
+{
+    return static_cast<int>(x);
+}
+template <typename T, size_t N> always_inline auto toInt(simd<T, N> x)
+{
+    return x.toInt();
+}
+
 /////////////////// Math ////////////////////////////
 
 ////////////////////// exp ////////////////////////

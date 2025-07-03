@@ -14,7 +14,12 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     static constexpr auto kWidth = N;
     using simdtype               = simd<T, N>;
 
-    always_inline MultiVal() = default;
+    always_inline MultiVal()              = default;
+    MultiVal(MultiVal &)                  = default;
+    MultiVal(const MultiVal &)            = default;
+    MultiVal(MultiVal &&)                 = default;
+    MultiVal &operator=(const MultiVal &) = default;
+
     always_inline MultiVal(simdtype value) { value.store((T *)this->data()); }
     template <typename... E>
     MultiVal(E &&...e) : std::array<T, N>{{std::forward<T>(e)...}}
@@ -143,6 +148,17 @@ template <typename T, size_t N> struct TypeWidth<MultiVal<T, N>> {
     static constexpr auto kWidth = N;
 };
 template <typename T> constexpr auto kTypeWidth = TypeWidth<T>::kWidth;
+
+//=============================================================
+
+// int type
+template <typename T> struct IntType {
+    using type = int;
+};
+template <typename T, size_t N> struct IntType<MultiVal<T, N>> {
+    using type = MultiVal<int, N>;
+};
+template <typename T> using intType = typename IntType<T>::type;
 
 //=============================================================
 
