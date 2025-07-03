@@ -187,13 +187,13 @@ TEST_CASE("SIMD int32_t 8", "[dsp][simd]") { TestSimd<int32_t, 8>::run(); }
 TEST_CASE("Convert", "[dsp][simd]")
 {
     dsp::mfloat<1> xf1 = {-948232.3239f};
-    dsp::mfloat<2> xf2 = {1253.32f, -493.3923f};
-    dsp::mfloat<4> xf4 = {8.231f, 2.332f, -39.129f, 20.392f};
+    dsp::mfloat<2> xf2 = {1253.82f, -493.8923f};
+    dsp::mfloat<4> xf4 = {8.631f, 2.332f, -39.129f, 20.392f};
 
     dsp::mint<2> xi2 = {432, -9249};
     dsp::mint<4> xi4 = {19238, -38432, 9383, -492334};
 
-    dsp::mdouble<2> xd2 = {0.3948823, -40.3484834};
+    dsp::mdouble<2> xd2 = {0.5948823, -40.3484834};
 
 #if DSP_VEC_SIZE > 4
     dsp::mfloat<8> xf8  = {9394.233f,        0.4943f,        -12.39483f,
