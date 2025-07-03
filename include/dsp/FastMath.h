@@ -18,7 +18,7 @@ template <typename F> struct constants {
 // NOLINTEND (readability-identifier-naming)
 
 // https://varietyofsound.wordpress.com/2011/02/14/efficient-tanh-computation-using-lamberts-continued-fraction/
-template <typename F> static inline constexpr F tanh(F x)
+template <typename F> static inline constexpr F fasttanh(F x)
 {
     F xsq    = x * x;
     F num    = x * (F(135135) + xsq * (F(17325) + xsq * (F(378) + xsq)));
