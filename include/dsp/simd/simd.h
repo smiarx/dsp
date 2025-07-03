@@ -324,7 +324,7 @@ template <typename T, size_t N> struct simd {
 
     always_inline auto vectorcall toInt()
     {
-        return static_cast<simd<int, N>>(*this);
+        return simd<int, N>::convert(*this);
     }
 
   private:

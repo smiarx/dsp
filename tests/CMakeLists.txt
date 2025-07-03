@@ -15,6 +15,7 @@ set(test_sources
     simd.cpp
     Context.cpp
     Buffer.cpp
+    Delay.cpp
     #FIRFilter.cpp
     #VAFilters.cpp
     #RMS.cpp

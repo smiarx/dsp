@@ -22,7 +22,7 @@ template <typename T, bool Vec = false> class Context
     using SigType = std::conditional_t<Vec, decltype(loadfuncs::loadBatch(T{})),
                                        decltype(loadfuncs::load(T{}))>;
 
-    [[nodiscard]] auto load(T &x) const
+    [[nodiscard]] auto load(const T &x) const
     {
         if constexpr (Vec) {
             return loadfuncs::loadBatch(x);
