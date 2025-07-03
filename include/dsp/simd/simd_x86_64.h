@@ -167,11 +167,11 @@ template <> struct intrin<int32_t, 4> {
 
     static always_inline type convert(__m128 value)
     {
-        return _mm_cvtps_epi32(value);
+        return _mm_cvttps_epi32(value);
     }
     static always_inline type convert(__m128d value)
     {
-        auto v = _mm_cvtpd_epi32(value);
+        auto v = _mm_cvttpd_epi32(value);
         return _mm_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 1, 0));
     }
 
@@ -186,7 +186,7 @@ template <> struct intrin<int32_t, 4> {
     }
     static always_inline type convert(__m256d value)
     {
-        return _mm256_cvtpd_epi32(value);
+        return _mm256_cvttpd_epi32(value);
     }
 #endif
 };
@@ -512,11 +512,11 @@ template <> struct intrin<int, 2> {
     static always_inline type vectorcall convert(float x) { return init(x); }
     static always_inline type vectorcall convert(floatx2_t x)
     {
-        return _mm_cvtps_epi32(x);
+        return _mm_cvttps_epi32(x);
     }
     static always_inline type convert(__m128d value)
     {
-        return _mm_cvtpd_epi32(value);
+        return _mm_cvttpd_epi32(value);
     }
 };
 
@@ -752,11 +752,11 @@ template <> struct intrin<int32_t, 8> {
 
     static always_inline type convert(__m256 value)
     {
-        return _mm256_cvtps_epi32(value);
+        return _mm256_cvttps_epi32(value);
     }
     static always_inline type convert(__m256d value)
     {
-        return convert(_mm256_cvtpd_epi32(value));
+        return convert(_mm256_cvttpd_epi32(value));
     }
 };
 
