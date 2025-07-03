@@ -29,6 +29,13 @@ struct floatx2_t {
   private:
     __m128 v_;
 };
+struct intx2_t {
+    intx2_t(__m128i v) : v_(v) {}
+    always_inline operator __m128i() const { return v_; }
+
+  private:
+    __m128i v_;
+};
 
 ///////////////// INT32x4 ////////////////
 template <> struct intrin<int32_t, 4> {
@@ -148,6 +155,11 @@ template <> struct intrin<int32_t, 4> {
         return init(static_cast<basetype>(value));
     }
 
+    static always_inline type convert(intx2_t value)
+    {
+        return _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 1, 0));
+    }
+
     static always_inline type convert(floatx2_t value)
     {
         return convert(_mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 1, 0)));
@@ -253,6 +265,10 @@ template <> struct intrin<float, 4> {
     static always_inline type convert(floatx2_t value)
     {
         return _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 1, 0));
+    }
+    static always_inline type convert(intx2_t value)
+    {
+        return convert(_mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 1, 0)));
     }
     static always_inline type convert(__m128i value)
     {
@@ -384,9 +400,123 @@ template <> struct intrin<float, 2> {
 
     // convert
     static always_inline type vectorcall convert(float x) { return init(x); }
+    static always_inline type convert(intx2_t value)
+    {
+        return _mm_cvtepi32_ps(value);
+    }
     static always_inline type convert(__m128d value)
     {
         return _mm_cvtpd_ps(value);
+    }
+};
+
+///////////////// INT x 2 ////////////////
+template <> struct intrin<int, 2> {
+    using base         = intrin<int, 4>;
+    using basetype     = int;
+    using type         = intx2_t;
+    using maskbasetype = basetype;
+    using masktype     = type;
+
+    static constexpr auto init = base::init;
+    static always_inline type vectorcall loadu(const basetype *src)
+    {
+        return ((__m128i)_mm_load_sd((const double *)src));
+    }
+    static constexpr auto load = loadu;
+    static always_inline void vectorcall storeu(basetype *dest, type value)
+    {
+        _mm_store_sd((double *)dest, (__m128d) static_cast<__m128i>(value));
+    }
+    static constexpr auto store = storeu;
+    static always_inline type vectorcall add(type x1, type x2)
+    {
+        return base::add(x1, x2);
+    }
+    static always_inline type vectorcall sub(type x1, type x2)
+    {
+        return base::sub(x1, x2);
+    }
+    static always_inline type vectorcall neg(type x) { return base::neg(x); }
+    static always_inline type vectorcall mul(type x1, type x2)
+    {
+        return base::mul(x1, x2);
+    }
+    static always_inline type vectorcall bitAnd(type x1, type x2)
+    {
+        return base::bitAnd(x1, x2);
+    }
+    static always_inline type vectorcall bitOr(type x1, type x2)
+    {
+        return base::bitOr(x1, x2);
+    }
+    static always_inline type vectorcall bitXor(type x1, type x2)
+    {
+        return base::bitXor(x1, x2);
+    }
+    static always_inline type vectorcall bitNeg(type x)
+    {
+        return base::bitNeg(x);
+    }
+    static always_inline type vectorcall max(type x1, type x2)
+    {
+        return base::max(x1, x2);
+    }
+    static always_inline type vectorcall min(type x1, type x2)
+    {
+        return base::min(x1, x2);
+    }
+    static always_inline type vectorcall abs(type x) { return base::abs(x); }
+
+    static always_inline basetype vectorcall sum(type value)
+    {
+        type swap = _mm_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
+        type sum  = add(value, swap);
+        return _mm_cvtsi128_si32(sum);
+    }
+
+    static always_inline type vectorcall cmpeq(type x1, type x2)
+    {
+        return base::cmpeq(x1, x2);
+    }
+    static always_inline type vectorcall cmpgt(type x1, type x2)
+    {
+        return base::cmpgt(x1, x2);
+    }
+    static always_inline type vectorcall cmplt(type x1, type x2)
+    {
+        return base::cmplt(x1, x2);
+    }
+    static always_inline type vectorcall cmpge(type x1, type x2)
+    {
+        return base::cmpge(x1, x2);
+    }
+    static always_inline type vectorcall cmple(type x1, type x2)
+    {
+        return base::cmple(x1, x2);
+    }
+    static always_inline type vectorcall blend(masktype m, type x1, type x2)
+    {
+        return base::blend(m, x1, x2);
+    }
+    static always_inline bool vectorcall any(masktype m)
+    {
+        return base::any(m);
+    }
+    static always_inline bool vectorcall all(masktype m)
+    {
+        return base::all(intrin<int, 4>::convert(m));
+    }
+
+    // convert
+    static always_inline type vectorcall convert(float x) { return init(x); }
+    static always_inline type vectorcall convert(floatx2_t x)
+    {
+        return _mm_cvtps_epi32(x);
+    }
+    static always_inline type convert(__m128d value)
+    {
+        return _mm_cvtpd_epi32(value);
     }
 };
 
@@ -472,6 +602,11 @@ template <> struct intrin<double, 2> {
     static always_inline type convert(floatx2_t value)
     {
         return convert(static_cast<__m128>(value));
+    }
+
+    static always_inline type convert(intx2_t value)
+    {
+        return convert(static_cast<__m128i>(value));
     }
 
     static always_inline type convert(__m128i value)
