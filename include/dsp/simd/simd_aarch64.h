@@ -154,6 +154,10 @@ template <> struct intrin<float, 4> {
     {
         return init(static_cast<basetype>(value));
     }
+    static always_inline type convert(int32x2_t value)
+    {
+        return convert(vcvt_f32_s32(value));
+    }
     static always_inline type convert(int32x4_t value)
     {
         return vcvtq_f32_s32(value);
@@ -238,6 +242,82 @@ template <> struct intrin<double, 2> {
     static always_inline type convert(float32x2_t value)
     {
         return vcvt_f64_f32(value);
+    }
+};
+
+///////////////// INT x 2 ////////////////
+template <> struct intrin<int32_t, 2> {
+    using basetype               = int32_t;
+    using type                   = int32x2_t;
+    using maskbasetype           = uint32_t;
+    using masktype               = uint32x2_t;
+    static constexpr auto init   = vdup_n_s32;
+    static constexpr auto load   = vld1_s32;
+    static constexpr auto loadu  = vld1_s32;
+    static constexpr auto store  = vst1_s32;
+    static constexpr auto storeu = vst1_s32;
+    static constexpr auto add    = vadd_s32;
+    static constexpr auto sub    = vsub_s32;
+    static constexpr auto neg    = vneg_s32;
+    static constexpr auto mul    = vmul_s32;
+
+    static always_inline auto vectorcall bitAnd(type x1, type x2)
+    {
+        return vand_u32(vreinterpret_u32_s32(x1), vreinterpret_u32_s32(x2));
+    }
+    static always_inline auto vectorcall bitOr(type x1, type x2)
+    {
+        return vorr_u32(vreinterpret_u32_s32(x1), vreinterpret_u32_s32(x2));
+    }
+    static always_inline auto vectorcall bitXor(type x1, type x2)
+    {
+        return veor_u32(vreinterpret_u32_s32(x1), vreinterpret_u32_s32(x2));
+    }
+    static always_inline auto vectorcall bitNeg(type x)
+    {
+        return bitXor(init(basetype(0)), x);
+    }
+    static constexpr auto max = vmax_s32;
+    static constexpr auto min = vmin_s32;
+
+    static constexpr auto abs = vabs_s32;
+    static constexpr auto sum = vaddv_s32;
+
+    static constexpr auto cmpeq = vceq_s32;
+    static constexpr auto cmpgt = vcgt_s32;
+    static constexpr auto cmpge = vcge_s32;
+    static constexpr auto cmplt = vclt_s32;
+    static constexpr auto cmple = vcle_s32;
+    static constexpr auto blend = vbsl_s32;
+
+    static always_inline auto vectorcall any(masktype x)
+    {
+        return vmaxv_u32(x) != 0;
+    }
+    static always_inline auto vectorcall all(masktype x)
+    {
+        return vminv_u32(x) != 0;
+    }
+
+    // convert
+    static always_inline type convert(basetype value) { return init(value); }
+    static always_inline type convert(double value)
+    {
+        return init(static_cast<basetype>(value));
+    }
+    static always_inline type convert(float value)
+    {
+        return init(static_cast<basetype>(value));
+    }
+
+    static always_inline type convert(float32x2_t value)
+    {
+        return vcvt_s32_f32(value);
+    }
+
+    static always_inline type convert(float64x2_t value)
+    {
+        return convert(vcvt_f32_f64(value));
     }
 };
 
