@@ -21,8 +21,13 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     MultiVal &operator=(const MultiVal &) = default;
 
     always_inline MultiVal(simdtype value) { value.store((T *)this->data()); }
+
+    template <typename E> constexpr MultiVal(E value) : std::array<T, N>{}
+    {
+        for (auto &v : *this) v = static_cast<T>(value);
+    }
     template <typename... E>
-    MultiVal(E &&...e) : std::array<T, N>{{std::forward<T>(e)...}}
+    constexpr MultiVal(E &&...e) : std::array<T, N>{{std::forward<T>(e)...}}
     {
     }
 

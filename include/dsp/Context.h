@@ -119,7 +119,9 @@ template <class Ctxt> class ContextRun
     template <class Ctxt, class State>               \
     void processBlock(Ctxt ctxt, State &state) const \
     {                                                \
-        CTXTRUN(ctxt) { process(c, state); }         \
+        CTXTRUN(ctxt) { process(ctxt, state); };     \
     }
+
+using namespace loadfuncs;
 
 } // namespace dsp
