@@ -16,12 +16,12 @@ set(test_sources
     Context.cpp
     Buffer.cpp
     Delay.cpp
+    AllPass.cpp
     #FIRFilter.cpp
     #VAFilters.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Hadamard.cpp
-    #AllPass.cpp
     #Enveloppe.cpp
 )
 

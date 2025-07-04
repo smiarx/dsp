@@ -11,7 +11,7 @@ endif()
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     include(CTest)
-    #add_subdirectory(bench)
+    add_subdirectory(bench)
 endif()
 if(BUILD_TESTING)
     add_subdirectory(tests)

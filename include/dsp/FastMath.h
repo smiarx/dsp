@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MultiVal.h"
 #include "Signal.h"
 #include "Utils.h"
 #include <cmath>
@@ -15,6 +16,7 @@ template <typename F> struct constants {
     static constexpr auto pi_4    = F(0.78539816339744830962);
     static constexpr auto sqrt1_2 = F(0.70710678118654752440);
 };
+
 // NOLINTEND (readability-identifier-naming)
 
 // https://varietyofsound.wordpress.com/2011/02/14/efficient-tanh-computation-using-lamberts-continued-fraction/

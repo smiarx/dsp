@@ -11,19 +11,13 @@
 #include <cmath>
 #include <cstddef>
 
-template <size_t N>
-static dsp::fSample<N> rms(dsp::fSample<N> *x, size_t length)
+template <typename T> static auto rms(T *x, size_t length)
 {
-    dsp::fSample<N> rms = {0.f};
+    typename T::simdtype rms = 0.f;
     for (size_t n = 0; n < length; ++n) {
-        for (size_t i = 0; i < N; ++i) {
-            rms[i] += x[n][i] * x[n][i];
-        }
+        rms += dsp::load(x[n]) * x[n];
     }
-    for (size_t i = 0; i < N; ++i) {
-        rms[i] = sqrtf(rms[i] / length);
-    }
-
+    rms = dsp::sqrt(rms / length);
     return rms;
 }
 
@@ -31,14 +25,14 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
 {
     SECTION("Reference")
     {
-        constexpr size_t kN = 2;
-        constexpr auto kA0  = 0.3333333333333333;
-        constexpr auto kA1  = -0.9335804264972017;
-        dsp::AllPass2<kN> ap;
+        using ft           = dsp::mfloat<2>;
+        constexpr auto kA0 = 0.3333333333333333;
+        constexpr auto kA1 = -0.9335804264972017;
+        dsp::AllPass2<ft> ap;
         decltype(ap)::State apstate{};
         ap.setCoeffs({kA0, kA0}, {kA1, kA1});
 
-        const dsp::fData<1> expect[] = {
+        const ft expect[] = {
             {0.3333333432674408},      {-0.8298492431640625},
             {-0.14408577978610992},    {0.0972621738910675},
             {0.16909800469875336},     {0.1780681014060974},
@@ -73,11 +67,11 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
             {0.000027011161364498548},
         };
 
-        dsp::fSample<kN> x{};
+        ft x{};
 
         for (size_t n = 0; n < sizeof(expect) / sizeof(expect[0]); ++n) {
-            x[0] = n == 0;
-            x[1] = n == 0;
+            x[0] = (n == 0);
+            x[1] = (n == 0);
             ap.process(dsp::Context(&x, 1), apstate);
             REQUIRE_THAT(x[0], Catch::Matchers::WithinAbs(expect[n][0], 1e-6));
             REQUIRE_THAT(x[1], Catch::Matchers::WithinAbs(expect[n][0], 1e-6));
@@ -86,7 +80,7 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
 
     SECTION("Phasing")
     {
-        constexpr size_t kN           = 2;
+        using ft                      = dsp::mfloat<2>;
         constexpr auto kSR            = 48000.f;
         constexpr size_t kPrepareSize = 0.5 * kSR;
         constexpr size_t kTestSize    = 64;
@@ -94,27 +88,24 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
         float r    = GENERATE(take(2, random(0.1f, 10.f)));
         float f    = 2.f * freq / kSR;
 
-        dsp::AllPass2<kN> ap;
+        dsp::AllPass2<ft> ap;
         decltype(ap)::State apstate{};
         ap.setFreq({f, f}, {r, r});
 
-        dsp::fSample<kN> x;
+        ft x;
         for (size_t n = 0; n < kPrepareSize; ++n) {
-            for (size_t i = 0; i < kN; ++i) {
-                x[i] = std::sin(dsp::constants<float>::pi * f * n);
-            }
+            x = dsp::sin(dsp::load(dsp::constants<ft>::pi) * f *
+                         static_cast<float>(n));
             ap.process(dsp::Context(&x, 1), apstate);
         }
 
         for (size_t n = kPrepareSize; n < kPrepareSize + kTestSize; ++n) {
-            for (size_t i = 0; i < kN; ++i) {
-                x[i] = std::sin(dsp::constants<float>::pi * f * n);
-            }
+            x       = dsp::sin(dsp::load(dsp::constants<ft>::pi) * f *
+                               static_cast<float>(n));
             auto x0 = x;
             ap.process(dsp::Context(&x, 1), apstate);
 
-            arrayFor(x, i)
-            {
+            for (size_t i = 0; i < 2; ++i) {
                 // output is phased at 180°
                 x0[i] += x[i];
                 REQUIRE_THAT(x0[i], Catch::Matchers::WithinAbs(0.f, 4e-2));
@@ -124,78 +115,29 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
 
     SECTION("Unchanged power")
     {
-        constexpr size_t kN    = 2;
+        using ft               = dsp::mfloat<4>;
         constexpr auto kSR     = 48000.f;
         constexpr size_t kSize = 2048;
         float freq             = GENERATE(take(2, random(200.f, kSR * 0.5f)));
         float r                = GENERATE(take(2, random(0.1f, 10.f)));
         float f                = 2.f * freq / kSR;
 
-        dsp::AllPass2<kN> ap;
+        dsp::AllPass2<ft> ap;
         decltype(ap)::State apstate{};
-        ap.setFreq({f, f}, {r, r});
+        ap.setFreq(f, r);
 
-        dsp::fSample<kN> x[kSize];
+        ft x[kSize];
         for (size_t n = 0; n < kSize; ++n) {
-            for (size_t i = 0; i < kN; ++i) {
-                x[n][i] = std::sin(dsp::constants<float>::pi * f * n);
-            }
+            x[n] = dsp::sin(dsp::load(dsp::constants<ft>::pi) * f *
+                            static_cast<float>(n));
         }
 
         auto sinRMS = rms(&x[kSize / 2], kSize / 2);
         ap.processBlock(dsp::Context(x, kSize), apstate);
         auto apRMS = rms(&x[kSize / 2], kSize / 2);
 
-        for (size_t i = 0; i < kN; ++i) {
+        for (size_t i = 0; i < 4; ++i) {
             REQUIRE_THAT(apRMS[i], Catch::Matchers::WithinAbs(sinRMS[i], 1e-3));
         }
     }
-
-    //    SECTION("Energy Preserving")
-    //    {
-    //        constexpr size_t N    = 2;
-    //        constexpr auto sR     = 48000.f;
-    //        constexpr size_t Size = 1<<15;
-    //        float sinefreq            = GENERATE(take(2, random(200.f, sR *
-    //        0.5f))); float freq            = GENERATE(take(2, random(200.f, sR
-    //        * 0.5f))); float R               = GENERATE(take(2,
-    //        random(0.1f, 10.f))); float f               = 2.f * freq / sR;
-    //        float of               = 1.f - f;
-    //        float oR               = R+0.8f;
-    //
-    //        dsp::AllPass2<N,true> ap;
-    //        decltype(ap)::State apstate{};
-    //        ap.setFreq({f, f}, {R, R});
-    //
-    //        dsp::fSample<N> x[Size];
-    //        for (size_t n = 0; n < Size; ++n) {
-    //            for (size_t i = 0; i < N; ++i) {
-    //                x[n][i] = sin(dsp::constants<float>::pi * sinefreq * n);
-    //            }
-    //        }
-    //
-    //        auto sinRMS = rms(&x[Size / 2], Size / 2);
-    //
-    //        contextFor(dsp::Context(x,3*Size/4))
-    //        {
-    //            //ap.pregain(c);
-    //            ap.process(c, apstate);
-    //            //ap.postgain(c);
-    //        }
-    //
-    //        ap.setFreq({of, of}, {oR, oR});
-    //        contextFor(dsp::Context(x+3*Size/4,Size/4))
-    //        {
-    //            //ap.pregain(c);
-    //            ap.process(c, apstate);
-    //            //ap.postgain(c);
-    //        }
-    //
-    //        auto apRMS = rms(&x[Size / 2], Size / 2);
-    //
-    //        for (size_t i = 0; i < N; ++i) {
-    //            REQUIRE_THAT(apRMS[i], Catch::Matchers::WithinAbs(sinRMS[i],
-    //            2e-2));
-    //        }
-    //    }
 }
