@@ -10,7 +10,7 @@ template <class... T> class List
 {
 };
 
-template <size_t N, class Tap = TapTail> class AllPass
+template <typename T, class Tap = TapTail> class AllPass
 {
     /* Implement a Allpass filter with coeff a
      * template:
@@ -23,42 +23,37 @@ template <size_t N, class Tap = TapTail> class AllPass
   public:
     constexpr AllPass() = default;
     template <class... Args>
-    constexpr AllPass(const fData<N> &a, Args... args) : a_(a), tap_(args...)
+    constexpr AllPass(const T &a, Args... args) : a_(a), tap_(args...)
     {
     }
 
     template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
     {
-        static_assert(Ctxt::kVecSize <= DL::kLength);
+        static_assert(Ctxt::kIncrSize <= DL::kLength);
 
-        auto &x = c.getSignal();
+        auto x  = c.getInput();
         auto sN = tap_.read(c, delayline);
-        decltype(sN) s0;
 
-        for (size_t k = 0; k < x.size(); ++k) {
-            for (size_t i = 0; i < x[0].size(); ++i) {
-                auto a = a_[i % N];
+        auto s0 = x - a_ * sN;
+        x       = a_ * s0 + sN;
 
-                s0[k][i] = x[k][i] - a * sN[k][i];
-                x[k][i]  = a * s0[k][i] + sN[k][i];
-            }
-        }
         delayline.write(c, s0);
+        c.setOutput(x);
     }
 
-    void setCoeff(fData<N> a) { a_ = a; }
+    void setCoeff(const T &a) { a_ = a; }
     [[nodiscard]] const auto &getCoeff() const { return a_; }
-    void setDelay(fData<N> d) { tap_.setDelay(d); }
-    void setDelay(iData<N> d) { tap_.setDelay(d); }
+    void setDelay(const T &d) { tap_.setDelay(d); }
+    void setDelay(const intType<T> &d) { tap_.setDelay(d); }
 
     [[nodiscard]] const auto &getTap() const { return tap_; }
 
   private:
-    fData<N> a_;
+    T a_;
     Tap tap_;
 };
 
-template <size_t N, class TapOut = TapTail, class TapIn = TapTail>
+template <typename T, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
@@ -66,128 +61,105 @@ class TapAllPass : public TapOut
 
     constexpr TapAllPass() = default;
     template <class... Args>
-    constexpr TapAllPass(const fData<N> &a, Args... args) :
+    constexpr TapAllPass(const T &a, Args... args) :
         TapOut(args...), allpass_(a)
     {
     }
 
-    void setDelay(fData<N> d)
+    void setDelay(const T &d)
     {
-        fData<N> a;
-        iData<N> id;
-        for (int i = 0; i < N; ++i) {
-            id[i]    = static_cast<int>(d[i] - kMinfdelay);
-            float fd = d[i] - static_cast<float>(id[i]);
-            a[i]     = (1 - fd) / (1 + fd);
-        }
+        auto id = toInt(load(d)) - kMinfdelay;
+        auto fd = d - id;
+        auto a  = (1 - fd) / (1 + fd);
+
         allpass_.setCoeff(a);
         TapOut::setDelay(id);
     }
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        auto x = TapOut::read(c, delayline);
-        c.setIn(x);
+        T x = TapOut::read(c, delayline);
+
+        c.setData(&x);
         allpass_.process(c, delayline.getInner());
-        return x;
+
+        return c.getInput();
     }
 
   private:
-    AllPass<N, TapIn> allpass_;
+    AllPass<T, TapIn> allpass_;
 };
 
-template <size_t N>
-class TapAllPass<N, TapNoInterp<N>, TapTail> : TapNoInterp<N>
+template <typename T>
+class TapAllPass<T, TapNoInterp<T>, TapTail> : TapNoInterp<T>
 {
   public:
     static constexpr auto kMinfdelay = 0.618f;
-    using TapOut                     = TapNoInterp<N>;
+    using TapOut                     = TapNoInterp<T>;
     using TapIn                      = TapTail;
 
     constexpr TapAllPass() = default;
 
-    void setDelay(fData<N> d)
+    void setDelay(const T &d)
     {
-        fData<N> a;
-        iData<N> id;
-        for (int i = 0; i < N; ++i) {
-            id[i] = static_cast<int>(d[i] - kMinfdelay);
-
-            float fd = d[i] - static_cast<float>(id[i]);
-            // taylor approximation of (1-fd)/(1+fd)
-            // -(fd-1)/2 + (fd-1)²/4 - (fd-1)³/8
-            float z = (fd - 1.f) * 0.5f;
-            a[i]    = z * (-1.f + z * (1.f - z));
-        }
+        auto id = toInt(load(d) - kMinfdelay);
+        auto fd = d - id;
+        // taylor approximation of (1-fd)/(1+fd)
+        // -(fd-1)/2 + (fd-1)²/4 - (fd-1)³/8
+        auto z = (fd - T(1)) * T(0.5);
+        auto a = z * (T(-1) + z * (T(1) - z));
         allpass_.setCoeff(a);
         TapOut::setDelay(id);
     }
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        static_assert(Ctxt::VecSize == 1);
-        typename Ctxt::Type x;
-        typename Ctxt::Type x1;
-        typename Ctxt::Type y;
-        typename Ctxt::Type y1;
+        static_assert(Ctxt::IncrSize == 1);
 
-        for (int i = 0; i < N; i++) {
-            auto id = TapOut::id_[i];
-            assert(id + 1 <= DL::Length - Ctxt::VecSize + 1);
+        auto id = load(TapOut::id_);
+        auto a  = allpass_.getCoeff();
 
-            auto &val = delayline.read(c, id);
-            for (int k = 0; k < Ctxt::VecSize; ++k) x[k][i] = val[k][i];
-            auto &val1 = delayline.read(c, id + 1);
-            for (int k = 0; k < Ctxt::VecSize; ++k) x1[k][i] = val1[k][i];
-        }
+        assert(all(load(id) + 1 <= DL::Length - Ctxt::IncrSize + 1));
 
-        y1 = allpass_.getTap().read(c, delayline.getInner());
+        auto x  = TapNoInterp<T>{id}.read(c, delayline);
+        auto x1 = TapNoInterp<T>{id + 1}.read(c, delayline);
 
-        const auto &a = allpass_.getCoeff();
-        for (int k = 0; k < Ctxt::VecSize; ++k) {
-            for (int i = 0; i < N; i++) {
-                y[k][i] = a[i] * (x[k][i] - y1[k][i]) + x1[k][i];
-            }
-        }
+        auto y1 = allpass_.getTap().read(c, delayline.getInner());
+        auto y  = a * (x - y1) + x1;
+
         delayline.getInner().write(c, y);
         return y;
     }
 
   private:
-    AllPass<N, TapIn> allpass_;
+    AllPass<T, TapIn> allpass_;
 };
 
-template <size_t N> class AllPass2
+template <typename T> class AllPass2
 {
     /* 2nd order allpass */
 
   public:
-    struct State : std::array<fData<N>, 2> {
-        State() : std::array<fData<N>, 2>{} {}
+    struct State : std::array<T, 2> {
+        State() : std::array<T, 2>{} {}
     };
 
-    void setFreq(fData<N> freq)
+    void setFreq(const T &freq) { a_[1] = -cos(constants<T>::pi * load(freq)); }
+
+    void setRes(const T &r)
     {
-        for (size_t i = 0; i < N; ++i) {
-            a_[1][i] = -std::cos(constants<float>::pi * freq[i]);
-        }
+        auto vr = load(r);
+        assert(all(vr >= 0));
+        a_[0] = (-vr + 1) / (vr + 1);
     }
 
-    void setRes(fData<N> r)
-    {
-        for (size_t i = 0; i < N; ++i) {
-            assert(r[i] >= 0);
-            a_[0][i] = (1.f - r[i]) / (1.f + r[i]);
-        }
-    }
-
-    void setFreq(fData<N> freq, fData<N> r)
+    void setFreq(const T &freq, const T &r)
     {
         setFreq(freq);
         setRes(r);
     }
 
-    void setCoeffs(fData<N> a0, fData<N> a1)
+    void setCoeffs(const T &a0, const T &a1)
     {
         a_[0] = a0;
         a_[1] = a1;
@@ -195,37 +167,25 @@ template <size_t N> class AllPass2
 
     template <class Ctxt, class State> void process(Ctxt c, State &state) const
     {
-        auto &x = c.getSignal();
-        auto s  = state;
-        arrayFor(x, k)
-        {
-#pragma omp simd
-            arrayFor(x[k], i)
-            {
-                auto &x0 = x[k][i];
-                auto &s0 = s[0][i];
-                auto &s1 = s[1][i];
-                auto &a0 = a_[0][i];
-                auto &a1 = a_[1][i];
+        static_assert(Ctxt::kIncrSize == 1, "Cannot vectorize AllPass2");
+        auto &s = state;
+        auto x0 = c.getInput();
 
-                auto v0 = a0 * (x0 - s0);
-                auto y0 = v0 + s0;
-                auto x1 = v0 + x0;
+        auto v0 = a_[0] * (x0 - s[0]);
+        auto y0 = v0 + s[0];
+        auto x1 = v0 + x0;
 
-                auto v1 = a1 * (x1 - s1);
-                s0      = v1 + s1;
-                s1      = v1 + x1;
+        auto v1 = a_[1] * (x1 - s[1]);
+        s[0]    = v1 + s[1];
+        s[1]    = v1 + x1;
 
-                x[k][i] = y0;
-            }
-        }
-        state = s;
+        c.setOutput(y0);
     }
 
     PROCESSBLOCK_
 
   private:
-    fData<N> a_[2]; // allpass coeffs
+    T a_[2]; // allpass coeffs
 };
 
 // template <size_t N, bool EnergyPreserving = false> class AllPass2
