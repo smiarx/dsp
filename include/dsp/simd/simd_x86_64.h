@@ -303,15 +303,19 @@ template <> struct intrin<float, 2> {
     using maskbasetype = basetype;
     using masktype     = type;
 
-    static constexpr auto init = base::init;
+    // static constexpr auto init = base::init;
+    static always_inline type vectorcall init(basetype v)
+    {
+        return _mm_set_ps(0, 0, v, v);
+    }
     static always_inline type vectorcall loadu(const basetype *src)
     {
-        return ((__m128)_mm_load_sd((const double *)src));
+        return ((__m128)_mm_loadl_epi64((const __m128i *)src));
     }
     static constexpr auto load = loadu;
     static always_inline void vectorcall storeu(basetype *dest, type value)
     {
-        _mm_store_sd((double *)dest, (__m128d) static_cast<__m128>(value));
+        _mm_storel_epi64((__m128i *)dest, (__m128i) static_cast<__m128>(value));
     }
     static constexpr auto store = storeu;
     static always_inline type vectorcall add(type x1, type x2)
