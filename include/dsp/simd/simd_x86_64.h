@@ -112,6 +112,11 @@ template <> struct intrin<int32_t, 4> {
         type swap = _mm_shuffle_epi32(sum, _MM_SHUFFLE(2, 3, 0, 1));
         return _mm_cvtsi128_si32(add(sum, swap));
     }
+    static always_inline intx2_t vectorcall reduce2(type value)
+    {
+        type flip = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        return add(value, flip);
+    }
 
     static constexpr auto cmpeq = _mm_cmpeq_epi32;
     static constexpr auto cmpgt = _mm_cmpgt_epi32;
@@ -233,6 +238,11 @@ template <> struct intrin<float, 4> {
         type sum  = add(value, flip);
         type swap = _mm_shuffle_ps(sum, sum, _MM_SHUFFLE(2, 3, 0, 1));
         return _mm_cvtss_f32(add(sum, swap));
+    }
+    static always_inline floatx2_t vectorcall reduce2(type value)
+    {
+        type flip = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+        return add(value, flip);
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_ps;
@@ -697,6 +707,20 @@ template <> struct intrin<int32_t, 8> {
         sum       = add(sum, flip);
         return _mm256_extract_epi32(sum, 0);
     }
+    static always_inline intx2_t vectorcall reduce2(type value)
+    {
+        type flip = _mm256_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type sum  = add(value, flip);
+        flip      = _mm256_permute2f128_si256(sum, sum, _MM_SHUFFLE2(0, 3));
+        sum       = add(sum, flip);
+        return _mm256_extracti128_si256(sum, 0);
+    }
+    static always_inline __m128i vectorcall reduce4(type value)
+    {
+        auto flip = _mm256_permute2f128_si256(value, value, _MM_SHUFFLE2(0, 3));
+        auto sum  = add(value, flip);
+        return _mm256_extracti128_si256(sum, 0);
+    }
 
     static constexpr auto cmpeq = _mm256_cmpeq_epi32;
     static constexpr auto cmpgt = _mm256_cmpgt_epi32;
@@ -810,6 +834,22 @@ template <> struct intrin<float, 8> {
         flip      = _mm256_permute2f128_ps(sum, sum, _MM_SHUFFLE2(0, 3));
         sum       = add(sum, flip);
         return _mm256_cvtss_f32(sum);
+    }
+
+    static always_inline floatx2_t vectorcall reduce2(type value)
+    {
+        type flip = _mm256_permute_ps(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type sum  = add(value, flip);
+        flip      = _mm256_permute2f128_ps(sum, sum, _MM_SHUFFLE2(0, 3));
+        sum       = add(sum, flip);
+        return _mm256_extractf128_ps(sum, 0);
+    }
+
+    static always_inline __m128 vectorcall reduce4(type value)
+    {
+        auto flip = _mm256_permute2f128_ps(value, value, _MM_SHUFFLE2(0, 3));
+        auto sum  = add(value, flip);
+        return _mm256_extractf128_ps(sum, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
@@ -929,6 +969,13 @@ template <> struct intrin<double, 4> {
         flip      = _mm256_permute2f128_pd(sum, sum, _MM_SHUFFLE2(0, 3));
         sum       = add(sum, flip);
         return _mm256_cvtsd_f64(sum);
+    }
+
+    static always_inline __m128d vectorcall reduce2(type value)
+    {
+        auto flip = _mm256_permute2f128_pd(value, value, _MM_SHUFFLE2(0, 3));
+        auto sum  = add(value, flip);
+        return _mm256_extractf128_pd(sum, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
