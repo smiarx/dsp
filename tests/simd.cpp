@@ -102,7 +102,7 @@ template <typename T, size_t N> class TestSimd
             loop(i) { cmp(z[i], std::max(x[i], y[i])); }
         }
 
-        SECTION("cmpgt")
+        SECTION("cmpeq")
         {
             auto cmp = x == y;
             loop(i) { REQUIRE((cmp[i] == (x[i] == y[i]))); }
