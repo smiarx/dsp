@@ -17,6 +17,27 @@ namespace dsp
 template <typename T, size_t N> struct simd;
 
 /////////////////// mask ////////////////////////
+// mask tool
+template <typename T> struct MaskBoolType;
+template <> struct MaskBoolType<bool> {
+    using type = bool;
+};
+template <> struct MaskBoolType<int32_t> {
+    using type = uint32_t;
+};
+template <> struct MaskBoolType<uint32_t> {
+    using type = uint32_t;
+};
+template <> struct MaskBoolType<uint64_t> {
+    using type = uint64_t;
+};
+template <> struct MaskBoolType<float> {
+    using type = uint32_t;
+};
+template <> struct MaskBoolType<double> {
+    using type = int64_t;
+};
+
 template <typename T, size_t N> struct simdmask {
     using def          = intrin<T, N>;
     using maskbasetype = typename def::maskbasetype;
@@ -35,7 +56,8 @@ template <typename T, size_t N> struct simdmask {
     }
     union simdunion {
         masktype simd;
-        alignas(sizeof(maskbasetype) * N) maskbasetype scalar[N];
+        alignas(sizeof(maskbasetype) * N)
+            typename MaskBoolType<maskbasetype>::type scalar[N];
     };
 
     [[nodiscard]] always_inline bool vectorcall get(size_t index) const noexcept
