@@ -45,28 +45,46 @@ template <typename T, size_t Order> class FIRFilter
         }
     }
 
-    template <class Ctxt, class DL> void process(Ctxt c, DL &delayline) const
+    template <class Ctxt, class DL> void process(Ctxt ctxt, DL &delayline) const
     {
-        auto x = c.getInput();
+        auto x = ctxt.getInput();
 
-        decltype(x) sums[Ctxt::kIncrSize] = {};
+        auto ctxtVec                = ctxt.vec();
+        constexpr auto kIncrSize    = Ctxt::kIncrSize;
+        constexpr auto kIncrSizeVec = decltype(ctxtVec)::kIncrSize;
 
-        for (size_t j = 0; j < kNCoeff + Ctxt::kIncrSize - 1; ++j) {
-            auto n       = j % Ctxt::kIncrSize;
-            auto delay   = j - n;
-            auto x0      = delay == 0 ? x : delayline.read(c, delay);
-            const auto b = c.load(b_[kPaddedLength - kPad - j]);
+        using simd           = decltype(ctxtVec.getInput());
+        simd sums[kIncrSize] = {};
 
-            sums[n] += x0 * b;
+        for (size_t delay = 0; delay < kNCoeff + kIncrSizeVec - 1;
+             delay += kIncrSizeVec) {
+            simd x0;
+            if (delay == 0) {
+                if constexpr (Ctxt::kUseVec) {
+                    x0 = ctxt.getInput();
+                } else {
+                    // trick to get input as vectorized (eg. {x,0,0,0})
+                    T xtmp[decltype(ctxtVec)::kIncrSize]{};
+                    ctxt.store(*xtmp, ctxt.getInput());
+                    x0 = ctxtVec.load(*xtmp);
+                }
+            } else {
+                x0 = delayline.read(ctxtVec, delay);
+            }
+
+            for (size_t n = 0; n < kIncrSize; ++n) {
+                auto b = ctxtVec.load(b_[kPaddedLength - kPad - (delay + n)]);
+                sums[n] += x0 * b;
+            }
         }
 
-        delayline.write(c, x);
+        delayline.write(ctxt, x);
 
         T out[Ctxt::kIncrSize];
         for (size_t n = 0; n < Ctxt::kIncrSize; ++n) {
             out[n] = reduce<kTypeWidth<T>>(sums[n]);
         }
-        c.setOutput(c.load(*out));
+        ctxt.setOutput(ctxt.load(*out));
     }
 
   private:
