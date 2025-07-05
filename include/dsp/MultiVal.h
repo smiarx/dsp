@@ -93,6 +93,14 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
 
 //=============================================================
 
+template <typename T, size_t N>
+always_inline auto get(MultiVal<T, N> x, size_t i)
+{
+    return x[i];
+}
+
+//=============================================================
+
 // batch from value
 template <typename T> struct Batch {
     using type = MultiVal<T, DSP_MAX_VEC_SIZE / sizeof(T)>;
