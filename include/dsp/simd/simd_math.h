@@ -25,6 +25,15 @@ simd<T, N> always_inline operator-(T s, simd<T, N> x)
     return simd<T, N>(s) - x;
 }
 
+template <typename T> always_inline auto get(T x, [[maybe_unused]] size_t i)
+{
+    return x;
+}
+template <typename T, size_t N> always_inline auto get(simd<T, N> x, size_t i)
+{
+    return x.get(i);
+}
+
 ////////////////////// max ////////////////////////
 template <typename T> always_inline T max(T x, T y) { return std::max(x, y); }
 template <typename T, size_t N>
