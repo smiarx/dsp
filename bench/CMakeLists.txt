@@ -2,6 +2,7 @@ find_package(Catch2 3 REQUIRED)
 
 set(bench_sources
     AllPass.cpp
+    FIRFilter.cpp
     TapeDelay.cpp
     ../processors/tapedelay/TapeDelay.cpp
     Springs.cpp
