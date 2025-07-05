@@ -105,6 +105,10 @@ template <> struct intrin<float, 4> {
 
     static constexpr auto abs = vabsq_f32;
     static constexpr auto sum = vaddvq_f32;
+    static always_inline float32x2_t vectorcall reduce2(type x)
+    {
+        return vadd_f32(vget_high_f32(x), vget_low_f32(x));
+    }
 
     static constexpr auto cmpeq = vceqq_f32;
     static constexpr auto cmpgt = vcgtq_f32;
@@ -363,6 +367,11 @@ template <> struct intrin<int32_t, 4> {
 
     static constexpr auto abs = vabsq_s32;
     static constexpr auto sum = vaddvq_s32;
+
+    static always_inline auto vectorcall reduce2(type x)
+    {
+        return vadd_s32(vget_low_s32(x), vget_high_s32(x));
+    }
 
     static constexpr auto cmpeq = vceqq_s32;
     static constexpr auto cmpgt = vcgtq_s32;

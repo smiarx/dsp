@@ -304,6 +304,21 @@ template <typename T, size_t N> struct simd {
         return def::sum(value_);
     }
 
+    template <size_t K>
+    always_inline std::conditional_t<K == 1, basetype, simd<T, K>>
+        vectorcall reduce() const noexcept
+    {
+        static_assert(K >= 1 && K <= N);
+        if constexpr (K == 1) return sum();
+        else if constexpr (K == N) {
+            return *this;
+        } else if constexpr (K == 2) {
+            return def::reduce2(value_);
+        } else if constexpr (K == 4) {
+            return def::reduce4(value_);
+        }
+    }
+
     always_inline simd vectorcall max(simd other)
     {
         return def::max(value_, other);

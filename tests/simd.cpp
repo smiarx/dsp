@@ -95,6 +95,27 @@ template <typename T, size_t N> class TestSimd
             loop(i) { s2 += x[i]; }
             cmp(s1, s2);
         }
+        SECTION("reduce")
+        {
+            if constexpr (N > 2) {
+                constexpr size_t K = 2;
+                auto s1            = dsp::reduce<K>(x);
+                T s2[N / K]{};
+                for (size_t k = 0; k < N / K; ++k)
+                    for (size_t i = 0; i < K; ++i) s2[i] += x[k * K + i];
+
+                for (size_t i = 0; i < K; ++i) cmp(s1[i], s2[i]);
+            }
+            if constexpr (N > 4) {
+                constexpr size_t K = 4;
+                auto s1            = dsp::reduce<K>(x);
+                T s2[N / K]{};
+                for (size_t k = 0; k < N / K; ++k)
+                    for (size_t i = 0; i < K; ++i) s2[i] += x[k * K + i];
+
+                for (size_t i = 0; i < K; ++i) cmp(s1[i], s2[i]);
+            }
+        }
 
         SECTION("blend")
         {
