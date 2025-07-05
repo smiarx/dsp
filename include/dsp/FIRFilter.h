@@ -38,7 +38,7 @@ template <typename T, size_t Order> class FIRFilter
     static constexpr auto kPaddedLength = kNCoeff + kPad * 2 - 1;
 
     FIRFilter() = default;
-    FIRFilter(const std::array<T, kNCoeff> b)
+    FIRFilter(const std::array<T, kNCoeff> &b)
     {
         for (size_t k = 0; k < kNCoeff; ++k) {
             b_[kPaddedLength - kPad - k] = b[k];
@@ -88,97 +88,84 @@ template <typename T, size_t Order> class FIRFilter
     }
 
   private:
-    T b_[kPaddedLength] = {};
+    std::array<T, kPaddedLength> b_ = {};
 };
 
-// template <size_t N, size_t Order, size_t M> class FIRDecimate
-//{
-//   public:
-//     static constexpr auto kPad    = fSample<N>::kVectorSize;
-//     static constexpr auto kNCoeff = (Order + 1) * M;
-//
-//     template <int Offset = 0>
-//     class DL : public DelayLine<nextAlignedOffset(kNCoeff - 1, kPad), Offset>
-//     {
-//     };
-//
-//     static constexpr auto kPaddedLength = kNCoeff + kPad * 2 - 1;
-//
-//     FIRDecimate(float cutoff = 1.0f)
-//     {
-//         for (size_t n = 0; n < kNCoeff; ++n) {
-//             for (size_t i = 0; i < N; ++i) {
-//                 auto mid  = kNCoeff / 2.f;
-//                 auto freq = cutoff / M;
-//                 auto fn   = static_cast<float>(n);
-//                 b_[kPaddedLength - kPad - n][i] =
-//                     window::Kaiser<140>::generate((fn - mid) / (mid)) *
-//                     sinc((fn - mid) * freq) * freq;
-//             }
-//         }
-//     }
-//
-//     template <class CtxtIn, class CtxtOut, class DL>
-//     __attribute__((always_inline)) int
-//     decimate(CtxtIn cin, CtxtOut &cout, DL &delayline, int decimateId) const
-//     {
-//         static_assert(CtxtOut::kVecSize == 1);
-//         auto decimatedBlockSize = 0;
-//         auto id                 = static_cast<size_t>(decimateId);
-//         auto coutCopy           = cout;
-//
-//         contextFor(cin)
-//         {
-//             auto x = c.getSignal();
-//
-//             size_t xOffset = (M - id) % M;
-//             while (xOffset < CtxtIn::kVecSize) {
-//                 typename CtxtIn::Type sum = {};
-//
-//                 for (size_t delay = 0; delay < kNCoeff + CtxtIn::kVecSize -
-//                 1;
-//                      delay += CtxtIn::kVecSize) {
-//                     auto &x0 = delay == 0
-//                                    ? x
-//                                    : delayline.read(c,
-//                                    static_cast<int>(delay));
-//                     const auto &b =
-//                         b_[kPaddedLength - kPad - delay -
-//                         xOffset].toVector();
-//
-// #pragma omp simd
-//                     for (size_t k = 0; k < x0.size(); ++k) {
-//                         for (size_t i = 0; i < x0[0].size(); ++i) {
-//                             sum[k][i] += x0[k][i] * b[k][i % N];
-//                         }
-//                     }
-//                 }
-//
-//                 auto &xout = coutCopy.getSignal();
-// #pragma omp simd
-//                 for (size_t i = 0; i < sum[0].size(); ++i) {
-//                     xout[0][i] = 0;
-//                     for (size_t k = 0; k < sum.size(); ++k) {
-//                         xout[0][i] += sum[k][i];
-//                     }
-//                 }
-//
-//                 ++decimatedBlockSize;
-//                 xOffset += M;
-//                 coutCopy.next();
-//             }
-//
-//             id = (id + CtxtIn::kVecSize) % M;
-//             delayline.write(c, x);
-//         }
-//
-//         cout.setBlockSize(decimatedBlockSize);
-//         return static_cast<int>(id);
-//     }
-//
-//   private:
-//     fSample<N> b_[kPaddedLength] = {};
-// };
+template <typename T, size_t Order, size_t M> class FIRDecimate
+{
+  public:
+    static constexpr auto kPad    = kTypeWidth<batch<T>>;
+    static constexpr auto kNCoeff = (Order + 1) * M;
+
+    template <int Offset = 0>
+    class DL : public DelayLine<nextAlignedOffset(kNCoeff - 1, kPad), Offset>
+    {
+    };
+
+    static constexpr auto kPaddedLength = kNCoeff + kPad * 2 - 1;
+
+    FIRDecimate(double cutoff = 1.0)
+    {
+        auto freq = cutoff / M;
+        auto mid  = (kNCoeff - 1) / 2.;
+        for (size_t n = 0; n < kNCoeff; ++n) {
+            auto fn = static_cast<double>(n);
+            b_[kPaddedLength - kPad - n] =
+                window::Kaiser<140>::generate((fn - mid) / (mid)) *
+                sinc((fn - mid) * freq) * freq;
+        }
+    }
+
+    const auto &getCoeffs() const { return b_; }
+
+    template <class CtxtIn, class CtxtOut, class DL>
+    int decimate(CtxtIn cin, CtxtOut &cout, DL &delayline, int decimateId) const
+    {
+        static_assert(!CtxtOut::kUseVec);
+        auto decimatedBlockSize = 0;
+        auto id                 = static_cast<size_t>(decimateId);
+        auto coutCopy           = cout;
+
+        CTXTRUN(cin)
+        {
+            constexpr auto kInIncrSize = decltype(cin)::kIncrSize;
+            auto x                     = cin.getInput();
+
+            size_t xOffset = (M - id) % M;
+            while (xOffset < kInIncrSize) {
+                decltype(x) sum = {};
+
+                for (size_t delay = 0; delay < kNCoeff + kInIncrSize - 1;
+                     delay += kInIncrSize) {
+                    auto x0 =
+                        delay == 0
+                            ? x
+                            : delayline.read(cin, static_cast<int>(delay));
+                    const auto b =
+                        cin.load(b_[kPaddedLength - kPad - delay - xOffset]);
+
+                    sum += x0 * b;
+                }
+
+                auto xout = dsp::reduce<kTypeWidth<T>>(sum);
+                coutCopy.setOutput(xout);
+
+                ++decimatedBlockSize;
+                xOffset += M;
+                coutCopy.next();
+            }
+
+            id = (id + kInIncrSize) % M;
+            delayline.write(cin, x);
+        };
+
+        cout.setBlockSize(decimatedBlockSize);
+        return static_cast<int>(id);
+    }
+
+  private:
+    std::array<T, kPaddedLength> b_ = {};
+};
 //
 ///*
 //    x0 |x1 x2 x3 x4| x5 x6 x7 x8 |x9
