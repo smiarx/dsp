@@ -5,39 +5,52 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstdlib>
 
-template <int N, int Order, bool Vec = false> static void testFir()
+template <typename T, int Order, bool Vec = false> static void testFir()
 {
-    std::array<dsp::Data<float, N>, Order + 1> b;
-    arrayFor(b, k) { arrayFor(b[0], i) b[k][i] = rand(); }
-    dsp::FIRFilter<N, Order> filter(b);
+    std::array<T, Order + 1> b;
+    for (size_t k = 0; k < Order + 1; ++k)
+        if constexpr (dsp::kTypeWidth<T> > 1) {
+            for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i)
+                b[k][i] = static_cast<float>(std::rand()) / INT32_MAX;
+        } else
+            b[k] = static_cast<float>(std::rand()) / INT32_MAX;
+
+    dsp::FIRFilter<T, Order> filter(b);
     typename decltype(filter)::DL fstate;
 
-    std::array<dsp::Sample<float, N>, (Order + 1) + 8> x = {};
-    arrayFor(x[0], i) { x[0][i] = 1.f; }
-    dsp::Context<dsp::Sample<float, N>, Vec> ctxt(x.data(), Order + 2);
+    std::array<T, (Order + 1) + 8> x = {};
+    x[0]                             = 1;
+    dsp::Context<T, Vec> ctxt(x.data(), Order + 2);
 
-    contextFor(ctxt)
+    size_t n = 0;
+    CTXTRUN(ctxt)
     {
-        auto &xin = c.getSignal();
-        filter.process(c, fstate);
-        inFor(xin, k, i)
-        {
-            if (n + k < Order + 1) REQUIRE(xin[k][i] == b[n + k][i]);
-            else {
-                REQUIRE(xin[k][i] == 0.f);
+        filter.process(ctxt, fstate);
+        auto xout = ctxt.getInput();
+
+        for (size_t k = 0; k < decltype(ctxt)::kIncrSize; ++k) {
+            for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i) {
+                auto ki = k * dsp::kTypeWidth<T> + i;
+                if (n + k < Order + 1)
+                    REQUIRE(dsp::get(xout, ki) == dsp::get(b[n + k], i));
+                else {
+                    REQUIRE(dsp::get(xout, ki) == 0.f);
+                }
             }
         }
-    }
+        n += decltype(ctxt)::kIncrSize;
+    };
 }
 
 TEST_CASE("FIR filter test", "[dsp][firfilter]")
 {
-    testFir<1, 8>();
-    testFir<1, 47>();
-    testFir<2, 23>();
-    testFir<4, 17>();
-    testFir<1, 8, true>();
-    testFir<1, 47, true>();
-    testFir<2, 23, true>();
-    testFir<4, 15, true>();
+    SECTION("float x 1") { testFir<float, 8>(); }
+    SECTION("double x 1") { testFir<double, 47>(); }
+    SECTION("float x 2") { testFir<dsp::mfloat<2>, 25>(); }
+    SECTION("double x 2") { testFir<dsp::mdouble<2>, 23>(); }
+    SECTION("float x 4") { testFir<dsp::mfloat<4>, 17>(); }
+    SECTION("float x 1 vec") { testFir<float, 8, true>(); }
+    SECTION("double x 1 vec") { testFir<double, 47, true>(); }
+    SECTION("float x 2 vec") { testFir<dsp::mfloat<2>, 23, true>(); }
+    SECTION("float x 4 vec") { testFir<dsp::mfloat<4>, 15, true>(); }
 }

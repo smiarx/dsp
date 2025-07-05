@@ -11,19 +11,20 @@ TEST_CASE("FIR Filter")
 {
     constexpr size_t kN     = 2;
     constexpr size_t kOrder = 26;
-    dsp::fSample<kN> x;
+    using ft                = dsp::mfloat<kN>;
+    ft x;
     for (size_t i = 0; i < kN; ++i) {
         x[i] = GENERATE(take(1, random(-1.f, 1.f)));
     }
 
-    std::array<dsp::fData<kN>, kOrder + 1> b;
+    std::array<ft, kOrder + 1> b;
     for (auto &b0 : b)
         for (size_t i = 0; i < kN; ++i)
             b0[i] = GENERATE(take(1, random(-1.f, 1.f)));
 
     auto ctxt = dsp::Context(&x, 1);
 
-    dsp::FIRFilter<kN, kOrder> filter(b);
+    dsp::FIRFilter<ft, kOrder> filter(b);
     decltype(filter)::DL filterState{};
 
     BENCHMARK("FIR Order 11 process")

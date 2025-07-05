@@ -17,7 +17,7 @@ set(test_sources
     Buffer.cpp
     Delay.cpp
     AllPass.cpp
-    #FIRFilter.cpp
+    FIRFilter.cpp
     #VAFilters.cpp
     #RMS.cpp
     #LinAlg.cpp
