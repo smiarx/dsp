@@ -106,11 +106,22 @@ template <typename T, size_t Order, size_t M> class FIRDecimate
     {
         auto freq = cutoff / M;
         auto mid  = (kNCoeff - 1) / 2.;
+        /* generate windowed sinc */
         for (size_t n = 0; n < kNCoeff; ++n) {
             auto fn = static_cast<double>(n);
             b_[kPaddedLength - kPad - n] =
-                window::Kaiser<140>::generate((fn - mid) / (mid)) *
-                sinc((fn - mid) * freq) * freq;
+                Window::generate((fn - mid) / (mid)) * sinc((fn - mid) * freq) *
+                freq;
+        }
+
+        /* scale */
+        auto sum = load(T(0));
+        for (auto &b : b_) {
+            sum += load(b);
+        }
+        auto scale = T(1) / sum;
+        for (auto &b : b_) {
+            b = b * scale;
         }
     }
 
@@ -195,15 +206,24 @@ template <typename T, size_t Order, size_t L> class FIRInterpolate
     {
         auto freq = cutoff / L;
         auto mid  = (kNCoeff * L - 1) / 2.f;
+        /* generate windowed sinc */
         for (size_t l = 0; l < L; ++l) {
             for (size_t n = 0; n < kNCoeff; ++n) {
                 auto k  = l + n * L;
                 auto fk = static_cast<double>(k);
                 b_[l][kPaddedLength - kPad - n] =
-                    window::Kaiser<140>::generate((fk - mid) / (mid)) *
+                    Window::generate((fk - mid) / (mid)) *
                     sinc((fk - mid) * freq) * cutoff;
             }
         }
+
+        // scale
+        auto sum = load(T(0));
+        for (auto &b : b_)
+            for (auto &bl : b) sum += bl;
+        auto scale = T(1) / sum;
+        for (auto &b : b_)
+            for (auto &bl : b) bl = bl * scale;
     }
 
     template <class CtxtIn, class CtxtOut, class DL>
