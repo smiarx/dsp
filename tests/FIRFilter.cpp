@@ -142,6 +142,11 @@ static void testFirInterpolate()
         bF[i]     = dsp::window::Kaiser<140>::generate((fi - mid) / mid) *
                 dsp::sinc((fi - mid) * freq);
     }
+    // scale
+    auto sum = dsp::load(T(0));
+    for (auto &b : bF) sum += b;
+    auto scale = T(1) / sum;
+    for (auto &b : bF) b = b * scale;
 
     constexpr auto kFiltOrder = kNCoeffs - 1;
     dsp::FIRFilter<T, kFiltOrder> filter(bF);
