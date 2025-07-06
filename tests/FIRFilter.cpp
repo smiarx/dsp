@@ -125,6 +125,53 @@ TEST_CASE("FIR decimate", "[dsp][fir][decimate]")
     SECTION("float x 1 vec") { testFirDecimate<float, 15, 3, true>(); }
     SECTION("float x 2 vec") { testFirDecimate<dsp::mfloat<2>, 19, 2, true>(); }
     SECTION("float x 4 vec") { testFirDecimate<dsp::mfloat<4>, 23, 5, true>(); }
+
+    SECTION("python data")
+    {
+        constexpr auto kN       = 50;
+        constexpr auto kO       = 13;
+        std::array<float, kN> x = {
+            0.,         0.01923305, 0.03845899, 0.05767071, 0.07686108,
+            0.09602303, 0.11514945, 0.13423327, 0.15326743, 0.17224489,
+            0.19115863, 0.21000165, 0.22876698, 0.24744769, 0.26603685,
+            0.28452759, 0.30291307, 0.32118649, 0.33934109, 0.35737015,
+            0.375267,   0.39302503, 0.41063766, 0.42809838, 0.44540072,
+            0.46253829, 0.47950475, 0.49629381, 0.51289928, 0.529315,
+            0.5455349,  0.56155299, 0.57736333, 0.59296008, 0.60833747,
+            0.6234898,  0.63841148, 0.65309698, 0.66754088, 0.68173782,
+            0.69568255, 0.70936992, 0.72279486, 0.73595241, 0.7488377,
+            0.76144596, 0.77377252, 0.78581284, 0.79756244, 0.80901699};
+
+        // signal.decimate(x, 2,27,'fir', zero_phase=False)
+        std::array<float, kN / 2> expect = {
+            0.00000000e+00,  8.30978079e-05, 2.40111901e-05,  3.10682470e-04,
+            -1.27662335e-04, 8.51615654e-04, -1.13936683e-03, 9.48246747e-03,
+            4.87176327e-02,  8.64312536e-02, 1.24966445e-01,  1.62826426e-01,
+            2.00664657e-01,  2.38123860e-01, 2.75271734e-01,  3.12037896e-01,
+            3.48342354e-01,  3.84131390e-01, 4.19352050e-01,  4.53952219e-01,
+            4.87880701e-01,  5.21087295e-01, 5.53522866e-01,  5.85139421e-01,
+            6.15890181e-01,
+        };
+
+        dsp::FIRDecimate<float, kO, 2, dsp::window::Hamming> decimate;
+        decltype(decimate)::DL decState;
+
+        // delayline buffer
+        dsp::Buffer<float, nextTo(decState)> buffer{};
+        std::array<float, decltype(buffer)::kSize> bufdata{};
+        buffer.setData(bufdata.data());
+
+        std::array<float, kN> xDec{};
+
+        dsp::BufferContext ctxtIn(x.data(), kN, buffer);
+        dsp::Context ctxtOut(xDec.data(), kN);
+
+        decimate.decimate(ctxtIn, ctxtOut, decState, 0);
+
+        for (int i = 0; i < ctxtOut.getBlockSize(); ++i) {
+            REQUIRE_THAT(xDec[i], Catch::Matchers::WithinAbs(expect[i], 1e-6f));
+        }
+    }
 }
 
 template <typename T, int Order, int L, bool Vec = false>
