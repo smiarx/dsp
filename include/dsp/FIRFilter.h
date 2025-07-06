@@ -89,7 +89,9 @@ template <typename T, size_t Order> class FIRFilter
     std::array<T, kPaddedLength> b_ = {};
 };
 
-template <typename T, size_t Order, size_t M> class FIRDecimate
+template <typename T, size_t Order, size_t M,
+          class Window = window::Kaiser<140>>
+class FIRDecimate
 {
   public:
     static constexpr auto kPad    = kTypeWidth<batch<T>>;
@@ -189,7 +191,9 @@ template <typename T, size_t Order, size_t M> class FIRDecimate
 
 
  */
-template <typename T, size_t Order, size_t L> class FIRInterpolate
+template <typename T, size_t Order, size_t L,
+          class Window = window::Kaiser<140>>
+class FIRInterpolate
 {
   public:
     static constexpr auto kPad    = kTypeWidth<batch<T>>;
