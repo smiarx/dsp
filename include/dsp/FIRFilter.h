@@ -4,7 +4,7 @@
 #include "Delay.h"
 #include "FastMath.h"
 #include "Signal.h"
-#include "Window.h"
+#include "Windows.h"
 
 /*
     x0 |x1 x2 x3 x4| x5 x6 x7 x8 |x9
@@ -90,7 +90,7 @@ template <typename T, size_t Order> class FIRFilter
 };
 
 template <typename T, size_t Order, size_t M,
-          class Window = window::Kaiser<140>>
+          class Window = windows::Kaiser<140>>
 class FIRDecimate
 {
   public:
@@ -192,7 +192,7 @@ class FIRDecimate
 
  */
 template <typename T, size_t Order, size_t L,
-          class Window = window::Kaiser<140>>
+          class Window = windows::Kaiser<140>>
 class FIRInterpolate
 {
   public:
