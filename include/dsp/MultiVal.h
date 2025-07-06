@@ -175,6 +175,17 @@ template <typename T> using intType = typename IntType<T>::type;
 
 //=============================================================
 
+// base type
+template <typename T> struct BaseType {
+    using type = T;
+};
+template <typename T, size_t N> struct BaseType<MultiVal<T, N>> {
+    using type = T;
+};
+template <typename T> using baseType = typename BaseType<T>::type;
+
+//=============================================================
+
 // default float, double and int multivals
 template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(float)>
 using mfloat = MultiVal<float, N>;
