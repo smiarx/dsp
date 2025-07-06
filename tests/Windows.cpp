@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "dsp/Window.h"
+#include "dsp/Windows.h"
 
 template <class Win, size_t N>
 static void testWin(std::array<double, N> &expect)
@@ -38,7 +38,7 @@ TEST_CASE("Windows", "[dsp][window]")
             7.86942118e-03, 3.98227650e-03, 1.82790329e-03, 7.36446405e-04,
             2.44918509e-04, 5.80696101e-05, 4.91474830e-06};
 
-        testWin<dsp::window::Kaiser<140>>(expect);
+        testWin<dsp::windows::Kaiser<140>>(expect);
     }
     SECTION("Hamming")
     {
@@ -56,7 +56,7 @@ TEST_CASE("Windows", "[dsp][window]")
             0.16785218, 0.13689893, 0.11230282, 0.09445175, 0.08362724,
             0.08};
 
-        testWin<dsp::window::Hamming>(expect);
+        testWin<dsp::windows::Hamming>(expect);
     }
     SECTION("Hanning")
     {
@@ -74,6 +74,6 @@ TEST_CASE("Windows", "[dsp][window]")
             0.0954915, 0.06184666, 0.03511176, 0.01570842, 0.00394265,
             0.};
 
-        testWin<dsp::window::Hann>(expect);
+        testWin<dsp::windows::Hann>(expect);
     }
 }

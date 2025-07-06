@@ -2,7 +2,7 @@
 
 #include "FastMath.h"
 
-namespace dsp::window
+namespace dsp::windows
 {
 
 template <int Attenuation> class Kaiser
@@ -54,4 +54,4 @@ class Hamming
     }
 };
 
-} // namespace dsp::window
+} // namespace dsp::windows
