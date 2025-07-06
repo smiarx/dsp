@@ -104,13 +104,13 @@ class FIRDecimate
 
     static constexpr auto kPaddedLength = kNCoeff + kPad * 2 - 1;
 
-    FIRDecimate(double cutoff = 1.0)
+    FIRDecimate(baseType<T> cutoff = 1)
     {
         auto freq = cutoff / M;
         auto mid  = (kNCoeff - 1) / 2.;
         /* generate windowed sinc */
         for (size_t n = 0; n < kNCoeff; ++n) {
-            auto fn = static_cast<double>(n);
+            auto fn = static_cast<baseType<T>>(n);
             b_[kPaddedLength - kPad - n] =
                 Window::generate((fn - mid) / (mid)) * sinc((fn - mid) * freq) *
                 freq;
@@ -206,7 +206,7 @@ class FIRInterpolate
 
     static constexpr auto kPaddedLength = kNCoeff + kPad * 2 - 1;
 
-    FIRInterpolate(double cutoff = 1.f)
+    FIRInterpolate(baseType<T> cutoff = 1)
     {
         auto freq = cutoff / L;
         auto mid  = (kNCoeff * L - 1) / 2.f;
@@ -214,7 +214,7 @@ class FIRInterpolate
         for (size_t l = 0; l < L; ++l) {
             for (size_t n = 0; n < kNCoeff; ++n) {
                 auto k  = l + n * L;
-                auto fk = static_cast<double>(k);
+                auto fk = static_cast<baseType<T>>(k);
                 b_[l][kPaddedLength - kPad - n] =
                     Window::generate((fk - mid) / (mid)) *
                     sinc((fk - mid) * freq) * cutoff;
