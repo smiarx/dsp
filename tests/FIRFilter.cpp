@@ -151,7 +151,7 @@ TEST_CASE("FIR decimate", "[dsp][fir][decimate]")
             6.15890181e-01,
         };
 
-        dsp::FIRDecimate<float, kO, 2, dsp::window::Hamming> decimate;
+        dsp::FIRDecimate<float, kO, 2, dsp::windows::Hamming> decimate;
         decltype(decimate)::DL decState;
 
         // delayline buffer
@@ -186,7 +186,7 @@ static void testFirInterpolate()
     auto mid  = (kNCoeffs - 1) / dsp::baseType<T>(2);
     for (auto i = 0; i < kNCoeffs; ++i) {
         auto fi = dsp::baseType<T>(i);
-        bF[i]   = dsp::window::Kaiser<140>::generate((fi - mid) / mid) *
+        bF[i]   = dsp::windows::Kaiser<140>::generate((fi - mid) / mid) *
                 dsp::sinc((fi - mid) * freq);
     }
     // scale
