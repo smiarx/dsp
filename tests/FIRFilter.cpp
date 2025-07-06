@@ -106,9 +106,10 @@ static void testFirDecimate()
     // check that decimate is equal to 1 over M filtered sample
     for (size_t n = 0; n < kNSamples; n += M) {
         for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i) {
+            auto val                     = dsp::get(xDecimated[n / M], i);
+            constexpr decltype(val) kEps = 1e-6;
             REQUIRE_THAT(
-                dsp::get(xDecimated[n / M], i),
-                Catch::Matchers::WithinRel(dsp::get(xFilt[n], i), 1e-6f));
+                val, Catch::Matchers::WithinRel(dsp::get(xFilt[n], i), kEps));
         }
     }
 }
@@ -117,9 +118,75 @@ TEST_CASE("FIR decimate", "[dsp][fir][decimate]")
 {
     SECTION("float x 1") { testFirDecimate<float, 15, 3>(); }
     SECTION("float x 2") { testFirDecimate<dsp::mfloat<2>, 19, 2>(); }
-    SECTION("double x 2") { testFirDecimate<dsp::mfloat<2>, 12, 4>(); }
+    SECTION("double x 2") { testFirDecimate<dsp::mdouble<2>, 12, 4>(); }
     SECTION("float x 4") { testFirDecimate<dsp::mfloat<4>, 23, 5>(); }
     SECTION("float x 1 vec") { testFirDecimate<float, 15, 3, true>(); }
     SECTION("float x 2 vec") { testFirDecimate<dsp::mfloat<2>, 19, 2, true>(); }
     SECTION("float x 4 vec") { testFirDecimate<dsp::mfloat<4>, 23, 5, true>(); }
+}
+
+template <typename T, int Order, int L, bool Vec = false>
+static void testFirInterpolate()
+{
+    // build decimate filter
+    dsp::FIRInterpolate<T, Order, L> interpolate{};
+    typename decltype(interpolate)::DL interpState;
+
+    // reproduce interpolate filter coeffs
+    constexpr auto kNCoeffs = (Order + 1) * L;
+    std::array<T, kNCoeffs> bF;
+    double freq = 1. / L;
+    double mid  = (kNCoeffs - 1) / 2.f;
+    for (auto i = 0; i < kNCoeffs; ++i) {
+        double fi = i;
+        bF[i]     = dsp::window::Kaiser<140>::generate((fi - mid) / mid) *
+                dsp::sinc((fi - mid) * freq);
+    }
+
+    constexpr auto kFiltOrder = kNCoeffs - 1;
+    dsp::FIRFilter<T, kFiltOrder> filter(bF);
+    typename decltype(filter)::DL filtState;
+
+    // processed data
+    constexpr size_t kNSamples           = 41;
+    std::array<T, kNSamples * L> xInterp = {};
+    std::array<T, kNSamples> xOrig       = {};
+    std::array<T, kNSamples * L> xFilt   = {};
+    xOrig[0] = xFilt[0] = 1;
+    xOrig[3] = xFilt[3 * L] = 1;
+    xOrig[4] = xFilt[4 * L] = 1;
+
+    // delayline buffer
+    dsp::Buffer<T, nextTo(interpState)> buffer{};
+    std::array<T, decltype(buffer)::kSize> bufdata{};
+    buffer.setData(bufdata.data());
+
+    // run filter first
+    dsp::Context<T, Vec> ctxtFilt(xFilt.data(), kNSamples * L);
+    CTXTRUN(ctxtFilt) { filter.process(ctxtFilt, filtState); };
+
+    // interpolate
+    dsp::BufferContext<T, nextTo(interpState), Vec> ctxtIn(xOrig.data(),
+                                                           kNSamples, buffer);
+    // dsp::Context<T, Vec> ctxtIn(xOrig.data(), kNSamples);
+    dsp::Context<T> ctxtOut(xInterp.data(), kNSamples * L);
+    interpolate.interpolate(ctxtIn, ctxtOut, interpState, 0);
+
+    // check that decimate is equal to 1 over M filtered sample
+    for (size_t n = 0; n < kNSamples * L; ++n) {
+        for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i) {
+            auto val                     = dsp::get(xInterp[n], i);
+            constexpr decltype(val) kEps = 1e-6;
+            REQUIRE_THAT(
+                val, Catch::Matchers::WithinRel(dsp::get(xFilt[n], i), kEps));
+        }
+    }
+}
+
+TEST_CASE("FIR interpolate", "[dsp][fir][interpolate]")
+{
+    SECTION("float x 1") { testFirInterpolate<float, 15, 3>(); }
+    SECTION("float x 2") { testFirInterpolate<dsp::mfloat<2>, 19, 2>(); }
+    SECTION("double x 2") { testFirInterpolate<dsp::mdouble<2>, 12, 4>(); }
+    SECTION("float x 4") { testFirInterpolate<dsp::mfloat<4>, 23, 5>(); }
 }
