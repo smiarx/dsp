@@ -182,11 +182,11 @@ static void testFirInterpolate()
     // reproduce interpolate filter coeffs
     constexpr auto kNCoeffs = (Order + 1) * L;
     std::array<T, kNCoeffs> bF;
-    double freq = 1. / L;
-    double mid  = (kNCoeffs - 1) / 2.f;
+    auto freq = dsp::baseType<T>(1) / L;
+    auto mid  = (kNCoeffs - 1) / dsp::baseType<T>(2);
     for (auto i = 0; i < kNCoeffs; ++i) {
-        double fi = i;
-        bF[i]     = dsp::window::Kaiser<140>::generate((fi - mid) / mid) *
+        auto fi = dsp::baseType<T>(i);
+        bF[i]   = dsp::window::Kaiser<140>::generate((fi - mid) / mid) *
                 dsp::sinc((fi - mid) * freq);
     }
     // scale
