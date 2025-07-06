@@ -43,4 +43,15 @@ class Hann
     }
 };
 
+class Hamming
+{
+  public:
+    Hamming() = delete;
+    template <typename F> static constexpr auto generate(F x)
+    {
+        // w(n)=0.54−0.46cos(2πn/N−1)
+        return F(0.54) - F(0.46) * cos(constants<F>::pi * (x + 1));
+    }
+};
+
 } // namespace dsp::window
