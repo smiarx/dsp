@@ -39,16 +39,15 @@ TEST_CASE("FIR Filter")
         return x;
     };
 
-    /*
     dsp::FIRDecimate<ft, kOrder, 3> decimate;
     dsp::FIRInterpolate<ft, kOrder, 3> interpolate;
 
     decltype(decimate)::DL<0> dldecimate;
     decltype(interpolate)::DL<nextTo(dldecimate)> dlinterpolate;
 
-    dsp::Buffer<dsp::fSample<kK>, nextTo(dlinterpolate)> buffer;
-    dsp::fSample<kK> bufdata[decltype(buffer)::kSize];
-    buffer.setBuffer(bufdata);
+    dsp::Buffer<ft, nextTo(dlinterpolate)> buffer;
+    ft bufdata[decltype(buffer)::kSize];
+    buffer.setData(bufdata);
 
     auto bufctxt    = dsp::BufferContext(x, kN, buffer);
     auto ctxtDec    = dsp::BufferContext(x2, kN, buffer);
@@ -64,5 +63,4 @@ TEST_CASE("FIR Filter")
         interpolate.interpolate(ctxtDec, ctxtInterp, dlinterpolate, 0);
         return x;
     };
-    */
 }
