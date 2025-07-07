@@ -18,6 +18,7 @@ set(test_sources
     Delay.cpp
     AllPass.cpp
     FIRFilter.cpp
+    MultiRate.cpp
     Windows.cpp
     #VAFilters.cpp
     #RMS.cpp
