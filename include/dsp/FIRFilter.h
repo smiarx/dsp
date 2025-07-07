@@ -146,7 +146,8 @@ class FIRDecimate
             while (xOffset < kInIncrSize) {
                 decltype(x) sum = {};
 
-                for (size_t delay = 0; delay < kNCoeff + kInIncrSize - 1;
+                for (size_t delay = 0;
+                     delay < kNCoeff + kInIncrSize - 1 - xOffset;
                      delay += kInIncrSize) {
                     auto x0 =
                         delay == 0
@@ -225,7 +226,7 @@ class FIRInterpolate
         auto sum = load(T(0));
         for (auto &b : b_)
             for (auto &bl : b) sum += bl;
-        auto scale = T(1) / sum;
+        auto scale = T(L) / sum;
         for (auto &b : b_)
             for (auto &bl : b) bl = bl * scale;
     }
