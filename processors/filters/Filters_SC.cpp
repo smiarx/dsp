@@ -9,8 +9,8 @@
 extern InterfaceTable *ft;
 
 template <class Base, bool hasRes = false> struct Filter : public Unit {
-    Base filter;
-    typename Base::State state;
+    Base filter{};
+    typename Base::State state{};
     float freq{0};
 };
 
@@ -46,6 +46,7 @@ template <class Base, bool hasRes> void filterCtor(Filter<Base, hasRes> *unit)
     } else {
         unit->filter = Base({freq});
     }
+    unit->state = {};
 
     OUT0(0) = 0.f;
 }
@@ -76,9 +77,9 @@ void filterNextA(Filter<Base, hasRes> *unit, int inNumSamples)
             unit->filter = Base({freq});
         }
 
-        dsp::fSample<1> x = {*in};
+        float x = *in;
         unit->filter.process(dsp::Context(&x), unit->state);
-        *out = x[0];
+        *out = x;
         ++in;
         ++out;
     }
@@ -110,9 +111,9 @@ void filterNext(Filter<Base, hasRes> *unit, int inNumSamples)
     auto *in  = IN(0);
     auto *out = OUT(0);
     for (int n = 0; n < inNumSamples; ++n) {
-        dsp::fSample<1> x = {*in};
+        float x = *in;
         unit->filter.process(dsp::Context(&x), unit->state);
-        *out = x[0];
+        *out = x;
         ++in;
         ++out;
     }
@@ -125,18 +126,21 @@ void filterNext(Filter<Base, hasRes> *unit, int inNumSamples)
 extern void loadFilters();
 void loadFilters()
 {
-    DefineFilterUnit(OnePoleLP, dsp::va::OnePole<1 CMA dsp::va::kLowPass>,
+    DefineFilterUnit(OnePoleLP, dsp::va::OnePole<float CMA dsp::va::kLowPass>,
                      false);
-    DefineFilterUnit(OnePoleHP, dsp::va::OnePole<1 CMA dsp::va::kHighPass>,
+    DefineFilterUnit(OnePoleHP, dsp::va::OnePole<float CMA dsp::va::kHighPass>,
                      false);
-    DefineFilterUnit(OnePoleAP, dsp::va::OnePole<1 CMA dsp::va::kAllPass>,
+    DefineFilterUnit(OnePoleAP, dsp::va::OnePole<float CMA dsp::va::kAllPass>,
                      false);
-    DefineFilterUnit(SVFLP, dsp::va::SVF<1 CMA dsp::va::kLowPass>, true);
-    DefineFilterUnit(SVFHP, dsp::va::SVF<1 CMA dsp::va::kHighPass>, true);
-    DefineFilterUnit(SVFAP, dsp::va::SVF<1 CMA dsp::va::kAllPass>, true);
-    DefineFilterUnit(SVFBP, dsp::va::SVF<1 CMA dsp::va::kBandPass>, true);
-    DefineFilterUnit(SVFNotch, dsp::va::SVF<1 CMA dsp::va::kNotch>, true);
-    DefineFilterUnit(LadderLP, dsp::va::Ladder<1 CMA dsp::va::kLowPass>, true);
-    DefineFilterUnit(LadderHP, dsp::va::Ladder<1 CMA dsp::va::kHighPass>, true);
-    DefineFilterUnit(LadderAP, dsp::va::Ladder<1 CMA dsp::va::kAllPass>, true);
+    DefineFilterUnit(SVFLP, dsp::va::SVF<float CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(SVFHP, dsp::va::SVF<float CMA dsp::va::kHighPass>, true);
+    DefineFilterUnit(SVFAP, dsp::va::SVF<float CMA dsp::va::kAllPass>, true);
+    DefineFilterUnit(SVFBP, dsp::va::SVF<float CMA dsp::va::kBandPass>, true);
+    DefineFilterUnit(SVFNotch, dsp::va::SVF<float CMA dsp::va::kNotch>, true);
+    DefineFilterUnit(LadderLP, dsp::va::Ladder<float CMA dsp::va::kLowPass>,
+                     true);
+    DefineFilterUnit(LadderHP, dsp::va::Ladder<float CMA dsp::va::kHighPass>,
+                     true);
+    DefineFilterUnit(LadderAP, dsp::va::Ladder<float CMA dsp::va::kAllPass>,
+                     true);
 }
