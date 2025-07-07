@@ -25,7 +25,8 @@ template <class T, std::size_t MinSize> class Buffer
     void setData(T *data) { data_ = data; }
     T *getData() { return data_; }
 
-    template <typename V, bool Vec = false> void write(int i, V val)
+    template <typename V, bool Vec = false, bool Safe = false>
+    void write(int i, V val)
     {
         using namespace loadfuncs;
 
@@ -45,6 +46,12 @@ template <class T, std::size_t MinSize> class Buffer
             }
         } else {
             store(data_[pos], val);
+            // safely write vor vec read even when writing scalars
+            if constexpr (Safe && !std::is_same_v<T, batch<T>>) {
+                if (static_cast<size_t>(pos) < batch<T>::kWidth) {
+                    store(data_[kBaseSize + pos], val);
+                }
+            }
         }
     }
     template <typename V> void writeVec(int i, V val)
@@ -137,6 +144,11 @@ class BufferContext : public Context<T, Vec>
     void write(int i, SigType val)
     {
         return buffer_.template write<SigType, Vec>(i, val);
+    }
+
+    void writeSafe(int i, SigType val)
+    {
+        return buffer_.template write<SigType, Vec, true>(i, val);
     }
 
   private:

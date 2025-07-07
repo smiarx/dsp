@@ -6,22 +6,26 @@
 namespace dsp
 {
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
-          size_t BufSize = 0, size_t M = MaxM>
-class BaseMultiRate : public BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
+template <typename T, size_t Order, size_t MaxM, size_t DecimOffset = 0,
+          size_t InterpOffset = 0, size_t BufSize = 0, size_t M = MaxM>
+class BaseMultiRate : public BaseMultiRate<T, Order, MaxM, DecimOffset,
+                                           InterpOffset, BufSize, 1>
 {
   public:
-    using Base          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>;
-    using Next          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
-    using BufCtxt       = typename Next::BufCtxt;
-    using Ctxt          = typename Next::Ctxt;
-    using DLDecimate    = typename Next::DLDecimate;
+    using Base =
+        BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, 1>;
+    using Next       = BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset,
+                                     BufSize, M - 1>;
+    using BufCtxt    = typename Next::BufCtxt;
+    using Ctxt       = typename Next::Ctxt;
+    using DLDecimate = typename Next::DLDecimate;
     using DLInterpolate = typename Next::DLInterpolate;
 
     template <size_t BufSize_>
-    using WithBuffer = BaseMultiRate<N, Order, MaxM, Offset, BufSize_, M>;
+    using WithBuffer =
+        BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize_, M>;
 
-    BaseMultiRate(float cutoff = 1.f) :
+    BaseMultiRate(baseType<T> cutoff = 1) :
         firdecimate_(cutoff), firinterpolate_(cutoff)
     {
     }
@@ -40,20 +44,21 @@ class BaseMultiRate : public BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
     }
 
   private:
-    const FIRDecimate<N, Order, M> firdecimate_;
-    const FIRInterpolate<N, Order, M> firinterpolate_;
+    const FIRDecimate<T, Order, M> firdecimate_;
+    const FIRInterpolate<T, Order, M> firinterpolate_;
 };
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
-class BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
+template <typename T, size_t Order, size_t MaxM, size_t DecimOffset,
+          size_t InterpOffset, size_t BufSize>
+class BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, 1>
 {
   public:
-    using BufCtxt = BufferContext<fSample<N>, Buffer<fSample<N>, BufSize>>;
-    using Ctxt    = Context<fSample<N>>;
+    using BufCtxt = BufferContext<T, BufSize>;
+    using Ctxt    = Context<T>;
     using DLDecimate =
-        typename FIRDecimate<N, Order, MaxM>::template DL<Offset>;
+        typename FIRDecimate<T, Order, MaxM>::template DL<DecimOffset>;
     using DLInterpolate =
-        typename FIRInterpolate<N, Order, MaxM>::template DL<N>;
+        typename FIRInterpolate<T, Order, MaxM>::template DL<InterpOffset>;
 
     virtual int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl, int) const
     {
@@ -69,17 +74,20 @@ class BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
     }
 };
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
-          size_t BufSize = 0, size_t M = MaxM>
-class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
+template <typename T, size_t Order, size_t MaxM, size_t DecimOffset = 0,
+          size_t InterpOffset = 0, size_t BufSize = 0, size_t M = MaxM>
+class MultiRate : public MultiRate<T, Order, MaxM, DecimOffset, InterpOffset,
+                                   BufSize, M - 1>
 {
   public:
-    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate_(cutoff) {}
+    MultiRate(baseType<T> cutoff = 1) : Next(cutoff), multirate_(cutoff) {}
 
-    using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
+    using Next =
+        MultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, M - 1>;
     using Base = typename Next::Base;
     template <size_t BufSize_>
-    using WithBuffer = MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
+    using WithBuffer =
+        MultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize_, M>;
     [[nodiscard]] const typename Next::Base *get(int i) const
     {
         if (i >= static_cast<int>(M)) {
@@ -90,16 +98,19 @@ class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
     }
 
   private:
-    const BaseMultiRate<N, Order, MaxM, Offset, BufSize, M> multirate_;
+    const BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, M>
+        multirate_;
 };
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
-class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
+template <typename T, size_t Order, size_t MaxM, size_t DecimOffset,
+          size_t InterpOffset, size_t BufSize>
+class MultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, 1>
 {
   public:
     MultiRate(float cutoff = 1.f) { (void)cutoff; }
 
-    using Base          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>;
+    using Base =
+        BaseMultiRate<T, Order, MaxM, DecimOffset, InterpOffset, BufSize, 1>;
     using BufCtxt       = typename Base::BufCtxt;
     using Ctxt          = typename Base::Ctxt;
     using DLDecimate    = typename Base::DLDecimate;

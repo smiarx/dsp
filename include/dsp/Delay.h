@@ -48,6 +48,10 @@ template <> class DelayLine<>
     {
         c.write(offset_, x);
     }
+    template <class Ctxt, class In> void writeSafe(Ctxt c, const In &x) const
+    {
+        c.writeSafe(offset_, x);
+    }
 
     /* read value at delay id */
     template <class Ctxt> const auto &read(Ctxt c, int id) const
@@ -77,6 +81,10 @@ template <size_t L, int Off> class DelayLine
     template <class Ctxt, class In> void write(Ctxt c, const In &x) const
     {
         c.write(kOffset, x);
+    }
+    template <class Ctxt, class In> void writeSafe(Ctxt c, const In &x) const
+    {
+        c.writeSafe(kOffset, x);
     }
 
     /* read value at delay id */
@@ -115,6 +123,10 @@ template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
 
         /* copy last value */
         c.store(mem_[kLength - kVecSize], x);
+    }
+    template <class Ctxt, typename V> void writeSafe(Ctxt c, V x)
+    {
+        write(c, x);
     }
 
     template <class Ctxt> [[nodiscard]] auto read(Ctxt c, int i) const

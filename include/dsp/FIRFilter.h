@@ -242,7 +242,7 @@ class FIRInterpolate
         {
             if (id == 0) {
                 auto x = cin.getInput();
-                delayline.write(cin, x);
+                delayline.writeSafe(cin, x);
                 cin.next();
             }
 
