@@ -20,7 +20,7 @@ set(test_sources
     FIRFilter.cpp
     MultiRate.cpp
     Windows.cpp
-    #VAFilters.cpp
+    VAFilters.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Hadamard.cpp
