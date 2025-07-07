@@ -36,4 +36,4 @@ else()
 endif()
 target_compile_features(dsp_compile_options INTERFACE cxx_std_17)
 
-#add_subdirectory(processors/)
+add_subdirectory(processors/)

@@ -9,20 +9,20 @@
 
 #define BENCHMARK_FILTER(Name, Type)                        \
     {                                                       \
-        dsp::va::Name<kK, dsp::va::k##Type> filter;         \
+        dsp::va::Name<ft, dsp::va::k##Type> filter;         \
         decltype(filter)::State state;                      \
         auto freq = GENERATE(take(1, random(0.f, 1.f)));    \
         filter.setFreq({freq, freq});                       \
         BENCHMARK(#Type)                                    \
         {                                                   \
-            contextFor(ctxt) { filter.process(c, state); }; \
+            CTXTRUN(ctxt) { filter.process(ctxt, state); }; \
         };                                                  \
     }
 
 constexpr size_t kK     = 2;
 constexpr size_t kN     = 512;
 constexpr size_t kOrder = 26;
-using ft                = dsp::fSample<kK>;
+using ft                = dsp::mfloat<kK>;
 static ft x[kN];
 TEST_CASE("VA Filters", "[dsp][vafilters]")
 {
