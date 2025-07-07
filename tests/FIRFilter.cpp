@@ -192,7 +192,7 @@ static void testFirInterpolate()
     // scale
     auto sum = dsp::load(T(0));
     for (auto &b : bF) sum += b;
-    auto scale = T(1) / sum;
+    auto scale = T(L) / sum;
     for (auto &b : bF) b = b * scale;
 
     constexpr auto kFiltOrder = kNCoeffs - 1;
