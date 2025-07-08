@@ -21,9 +21,9 @@ set(test_sources
     MultiRate.cpp
     Windows.cpp
     VAFilters.cpp
+    Orthogonal.cpp
     #RMS.cpp
     #LinAlg.cpp
-    #Hadamard.cpp
     #Enveloppe.cpp
 )
 
