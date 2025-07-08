@@ -31,6 +31,11 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     {
     }
 
+    [[nodiscard]] always_inline static simdtype load(const T *data)
+    {
+        return simdtype::load(data);
+    }
+
     [[nodiscard]] always_inline simdtype load() const
     {
         return simdtype::load((T *)this->data());

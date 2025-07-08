@@ -24,6 +24,7 @@ set(test_sources
     Orthogonal.cpp
     Kernel.cpp
     LFO.cpp
+    Noise.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Enveloppe.cpp
