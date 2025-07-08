@@ -107,6 +107,14 @@ template <typename T, size_t N> always_inline auto toInt(simd<T, N> x)
 {
     return x.toInt();
 }
+template <typename T> always_inline auto toFloat(int x)
+{
+    return static_cast<T>(x);
+}
+template <typename T, size_t N> always_inline auto toFloat(simd<int, N> x)
+{
+    return x.template toFloat<T>();
+}
 
 /////////////////// Math ////////////////////////////
 

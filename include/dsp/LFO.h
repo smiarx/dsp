@@ -5,51 +5,50 @@
 #include <cassert>
 #include <cmath>
 
-namespace dsp
+namespace dsp::lfo
 {
+using namespace loadfuncs;
 
-template <size_t N> class LFOSine
+template <typename T> class Sine
 {
-    /* second midified coupled-form oscillator as seen in dattorro effect design
+    /* second modified coupled-form oscillator as seen in dattorro effect design
      * part.3
      * */
   public:
-    LFOSine()
+    Sine() = default;
+    Sine(const T &freq) { setFreq(freq); }
+    Sine(const T &freq, const T &phase) { setFreq(freq, phase); }
+
+    void setFreq(const T &freq)
     {
-        for (size_t i = 0; i < N; ++i) {
-            cos_[i] = 1.f;
-        }
-    }
-    void setPhase(fData<N> phase)
-    {
-        for (size_t i = 0; i < N; ++i) {
-            // TODO modify to real value
-            sin_[i] = std::sin(2.f * dsp::constants<float>::pi * phase[i]);
-            cos_[i] = std::cos(2.f * dsp::constants<float>::pi * phase[i]);
-        }
+        auto w_2 = dsp::constants<T>::pi / 2 * load(freq);
+        a_       = dsp::sin(w_2) * 2;
     }
 
-    void setFreq(fData<N> freq)
+    void setFreq(const T &freq, const T &phase)
     {
-        for (size_t i = 0; i < N; ++i) {
-            a_[i] = 2.f * std::sin(dsp::constants<float>::pi / 2.f * freq[i]);
-        }
+        setFreq(freq);
+
+        auto w_2   = dsp::constants<T>::pi / 2 * load(freq);
+        auto scale = T(1) / dsp::cos(w_2);
+
+        auto wphase = load(phase) * constants<T>::pi * 2;
+        sin_        = scale * dsp::sin(wphase);
+        cos_        = scale * dsp::cos(wphase - w_2);
     }
 
-    fData<N> process()
+    [[nodiscard]] auto process()
     {
-        auto y = sin_;
-        for (size_t i = 0; i < N; ++i) {
-            cos_[i] -= a_[i] * sin_[i];
-            sin_[i] += a_[i] * cos_[i];
-        }
+        auto y = load(sin_);
+        cos_ -= load(a_) * load(sin_);
+        sin_ += load(a_) * load(cos_);
         return y;
     }
 
   private:
-    fData<N> a_   = {{0.f}};
-    fData<N> sin_ = {{0.f}};
-    fData<N> cos_;
+    T a_{};
+    T sin_{};
+    T cos_{1.};
 };
 
 /**
@@ -59,35 +58,34 @@ template <size_t N> class LFOSine
  * Computation use Q30 fixed point representation for phase x on 32bits
  * integers. Thus phase automaticaly wraps around 2 to -2.
  */
-template <size_t N> class LFOParabolic
+template <typename T> class Parabolic
 {
   public:
+    using iT = intType<T>;
     // Number of fractional bits for fixed-point arithmetic
     static constexpr auto kQ = 30;
     // Fixed-point representation of 1 (2^30) */
     static constexpr unsigned int kUnity = 1 << kQ;
 
     /** @brief Default constructor initializes phase to zero. */
-    LFOParabolic() = default;
+    Parabolic() = default;
 
     /** @brief Constructor with initial phase */
-    LFOParabolic(iData<N> phase) : phase_(phase) {}
+    Parabolic(const T &freq) { setFreq(freq); }
+    Parabolic(const T &freq, const iT &phase) : phase_(phase) { setFreq(freq); }
 
     /** @brief Sets the initial phase for the oscillator. */
     /** @param phase Initial phase to set. */
-    void setPhase(iData<N> phase) { phase_ = phase; }
+    void setPhase(const iT &phase) { phase_ = phase; }
 
     /** @brief Sets the frequency for the oscillator. */
     /** @param freq Frequency from [0,1] where 1 is the Nyquist frequency
      */
-    void setFreq(fData<N> freq)
+    void setFreq(const T &freq)
     {
-#pragma omp simd
-        for (size_t i = 0; i < N; ++i) {
-            assert(freq[i] >= 0.f && freq[i] <= 1.f);
-            // Scale frequency for fixed-point accumulation
-            freq_[i] = static_cast<int>(freq[i] * 4.f * float(kUnity));
-        }
+        auto f = load(freq);
+        assert(all(f >= 0 && f <= 1));
+        freq_ = toInt(f * 4 * kUnity);
     }
 
     /**
@@ -95,34 +93,24 @@ template <size_t N> class LFOParabolic
      * frequency.
      * @return Signal<N> Output lfo signal.
      */
-    fData<N> process()
+    auto process()
     {
-        fData<N> y;
+        auto x        = load(phase_);
+        auto xHalf    = x >> (kQ / 2);      // Shift to Q15
+        auto xAbsHalf = abs(x) >> (kQ / 2); // Shift to Q15
+        auto iy       = 2 * x - xHalf * xAbsHalf;
 
-#pragma omp simd
-        for (size_t i = 0; i < N; ++i) {
-
-            // Compute parabolic function
-            int x        = phase_[i];
-            int xHalf    = x >> (kQ / 2);           // Shift to Q15
-            int xAbsHalf = std::abs(x) >> (kQ / 2); // Shift to Q15
-            int iy       = 2 * x - xHalf * xAbsHalf;
-
-            // Increment phase
-            phase_[i] += freq_[i];
-
-            // Convert fixed-point result to float
-            y[i] = static_cast<float>(iy) / kUnity;
-        }
+        phase_ += load(freq_);
+        auto y = toFloat<baseType<T>>(iy) / kUnity;
 
         return y;
     }
 
   private:
     /* Current phase state for each channel */
-    iData<N> phase_{0};
+    iT phase_{};
     /* Frequency of each channel */
-    iData<N> freq_{0};
+    iT freq_{};
 };
 
-} // namespace dsp
+} // namespace dsp::lfo
