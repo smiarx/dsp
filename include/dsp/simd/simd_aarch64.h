@@ -41,6 +41,11 @@ template <> struct intrin<float, 2> {
     static constexpr auto abs = vabs_f32;
     static constexpr auto sum = vaddv_f32;
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return vrev64_f32(value);
+    }
+
     static constexpr auto cmpeq = vceq_f32;
     static constexpr auto cmpgt = vcgt_f32;
     static constexpr auto cmpge = vcge_f32;
@@ -105,9 +110,20 @@ template <> struct intrin<float, 4> {
 
     static constexpr auto abs = vabsq_f32;
     static constexpr auto sum = vaddvq_f32;
+
+    static always_inline type vectorcall flip1(type value)
+    {
+        return vrev64q_f32(value);
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        auto valued = vreinterpretq_f64_f32(value);
+        auto shufd  = vextq_f64(valued, valued, 1);
+        return vreinterpretq_f32_f64(shufd);
+    }
     static always_inline float32x2_t vectorcall reduce2(type x)
     {
-        return vadd_f32(vget_high_f32(x), vget_low_f32(x));
+        return vget_low_f32(add(x, flip2(x)));
     }
 
     static constexpr auto cmpeq = vceqq_f32;
@@ -184,7 +200,12 @@ template <> struct intrin<double, 2> {
     static constexpr auto min = vminq_f64;
 
     static constexpr auto abs = vabsq_f64;
+
     static constexpr auto sum = vaddvq_f64;
+    static always_inline type vectorcall flip1(type value)
+    {
+        return vextq_f64(value, value, 1);
+    }
 
     static constexpr auto cmpeq = vceqq_f64;
     static constexpr auto cmpgt = vcgtq_f64;
@@ -276,6 +297,10 @@ template <> struct intrin<int32_t, 2> {
 
     static constexpr auto abs = vabs_s32;
     static constexpr auto sum = vaddv_s32;
+    static always_inline type vectorcall flip1(type value)
+    {
+        return vrev64_s32(value);
+    }
 
     static constexpr auto cmpeq = vceq_s32;
     static constexpr auto cmpgt = vcgt_s32;
@@ -368,9 +393,20 @@ template <> struct intrin<int32_t, 4> {
     static constexpr auto abs = vabsq_s32;
     static constexpr auto sum = vaddvq_s32;
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return vrev64q_s32(value);
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        auto valued = vreinterpretq_s64_s32(value);
+        auto shufd  = vextq_s64(valued, valued, 1);
+        return vreinterpretq_s32_s64(shufd);
+    }
+
     static always_inline auto vectorcall reduce2(type x)
     {
-        return vadd_s32(vget_low_s32(x), vget_high_s32(x));
+        return vget_low_s32(add(x, flip2(x)));
     }
 
     static constexpr auto cmpeq = vceqq_s32;
