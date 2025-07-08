@@ -22,6 +22,7 @@ set(test_sources
     Windows.cpp
     VAFilters.cpp
     Orthogonal.cpp
+    Kernel.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Enveloppe.cpp
