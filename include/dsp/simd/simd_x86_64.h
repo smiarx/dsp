@@ -105,16 +105,25 @@ template <> struct intrin<int32_t, 4> {
     }
 #endif
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        return _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+    }
+
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        type swap = _mm_shuffle_epi32(sum, _MM_SHUFFLE(2, 3, 0, 1));
+        type swap = flip1(sum);
         return _mm_cvtsi128_si32(add(sum, swap));
     }
     static always_inline intx2_t vectorcall reduce2(type value)
     {
-        type flip = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         return add(value, flip);
     }
 
@@ -232,16 +241,25 @@ template <> struct intrin<float, 4> {
     {
         return bitAnd(value, init(floatMask<basetype>::kNotSign.f));
     }
+
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1));
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        return _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        type swap = _mm_shuffle_ps(sum, sum, _MM_SHUFFLE(2, 3, 0, 1));
+        type swap = flip1(sum);
         return _mm_cvtss_f32(add(sum, swap));
     }
     static always_inline floatx2_t vectorcall reduce2(type value)
     {
-        type flip = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         return add(value, flip);
     }
 
@@ -372,9 +390,13 @@ template <> struct intrin<float, 2> {
     }
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return base::flip1(value);
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type swap = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1));
+        type swap = flip1(value);
         type sum  = add(value, swap);
         return _mm_cvtss_f32(sum);
     }
@@ -482,9 +504,13 @@ template <> struct intrin<int, 2> {
     }
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return base::flip1(value);
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type swap = _mm_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
+        type swap = flip1(value);
         type sum  = add(value, swap);
         return _mm_cvtsi128_si32(sum);
     }
@@ -571,9 +597,13 @@ template <> struct intrin<double, 2> {
                                  &floatMask<basetype>::kNotSign)));
     }
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm_shuffle_pd(value, value, _MM_SHUFFLE2(0, 1));
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(0, 1));
+        type flip = flip1(value);
         return _mm_cvtsd_f64(add(value, flip));
     }
 
@@ -697,27 +727,39 @@ template <> struct intrin<int32_t, 8> {
     static constexpr auto min = _mm256_min_epi32;
     static constexpr auto abs = _mm256_abs_epi32;
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm256_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        return _mm256_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+    }
+    static always_inline type vectorcall flip4(type value)
+    {
+        return _mm256_permute2f128_si256(value, value, _MM_SHUFFLE2(0, 3));
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm256_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        flip      = _mm256_shuffle_epi32(sum, _MM_SHUFFLE(2, 3, 0, 1));
+        flip      = flip1(sum);
         sum       = add(sum, flip);
-        flip      = _mm256_permute2f128_si256(sum, sum, _MM_SHUFFLE2(0, 3));
+        flip      = flip4(sum);
         sum       = add(sum, flip);
         return _mm256_extract_epi32(sum, 0);
     }
     static always_inline intx2_t vectorcall reduce2(type value)
     {
-        type flip = _mm256_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        flip      = _mm256_permute2f128_si256(sum, sum, _MM_SHUFFLE2(0, 3));
+        flip      = flip4(sum);
         sum       = add(sum, flip);
         return _mm256_extracti128_si256(sum, 0);
     }
     static always_inline __m128i vectorcall reduce4(type value)
     {
-        auto flip = _mm256_permute2f128_si256(value, value, _MM_SHUFFLE2(0, 3));
+        auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extracti128_si256(sum, 0);
     }
@@ -825,29 +867,41 @@ template <> struct intrin<float, 8> {
                                  &floatMask<basetype>::kNotSign)));
     }
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm256_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1));
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        return _mm256_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+    }
+    static always_inline type vectorcall flip4(type value)
+    {
+        return _mm256_permute2f128_ps(value, value, _MM_SHUFFLE2(0, 3));
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm256_permute_ps(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        flip      = _mm256_permute_ps(sum, _MM_SHUFFLE(2, 3, 0, 1));
+        flip      = flip1(sum);
         sum       = add(sum, flip);
-        flip      = _mm256_permute2f128_ps(sum, sum, _MM_SHUFFLE2(0, 3));
+        flip      = flip4(sum);
         sum       = add(sum, flip);
         return _mm256_cvtss_f32(sum);
     }
 
     static always_inline floatx2_t vectorcall reduce2(type value)
     {
-        type flip = _mm256_permute_ps(value, _MM_SHUFFLE(1, 0, 3, 2));
+        type flip = flip2(value);
         type sum  = add(value, flip);
-        flip      = _mm256_permute2f128_ps(sum, sum, _MM_SHUFFLE2(0, 3));
+        flip      = flip4(sum);
         sum       = add(sum, flip);
         return _mm256_extractf128_ps(sum, 0);
     }
 
     static always_inline __m128 vectorcall reduce4(type value)
     {
-        auto flip = _mm256_permute2f128_ps(value, value, _MM_SHUFFLE2(0, 3));
+        auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_ps(sum, 0);
     }
@@ -962,18 +1016,26 @@ template <> struct intrin<double, 4> {
                                  &floatMask<basetype>::kNotSign)));
     }
 
+    static always_inline type vectorcall flip1(type value)
+    {
+        return _mm256_shuffle_pd(value, value, _MM_SHUFFLE(0, 0, 1, 1));
+    }
+    static always_inline type vectorcall flip2(type value)
+    {
+        return _mm256_permute2f128_pd(value, value, _MM_SHUFFLE2(0, 3));
+    }
     static always_inline basetype vectorcall sum(type value)
     {
-        type flip = _mm256_shuffle_pd(value, value, _MM_SHUFFLE(0, 0, 1, 1));
+        type flip = flip1(value);
         type sum  = add(value, flip);
-        flip      = _mm256_permute2f128_pd(sum, sum, _MM_SHUFFLE2(0, 3));
+        flip      = flip2(sum);
         sum       = add(sum, flip);
         return _mm256_cvtsd_f64(sum);
     }
 
     static always_inline __m128d vectorcall reduce2(type value)
     {
-        auto flip = _mm256_permute2f128_pd(value, value, _MM_SHUFFLE2(0, 3));
+        auto flip = flip2(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_pd(sum, 0);
     }

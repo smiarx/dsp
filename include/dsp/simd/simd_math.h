@@ -63,6 +63,7 @@ template <typename T, size_t N> always_inline T sum(simd<T, N> x)
 {
     return x.sum();
 }
+
 template <size_t K, typename T> always_inline auto reduce(T x)
 {
     static_assert(K == 1);
@@ -72,6 +73,11 @@ template <size_t K, typename T, size_t N>
 always_inline auto reduce(simd<T, N> x)
 {
     return x.template reduce<K>();
+}
+
+template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
+{
+    return x.template flip<K>();
 }
 
 /////////////////// Logic ////////////////////////////
