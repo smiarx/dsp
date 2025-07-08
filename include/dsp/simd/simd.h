@@ -318,6 +318,17 @@ template <typename T, size_t N> struct simd {
             return def::reduce4(value_);
         }
     }
+    template <size_t K> always_inline simd vectorcall flip() const noexcept
+    {
+        static_assert(K >= 1 && K <= N);
+        if constexpr (K == 1) {
+            return def::flip1(value_);
+        } else if constexpr (K == 2) {
+            return def::flip2(value_);
+        } else if constexpr (K == 4) {
+            return def::flip4(value_);
+        }
+    }
 
     always_inline simd vectorcall max(simd other)
     {

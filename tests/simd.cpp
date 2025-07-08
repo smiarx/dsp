@@ -116,6 +116,30 @@ template <typename T, size_t N> class TestSimd
                 for (size_t i = 0; i < K; ++i) cmp(s1[i], s2[i]);
             }
         }
+        SECTION("flip")
+        {
+            if constexpr (N > 1) {
+                constexpr size_t K = 1;
+                auto f             = dsp::flip<K>(x);
+                for (size_t i = 0; i < N; ++i) {
+                    cmp(f[i], x[i ^ K]);
+                }
+            }
+            if constexpr (N > 2) {
+                constexpr size_t K = 2;
+                auto f             = dsp::flip<K>(x);
+                for (size_t i = 0; i < N; ++i) {
+                    cmp(f[i], x[i ^ K]);
+                }
+            }
+            if constexpr (N > 4) {
+                constexpr size_t K = 4;
+                auto f             = dsp::flip<K>(x);
+                for (size_t i = 0; i < N; ++i) {
+                    cmp(f[i], x[i ^ K]);
+                }
+            }
+        }
 
         SECTION("blend")
         {
