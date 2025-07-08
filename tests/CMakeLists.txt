@@ -23,6 +23,7 @@ set(test_sources
     VAFilters.cpp
     Orthogonal.cpp
     Kernel.cpp
+    LFO.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Enveloppe.cpp

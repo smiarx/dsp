@@ -10,7 +10,8 @@ namespace dsp
 
 // constants
 // NOLINTBEGIN (readability-identifier-naming)
-template <typename F> struct constants {
+template <typename T> struct constants {
+    using F                       = baseType<T>;
     static constexpr auto pi      = F(3.14159265358979323846);
     static constexpr auto pi_2    = F(1.57079632679489661923);
     static constexpr auto pi_4    = F(0.78539816339744830962);
