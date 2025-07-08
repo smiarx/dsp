@@ -157,6 +157,9 @@ template <typename T, typename V> void storeBatch(T &dest, V x)
 template <typename T> struct TypeWidth {
     static constexpr auto kWidth = 1;
 };
+template <typename T, size_t N> struct TypeWidth<simd<T, N>> {
+    static constexpr auto kWidth = N;
+};
 template <typename T, size_t N> struct TypeWidth<MultiVal<T, N>> {
     static constexpr auto kWidth = N;
 };
@@ -171,12 +174,18 @@ template <typename T> struct IntType {
 template <typename T, size_t N> struct IntType<MultiVal<T, N>> {
     using type = MultiVal<int, N>;
 };
+template <typename T, size_t N> struct IntType<simd<T, N>> {
+    using type = simd<int, N>;
+};
 template <typename T> using intType = typename IntType<T>::type;
 
 //=============================================================
 
 // base type
 template <typename T> struct BaseType {
+    using type = T;
+};
+template <typename T, size_t N> struct BaseType<simd<T, N>> {
     using type = T;
 };
 template <typename T, size_t N> struct BaseType<MultiVal<T, N>> {

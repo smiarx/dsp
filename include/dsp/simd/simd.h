@@ -294,6 +294,19 @@ template <typename T, size_t N> struct simd {
         return def::div(value_, def::init(scalar));
     }
 
+    always_inline simd vectorcall operator&(simd other)
+    {
+        return def::bitAnd(value_, other);
+    }
+    always_inline simd vectorcall operator|(simd other)
+    {
+        return def::bitOr(value_, other);
+    }
+    always_inline simd vectorcall operator^(simd other)
+    {
+        return def::bitXor(value_, other);
+    }
+
     always_inline simd vectorcall sqrt() const noexcept
     {
         return def::sqrt(value_);
