@@ -25,6 +25,7 @@ set(test_sources
     Kernel.cpp
     LFO.cpp
     Noise.cpp
+    Smoother.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Enveloppe.cpp
