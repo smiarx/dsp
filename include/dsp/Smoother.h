@@ -1,118 +1,141 @@
 #pragma once
 
 #include "Context.h"
-#include "Signal.h"
+#include "MultiVal.h"
 #include <cassert>
 #include <cmath>
 
 namespace dsp
 {
 
-template <size_t N = 1, bool Vectorize = false> class ControlSmoother
+template <typename T, bool Vectorize = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
-    using Type    = fSample<N>;
-    using OutType = std::conditional_t<Vectorize, typename Type::Vector,
-                                       typename Type::Scalar>;
+    using outT                   = std::conditional_t<Vectorize, batch<T>, T>;
+    using bT                     = baseType<T>;
+    static constexpr auto kWidth = kTypeWidth<outT> / kTypeWidth<T>;
 
     /* linear smoother for control values */
   public:
-    ControlSmoother(Type target) : target_{target}
-    {
-        arrayFor(value_, k) { value_[k] = target; }
-    }
+    ControlSmoother() = default;
+    ControlSmoother(const T &target) : target_{target}, value_(target) {}
 
-    void set(Type target, float invBlockSize)
+    void set(const T &target, bT invBlockSize)
     {
-        static constexpr auto kVecSize = OutType().size();
-        if (target_ != target) {
+        if (!all(load(target_) == load(target))) {
             target_ = target;
-#pragma omp simd
-            inFor(value_, k, i)
-            {
-                auto step = (target_[i] - value_[k][i]) * invBlockSize;
-                value_[k][i] -= step * static_cast<float>(kVecSize - 1 - k);
-                step_[k][i] = step * kVecSize;
-            }
+
+            auto step = (target - load(value_)) * invBlockSize;
+            step_[0]  = step;
+
+            // create incr vector (eg. {1,2,3,4})
+            T incr[kWidth];
+            for (size_t i = 0; i < kWidth; ++i) incr[i] = i + 1;
+
+            Context<T, Vectorize> ctxt(step_.data());
+            ctxt.setOutput(ctxt.load(*incr) * step_[0]);
+
             active_ = true;
         }
     }
 
-    [[nodiscard]] auto get() const { return value_; }
-    [[nodiscard]] auto getTarget() const { return target_; }
+    [[nodiscard]] auto getTarget() const { return load(target_); }
 
     bool isActive() { return active_; }
 
-    bool step()
+    template <class Ctxt> auto step(const Ctxt &)
     {
-        if (!active_) return false;
-        inFor(value_, k, i) { value_[k][i] += step_[k][i]; }
-        return true;
+        static_assert(
+            Vectorize || !Ctxt::kUseVec,
+            "Cannot use scalar ControlSmoother in Vectorized context");
+
+        Context<T, Ctxt::kUseVec> c{nullptr};
+
+        using sigT               = decltype(c.getInput());
+        constexpr auto kIncrSize = Ctxt::kIncrSize;
+
+        // trick to broadcast value to correct type
+        auto broadcastValue = sigT(0) + value_;
+
+        // store value in array
+        T values[kIncrSize];
+        c.setData(values);
+        c.setOutput(broadcastValue);
+
+        if (active_) {
+            // add step if active
+            c.setOutput(c.getInput() + c.load(*step_.data()));
+        }
+
+        value_ = values[kIncrSize - 1];
+
+        return c.load(*values);
     }
+
+    [[nodiscard]] auto get() { return load(value_); }
 
     void reset()
     {
         active_ = false;
-        arrayFor(value_, k) { value_[k] = target_; }
+        value_  = target_;
     }
 
   private:
-    Type target_{0.f};
-    OutType value_{};
-    OutType step_{};
+    T target_{};
+    T value_{};
+
+    std::array<T, kWidth> step_{};
+
     bool active_{false};
 };
 
-class SmootherExp
+template <typename T> class SmootherExp
 {
+    using bt = baseType<T>;
+
   public:
-    SmootherExp(float target) : target_{target}, value_(target) {}
-    void set(float target) { target_ = target; }
-    void setTime(float time) { coef_ = 1.f - powf(0.001f, 1.f / time); }
-    float step()
+    SmootherExp(const T &target) : target_{target}, value_(target) {}
+    void set(const T &target) { target_ = target; }
+    void setTime(bt time) { coef_ = bt(1) - std::pow(bt(0.001), bt(1) / time); }
+    auto step()
     {
         value_ += coef_ * (target_ - value_);
-        return value_;
+        return load(value_);
     }
 
   private:
-    float target_{0.f};
-    float value_{0.f};
-    float coef_{0.f};
+    T target_{};
+    T value_{};
+    bt coef_{};
 };
 
-template <size_t N> class SmootherLin
+template <typename T> class SmootherLin
 {
   public:
     SmootherLin() = default;
-    SmootherLin(fData<N> target) : value_{target} {}
+    SmootherLin(const T &target) : value_{target} {}
 
-    void set(fData<N> target, int count)
+    void set(const T &target, int count)
     {
-        auto fcount = static_cast<float>(count);
-        for (size_t i = 0; i < N; ++i) {
-            step_[i] = (target[i] - value_[i]) / fcount;
-            count_   = count;
-        }
+        step_  = (target - value_) / count;
+        count_ = count;
     }
 
-    fData<N> step()
+    auto step()
     {
         if (count_ == 0) {
-            step_ = {0.f};
+            step_ = {};
         } else {
-            for (size_t i = 0; i < N; ++i) {
-                value_[i] += step_[i];
-            }
+            value_ += load(step_);
             --count_;
         }
-        return value_;
+        return load(value_);
     }
 
   private:
-    fData<N> value_{{0.f}};
-    fData<N> step_{{0.f}};
-    int count_{0};
+    T value_{};
+    T step_{};
+    int count_{};
 };
 
 } // namespace dsp
