@@ -155,7 +155,7 @@ template <> struct intrin<int32_t, 4> {
 #if defined(__SSE4_1__)
         return _mm_test_all_ones(m);
 #else
-        return any(m) == std::numeric_limits<basetype>::max();
+        return any(m) == 0xffff;
 #endif
     }
 
@@ -284,7 +284,7 @@ template <> struct intrin<float, 4> {
 #if defined(__SSE4_1__)
         return _mm_test_all_ones((__m128i)m);
 #else
-        return any(m) == std::numeric_limits<basetype>::max();
+        return any(m) == 0x000f;
 #endif
     }
 
@@ -425,13 +425,13 @@ template <> struct intrin<float, 2> {
     {
         return base::blend(m, x1, x2);
     }
-    static always_inline bool vectorcall any(masktype m)
+    static always_inline auto vectorcall any(masktype m)
     {
         return base::any(m);
     }
-    static always_inline bool vectorcall all(masktype m)
+    static always_inline auto vectorcall all(masktype m)
     {
-        return base::all(m);
+        return (any(m) & 0x0003) == 0x0003;
     }
 
     // convert
@@ -539,13 +539,13 @@ template <> struct intrin<int, 2> {
     {
         return base::blend(m, x1, x2);
     }
-    static always_inline bool vectorcall any(masktype m)
+    static always_inline auto vectorcall any(masktype m)
     {
         return base::any(m);
     }
-    static always_inline bool vectorcall all(masktype m)
+    static always_inline auto vectorcall all(masktype m)
     {
-        return base::all(intrin<int, 4>::convert(m));
+        return (any(m) & 0x00ff) == 0x00ff;
     }
 
     // convert
@@ -628,7 +628,7 @@ template <> struct intrin<double, 2> {
 #if defined(__SSE4_1__)
         return _mm_test_all_ones((__m128i)m);
 #else
-        return any(m) == 0x00ff;
+        return any(m) == 0x0003;
 #endif
     }
 

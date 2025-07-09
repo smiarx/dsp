@@ -304,6 +304,7 @@ template <typename T> class TapLin : public TapNoInterp<T>
         TapNoInterp<T>::setDelay(d);
 
         auto vfd = load(fd);
+        (void)vfd;
         assert(all(vfd <= T(1) && vfd >= T(0)));
 
         fd_ = fd;
