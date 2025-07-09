@@ -25,8 +25,8 @@ template <typename F> static inline constexpr F fasttanh(F x)
     F num    = x * (F(135135) + xsq * (F(17325) + xsq * (F(378) + xsq)));
     F den    = F(135135.) + xsq * (F(62370) + xsq * (F(3150) + F(28) * xsq));
     F result = num / den;
-    result   = result > F(1) ? F(1) : result;
-    result   = result < -F(1) ? -F(1) : result;
+    result   = blend(result > 1, F(1), result);
+    result   = blend(result < -1, F(-1), result);
     return result;
 }
 

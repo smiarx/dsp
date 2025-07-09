@@ -19,6 +19,6 @@ target_link_libraries(${SC_TARGET}
 
 endif()
 
-#add_subdirectory(tapedelay/)
+add_subdirectory(tapedelay/)
 #add_subdirectory(springs/)
 add_subdirectory(filters/)
