@@ -2,8 +2,6 @@
 
 #include "Context.h"
 #include "FastMath.h"
-#include "Signal.h"
-#include <cmath>
 
 namespace dsp::va
 {

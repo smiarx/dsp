@@ -3,7 +3,6 @@
 #include "Context.h"
 #include "Delay.h"
 #include "FastMath.h"
-#include "Signal.h"
 #include "Windows.h"
 
 /*

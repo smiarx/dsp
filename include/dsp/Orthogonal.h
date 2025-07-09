@@ -1,11 +1,7 @@
 #pragma once
 
 #include "FastMath.h"
-#include "LinAlg.h"
 #include "MultiVal.h"
-#include "Utils.h"
-#include <cmath>
-#include <iostream>
 
 namespace dsp
 {
