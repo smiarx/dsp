@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Signal.h"
-
 namespace dsp::linalg
 {
 

@@ -2,7 +2,6 @@
 
 #include "Delay.h"
 #include "Lut.h"
-#include "Signal.h"
 #include <cmath>
 
 namespace dsp
