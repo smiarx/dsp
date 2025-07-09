@@ -45,7 +45,7 @@ TEST_CASE("Noise", "[dsp][noise]")
     testNoise<dsp::mfloat<2>>();
     testNoise<dsp::mdouble<2>>();
     testNoise<dsp::mfloat<4>>();
-#if DSP_MAX_VEC_SIZE > 4
+#if DSP_MAX_VEC_SIZE / 4 > 4
     testNoise<dsp::mfloat<8>>();
 #endif
 }
