@@ -4,8 +4,8 @@ set(bench_sources
     AllPass.cpp
     FIRFilter.cpp
     VAFilters.cpp
-    #TapeDelay.cpp
-    #../processors/tapedelay/TapeDelay.cpp
+    TapeDelay.cpp
+    ../processors/tapedelay/TapeDelay.cpp
     #Springs.cpp
     #../processors/springs/Springs.cpp
 )

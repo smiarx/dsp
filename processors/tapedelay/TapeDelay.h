@@ -7,7 +7,7 @@
 #include "dsp/Smoother.h"
 #include "dsp/TapeDelay.h"
 #include "dsp/VAFilters.h"
-#include "dsp/Window.h"
+#include "dsp/Windows.h"
 
 #ifdef TAPEDELAY_SWITCH_INDICATOR
 #include <atomic>
@@ -20,16 +20,18 @@ class TapeDelay
 {
   public:
     static constexpr auto kN = 2;
+    using type               = float;
+    using mtype              = dsp::MultiVal<type, kN>;
 
     static constexpr auto kMaxBlockSize      = 512;
-    static constexpr auto kDefaultSampleRate = 48000.f;
-    static constexpr int kMaxDelay           = 5.f;
+    static constexpr type kDefaultSampleRate = 48000;
+    static constexpr type kMaxDelay          = 5;
 
-    static constexpr float kReverseDelayMaxRatio = 3.1;
+    static constexpr type kReverseDelayMaxRatio = 3.1;
 
-    static constexpr auto kSpeedSmoothTime = 0.7f;
-    static constexpr auto kSpeedModFreq    = 0.242f;
-    static constexpr auto kSpeedModAmp     = 0.02f;
+    static constexpr type kSpeedSmoothTime = 0.7;
+    static constexpr type kSpeedModFreq    = 0.242;
+    static constexpr type kSpeedModAmp     = 0.02;
 
     static constexpr auto kKernelSize = 4;
 
@@ -46,7 +48,7 @@ class TapeDelay
             for (size_t n = 0; n < kFadeSize; ++n) {
                 float x =
                     (static_cast<float>(n) + 1.f) / (float(kFadeSize) + 1.f);
-                (*this)[n] = dsp::window::Hann::generate(x);
+                (*this)[n] = dsp::windows::Hann::generate(x);
             }
         }
     };
@@ -58,14 +60,7 @@ class TapeDelay
         kReverse   = 2,
     };
 
-    TapeDelay()
-    {
-        inFor(pregain_, k, i)
-        {
-            pregain_[k][i]  = 1.f;
-            postgain_[k][i] = 1.f;
-        }
-    }
+    TapeDelay() = default;
 
     template <class ReAlloc = decltype(std::realloc)>
     void prepare(float sampleRate, int blockSize,
@@ -104,27 +99,28 @@ class TapeDelay
                  float *const *__restrict out, int count);
 
   private:
-    float freqScale_{2.f / kDefaultSampleRate};
-    float sampleRate_{1.f / kDefaultSampleRate};
+    type freqScale_{2. / kDefaultSampleRate};
+    type sampleRate_{1. / kDefaultSampleRate};
     int maxBlockSize_{};
     int maxBlockSizeWithDelay_{};
 
-    float delay_{0.f};
-    float feedback_{0.f};
-    dsp::ControlSmoother<2, true> feedbackCompensated_{{0.f, 0.f}};
-    float drywet_{0.f};
-    dsp::ControlSmoother<2> dry_{{1.f, 1.f}};
-    dsp::ControlSmoother<2> wet_{{0.f, 0.f}};
+    type delay_{};
+    type feedback_{};
+    dsp::ControlSmoother<mtype, true> feedbackCompensated_{};
+    type drywet_{};
+    dsp::ControlSmoother<mtype, true> dry_{1.f};
+    dsp::ControlSmoother<mtype, true> wet_{};
 
     // tape movement
     using TapePosition = dsp::TapePosition<kDelayBufSize>;
-    float targetSpeed_{0};
-    float speed_{0};
-    float speedSmooth_{0.f};
+    type targetSpeed_{};
+    type speed_{};
+    type speedSmooth_{};
 
     TapePosition tapePos_;
     using TapeInterp = dsp::TapKernel<
-        2, dsp::kernel::Sinc<kKernelSize, dsp::window::Kaiser<140>>, 64>;
+        mtype, dsp::kernels::Sinc<kKernelSize, dsp::windows::Kaiser<140>>, 64>;
+    // using TapeInterp = dsp::TapNoInterp<mtype>;
     using TapTape = dsp::TapTape<TapeInterp>;
     TapTape tapTape_[2];
     TapTape tapReverse_;
@@ -146,7 +142,7 @@ class TapeDelay
     bool read(Ctxt ctxt, int tapId, TapePosition::position_t speed);
     template <Mode, class Ctxt> int readBlock(Ctxt ctxt);
     // move tape function
-    TapePosition::position_t moveTape();
+    template <class Ctxt> TapePosition::position_t moveTape(Ctxt);
 
     dsp::DelayLine<kDelayBufSize / 3> delaylineReverse_;
     dsp::DelayLine<kDelayBufSize * 2 / 3, nextTo(delaylineReverse_)> delayline_;
@@ -157,29 +153,29 @@ class TapeDelay
 
     // speed modulation
     float drift_{0.f};
-    dsp::ControlSmoother<1> speedMod_{{0.f}};
-    dsp::LFOSine<1> speedLFO_;
+    dsp::ControlSmoother<type> speedMod_{};
+    dsp::lfo::Sine<type> speedLFO_;
 
     // saturation
-    dsp::ControlSmoother<1> saturation_{{0.f}};
-    dsp::fSample<2>::Vector pregain_;
-    dsp::fSample<2>::Vector postgain_;
+    dsp::ControlSmoother<mtype, true> saturation_{};
+    mtype pregain_{1};
+    mtype postgain_{1};
 
     // low pass filter
-    float cutlowpass_{0.f};
-    dsp::va::SVF<kN, dsp::va::kLowPass> lpf_{};
+    type cutlowpass_{};
+    dsp::va::SVF<mtype, dsp::va::kLowPass> lpf_{};
     decltype(lpf_)::State lpfMem_{};
 
     // high pass filter
     float cuthighpass_{0.f};
-    dsp::va::SVF<kN, dsp::va::kHighPass> hpf_{};
+    dsp::va::SVF<mtype, dsp::va::kHighPass> hpf_{};
     decltype(hpf_)::State hpfMem_{};
 
     static constexpr auto kBufferSize = nextTo(delayline_);
-    dsp::Buffer<dsp::fSample<kN>, kBufferSize> buffer_;
+    dsp::Buffer<mtype, kBufferSize> buffer_;
 
     // tmp buffers
-    dsp::fSample<kN> *__restrict x_{nullptr};
+    mtype *__restrict x_{nullptr};
 };
 
 template <class ReAlloc>
@@ -196,15 +192,14 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     speedLFO_.setFreq({freqScale_ * kSpeedModFreq});
 
     // alloc ressources
-    x_ = (dsp::fSample<kN> *)realloc(
-        x_, sizeof(dsp::fSample<kN>) * static_cast<size_t>(maxBlockSize_));
+    x_ = (mtype *)realloc(x_,
+                          sizeof(mtype) * static_cast<size_t>(maxBlockSize_));
 
-    auto *buf = buffer_.getBuffer();
-    constexpr auto kRealBufferSize =
-        sizeof(dsp::fSample<kN>) * decltype(buffer_)::kSize;
-    buf = (dsp::fSample<kN> *)realloc(buf, kRealBufferSize);
+    auto *buf                      = buffer_.getData();
+    constexpr auto kRealBufferSize = sizeof(mtype) * decltype(buffer_)::kSize;
+    buf                            = (mtype *)realloc(buf, kRealBufferSize);
     memset(buf, 0, kRealBufferSize);
-    buffer_.setBuffer(buf);
+    buffer_.setData(buf);
 }
 
 template <class Free> void TapeDelay::free(Free free)
@@ -212,9 +207,9 @@ template <class Free> void TapeDelay::free(Free free)
     free(x_);
     x_ = nullptr;
 
-    auto *buf = buffer_.getBuffer();
+    auto *buf = buffer_.getData();
     free(buf);
-    buffer_.setBuffer(nullptr);
+    buffer_.setData(nullptr);
 }
 
 } // namespace processors

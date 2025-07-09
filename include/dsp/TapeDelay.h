@@ -57,7 +57,7 @@ template <size_t L> class TapePosition
     position_t tapePosBuf_[kSize];
 };
 
-template <class Tap = TapLin<1>> class TapTape
+template <class Tap = TapLin<float>> class TapTape
 {
   public:
     enum Direction {
@@ -139,7 +139,7 @@ template <class Tap = TapLin<1>> class TapTape
                       static_cast<float>(foundPos1 - foundPos0);
 
         Tap tap;
-        tap.setDelay({delay}, {fdelay});
+        tap.setDelay(delay, fdelay);
         //(void)fdelay;
         // tap.setDelay({delay,delay}, {fdelay,fdelay});
         return tap.read(c, delayline);

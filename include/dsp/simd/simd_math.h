@@ -84,16 +84,27 @@ template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
 
 /////////////////// any ////////////////////////////
 template <typename T> always_inline T any(T x) { return x; }
-template <typename T, size_t N> always_inline T any(simdmask<T, N> x)
+template <typename T, size_t N> always_inline auto any(simdmask<T, N> x)
 {
     return x.any();
 }
 
 /////////////////// all ////////////////////////////
 template <typename T> always_inline T all(T x) { return x; }
-template <typename T, size_t N> always_inline T all(simdmask<T, N> x)
+template <typename T, size_t N> always_inline auto all(simdmask<T, N> x)
 {
     return x.all();
+}
+
+/////////////////// blend ////////////////////////////
+template <typename T> always_inline T blend(bool b, T x, T y)
+{
+    return b ? x : y;
+}
+template <typename T, size_t N>
+always_inline auto blend(simdmask<T, N> m, simd<T, N> x, simd<T, N> y)
+{
+    return m.blend(x, y);
 }
 
 /////////////////// Convert ////////////////////////////
@@ -140,7 +151,7 @@ template <typename T, size_t N> always_inline simd<T, N> sqrt(simd<T, N> x)
 }
 
 ////////////////////// pow ////////////////////////
-template <typename T> always_inline T log(T x, T y) { return std::pow(x, y); }
+template <typename T> always_inline T pow(T x, T y) { return std::pow(x, y); }
 template <typename T, size_t N>
 always_inline simd<T, N> pow(simd<T, N> x, simd<T, N> y)
 {
