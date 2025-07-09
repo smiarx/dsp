@@ -2,7 +2,6 @@
 #include "dsp/Buffer.h"
 #include "dsp/Context.h"
 #include "dsp/FastMath.h"
-#include "dsp/Signal.h"
 #include "dsp/Utils.h"
 #include <algorithm>
 #include <cmath>
@@ -147,7 +146,7 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
                      TapeDelay::TapePosition::position_t speed)
 {
     auto &tapTape = tapTape_[tapId];
-    auto &x       = ctxt.getSignal();
+    decltype(ctxt.getInput()) x;
 
     if constexpr (M == kNormal) {
         x = tapTape.read(ctxt, delayline_, tapePos_);
@@ -162,7 +161,7 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
 
         if constexpr (M == kReverse) {
             auto xreverse = tapReverse_.read(ctxt, delaylineReverse_, tapePos_);
-            inFor(x, k, i) { x[k][i] += xreverse[k][i]; }
+            x += xreverse;
         }
 
         // reach end of reverse
@@ -184,17 +183,19 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
             }
         }
     }
+
+    ctxt.setOutput(x);
     return true;
 }
 
-TapeDelay::TapePosition::position_t TapeDelay::moveTape()
+template <class Ctxt>
+TapeDelay::TapePosition::position_t TapeDelay::moveTape(Ctxt ctxt)
 {
     // smooth speed;
     speed_ += (targetSpeed_ - speed_) * speedSmooth_;
 
     // speed modulation
-    speedMod_.step();
-    auto mod = speedLFO_.process()[0] * speedMod_.get()[0][0];
+    auto mod = speedLFO_.process() * speedMod_.step(ctxt);
 
     // move tape
     auto speed = static_cast<TapePosition::position_t>(speed_ + mod);
@@ -205,13 +206,14 @@ TapeDelay::TapePosition::position_t TapeDelay::moveTape()
 
 template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 {
-    contextFor(ctxt)
-    {
-        auto speed = moveTape();
+    static_assert(!Ctxt::kUseVec);
+    for (auto n = 0; n < ctxt.getBlockSize(); n += decltype(ctxt)::kIncrSize) {
+        auto speed = moveTape(ctxt);
 
-        if (!read<M>(c, tapId_, speed)) {
+        if (!read<M>(ctxt, tapId_, speed)) {
             return n + 1;
         }
+        ctxt.next();
     }
     return ctxt.getBlockSize();
 }
@@ -249,122 +251,116 @@ void TapeDelay::process(const float *const *__restrict in,
         } else {
             blockSize = std::min(blockSize, fadePos_ + 1);
             ctxt.setBlockSize(blockSize);
-            contextFor(ctxt)
+            CTXTRUN(ctxt)
             {
-                auto speed = moveTape();
+                auto speed = moveTape(ctxt);
 
-                auto &x = c.getSignal();
                 switch (mode_) {
                 case kBackForth:
-                    read<kBackForth, false>(c, tapId_, speed);
+                    read<kBackForth, false>(ctxt, tapId_, speed);
                     break;
                 case kReverse:
-                    read<kReverse, false>(c, tapId_, speed);
+                    read<kReverse, false>(ctxt, tapId_, speed);
                     break;
                 case kNormal:
                 default:
-                    read<kNormal, false>(c, tapId_, speed);
+                    read<kNormal, false>(ctxt, tapId_, speed);
                     break;
                 }
+                auto xIn = ctxt.getInput();
 
-                auto xIn = x;
                 switch (oldMode_) {
                 case kBackForth:
-                    read<kBackForth, false>(c, tapId_ ^ 1, speed);
+                    read<kBackForth, false>(ctxt, tapId_ ^ 1, speed);
                     break;
                 case kReverse:
-                    read<kReverse, false>(c, tapId_ ^ 1, speed);
+                    read<kReverse, false>(ctxt, tapId_ ^ 1, speed);
                     break;
                 case kNormal:
                 default:
-                    read<kNormal, false>(c, tapId_ ^ 1, speed);
+                    read<kNormal, false>(ctxt, tapId_ ^ 1, speed);
                     break;
                 }
+                auto xOut = ctxt.getInput();
 
                 auto fade = fadeLut[static_cast<size_t>(fadePos_)];
-                inFor(x, k, i) { x[k][i] += fade * (xIn[k][i] - x[k][i]); }
+                auto x    = xOut + fade * (xIn - xOut);
                 --fadePos_;
-            }
+
+                ctxt.setOutput(x);
+            };
         }
 
         // low pass filter
-        contextFor(ctxt) { lpf_.process(c, lpfMem_); }
+        CTXTRUN(ctxt) { lpf_.process(ctxt, lpfMem_); };
 
         // high pass filter
-        contextFor(ctxt) { hpf_.process(c, hpfMem_); }
+        CTXTRUN(ctxt) { hpf_.process(ctxt, hpfMem_); };
 
         // distortion
-        if (saturation_.isActive() ||
-            // check if its possible to vectorize given blocksize
-            static_cast<size_t>(blockSize) % dsp::fSample<kN>::kVectorSize !=
-                0) {
-            float pregain  = 1.f;
-            float postgain = 1.f;
-            contextFor(ctxt)
+        if (saturation_.isActive()) {
+            constexpr auto kIncrSize = decltype(ctxt.vec())::kIncrSize;
+            mtype savePregain[kIncrSize];
+            mtype savePostgain[kIncrSize];
+            size_t lastIncrSize{};
+            CTXTRUNVEC(ctxt)
             {
-                saturation_.step();
-                auto saturation = saturation_.get()[0][0];
-                pregain         = dsp::db2gain(saturation);
-                postgain =
-                    dsp::db2gain(-saturation / (saturation > 0.f ? 2.f : 1.f));
-                auto &x = c.getSignal();
-                inFor(x, k, i)
-                {
-                    x[k][i] = postgain * dsp::tanh(x[k][i] * pregain);
-                }
-            }
-            inFor(pregain_, k, i)
-            {
-                pregain_[k][i]  = pregain;
-                postgain_[k][i] = postgain;
-            }
+                auto x      = ctxt.getInput();
+                using ctxtT = decltype(x);
+
+                auto saturation = saturation_.step(ctxt);
+                auto pregain    = dsp::db2gain(saturation);
+                auto postgain   = dsp::db2gain(
+                    -ctxtT(saturation) /
+                    dsp::blend(saturation > 0.f, ctxtT(2.), ctxtT(1.)));
+                x = postgain_ * dsp::fasttanh(x * pregain_);
+                ctxt.setOutput(x);
+
+                ctxt.store(*savePregain, pregain);
+                ctxt.store(*savePostgain, postgain);
+                lastIncrSize = decltype(ctxt)::kIncrSize;
+            };
+            pregain_  = savePregain[lastIncrSize - 1];
+            postgain_ = savePostgain[lastIncrSize - 1];
+            saturation_.reset();
         } else {
-            contextFor(ctxt.vec())
+            CTXTRUNVEC(ctxt)
             {
-                auto &x = c.getSignal();
-                inFor(x, k, i)
-                {
-                    x[k][i] *= pregain_[k][i];
-                    x[k][i] = dsp::tanh(x[k][i]);
-                    x[k][i] *= postgain_[k][i];
-                }
-            }
+                auto x = ctxt.getInput();
+                x      = postgain_ * dsp::fasttanh(x * pregain_);
+                ctxt.setOutput(x);
+            };
         }
 
         auto mode = mode_;
-        contextFor(ctxt)
+        CTXTRUNVEC(ctxt)
         {
-            auto &loop = c.getSignal();
-            decltype(c)::Type xin;
+            constexpr auto kIncrSize = decltype(ctxt)::kIncrSize;
+            auto loop                = ctxt.getInput();
+            mtype xin[kIncrSize];
 
-            inFor(xin, k, i) { xin[k][i] = *localin[i]++; }
+            for (size_t j = 0; j < kIncrSize; ++j)
+                for (size_t i = 0; i < kN; ++i) xin[j][i] = *localin[i]++;
 
-            dry_.step();
-            wet_.step();
-            auto dry = dry_.get();
-            auto wet = wet_.get();
-            inFor(xin, k, i)
-            {
-                *localout[i]++ = xin[k][i] * dry[k][i] + loop[k][i] * wet[k][i];
-            }
+            auto dry = dry_.step(ctxt);
+            auto wet = wet_.step(ctxt);
 
-            feedbackCompensated_.step();
-            auto feedback = feedbackCompensated_.get();
-            decltype(c)::Type inloop;
+            mtype xout[kIncrSize];
+            ctxt.store(xout[0], ctxt.load(xin[0]) * dry + loop * wet);
+            for (size_t j = 0; j < kIncrSize; ++j)
+                for (size_t i = 0; i < kN; ++i) *localout[i]++ = xout[j][i];
+
+            auto feedback = feedbackCompensated_.step(ctxt);
 
             if (mode == kReverse) {
-                delayline_.write(c, xin);
-                inFor(xin, k, i) { inloop[k][i] = loop[k][i] * feedback[k][i]; }
-                delaylineReverse_.write(c, inloop);
+                delayline_.write(ctxt, ctxt.load(xin[0]));
+                auto inloop = loop * feedback;
+                delaylineReverse_.write(ctxt, inloop);
             } else {
-                inFor(xin, k, i)
-                {
-                    inloop[k][i] = xin[k][i] + loop[k][i] * feedback[k][i];
-                }
-                delayline_.write(c, inloop);
+                auto inloop = ctxt.load(xin[0]) + loop * feedback;
+                delayline_.write(ctxt, inloop);
             }
-        }
-        buffer_.setLimits();
+        };
         buffer_.nextBlock(ctxt);
 
         count -= blockSize;
@@ -374,14 +370,5 @@ void TapeDelay::process(const float *const *__restrict in,
     wet_.reset();
     feedbackCompensated_.reset();
     speedMod_.reset();
-    if (saturation_.isActive()) {
-        saturation_.reset();
-        inFor(pregain_, k, i)
-        {
-            auto vecSize    = pregain_.size();
-            pregain_[k][i]  = pregain_[vecSize - 1][i];
-            postgain_[k][i] = postgain_[vecSize - 1][i];
-        }
-    }
 }
 } // namespace processors
