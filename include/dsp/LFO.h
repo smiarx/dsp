@@ -96,7 +96,7 @@ template <typename T> class Parabolic
         auto x        = load(phase_);
         auto xHalf    = x >> (kQ / 2);      // Shift to Q15
         auto xAbsHalf = abs(x) >> (kQ / 2); // Shift to Q15
-        auto iy       = 2 * x - xHalf * xAbsHalf;
+        auto iy       = (x << 1) - xHalf * xAbsHalf;
 
         phase_ += load(freq_);
         auto y = toFloat<baseType<T>>(iy) / kUnity;
