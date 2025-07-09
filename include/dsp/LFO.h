@@ -1,9 +1,7 @@
 #pragma once
 
 #include "FastMath.h"
-#include "Signal.h"
 #include <cassert>
-#include <cmath>
 
 namespace dsp::lfo
 {

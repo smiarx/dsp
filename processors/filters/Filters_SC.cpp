@@ -1,5 +1,4 @@
 #include "dsp/Context.h"
-#include "dsp/Signal.h"
 #include "dsp/VAFilters.h"
 #include <SC_InterfaceTable.h>
 #include <SC_PlugIn.h> // NOLINT
