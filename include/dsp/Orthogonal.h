@@ -40,11 +40,13 @@ template <typename T, size_t H = kTypeWidth<T>> auto hadamardBase(T x)
 
         // reverse signs
         constexpr auto kSignMask = floatMask<baseType<T>>::kSign;
-        MultiVal<baseType<T>, kN> mask;
+        using maskInt            = decltype(kSignMask.i);
+        alignas(sizeof(maskInt) * kN) maskInt mask[kN]{};
         for (size_t i = 0; i < kN; ++i) {
-            mask[i] = i & kH2 ? kSignMask.f : 0;
+            if (i & kH2) mask[i] = kSignMask.i;
         }
-        auto xNeg = load(mask) ^ load(x);
+        auto vmask = MultiVal<baseType<T>, kN>::load((baseType<T> *)mask);
+        auto xNeg  = vmask ^ load(x);
 
         auto y = xNeg + xFlip;
         return hadamardBase<T, kH2>(y);

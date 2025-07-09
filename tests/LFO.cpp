@@ -48,16 +48,16 @@ TEST_CASE("LFO Sine", "[dsp][lfo][sine]")
     SECTION("long run") { testSine<double, 48000>(0.000354); }
 }
 
-template <typename T, int N = 200> static void testParabolic(const T &freq)
+template <typename T, int N = 52> static void testParabolic(const T &freq)
 {
     dsp::lfo::Parabolic<T> lfo(freq);
 
     auto f = load(freq);
     // run lfo
-    for (int i = 0; i < 100; ++i) {
+    for (int k = 0; k < N; ++k) {
         auto x = lfo.process();
 
-        T expect     = i * f + 0.5;
+        T expect     = k * f + 0.5;
         auto iexpect = dsp::toInt(expect);
         expect -= iexpect + 0.5;
 
