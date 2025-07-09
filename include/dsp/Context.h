@@ -22,6 +22,7 @@ template <typename T, bool Vec = false> class Context
     using SigType = std::conditional_t<Vec, decltype(loadfuncs::loadBatch(T{})),
                                        decltype(loadfuncs::load(T{}))>;
 
+    void load(T &&) const { static_assert(false, "do not load rvalue"); }
     [[nodiscard]] auto load(const T &x) const
     {
         if constexpr (Vec) {
