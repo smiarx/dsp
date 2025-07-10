@@ -242,6 +242,15 @@ template <typename T, size_t N> struct simd {
         return def::bitXor(value_, other);
     }
 
+    always_inline simd vectorcall operator<<(int shift) const noexcept
+    {
+        return def::bitShiftLeft(value_, shift);
+    }
+    always_inline simd vectorcall operator>>(int shift) const noexcept
+    {
+        return def::bitShiftRight(value_, shift);
+    }
+
     always_inline simd vectorcall operator-() const noexcept
     {
         return def::neg(value_);

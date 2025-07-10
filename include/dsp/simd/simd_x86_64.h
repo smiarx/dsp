@@ -79,6 +79,9 @@ template <> struct intrin<int32_t, 4> {
         return bitAndNot(x, _mm_set_epi32(-1, -1, -1, -1));
     }
 
+    static constexpr auto bitShiftLeft  = _mm_slli_epi32;
+    static constexpr auto bitShiftRight = _mm_srai_epi32;
+
 #if defined(__SSE4_1__)
     static constexpr auto max = _mm_max_epi32;
     static constexpr auto min = _mm_min_epi32;
@@ -498,6 +501,16 @@ template <> struct intrin<int, 2> {
     {
         return base::max(x1, x2);
     }
+
+    static always_inline type vectorcall bitShiftLeft(type x1, int shift)
+    {
+        return base::bitShiftLeft(x1, shift);
+    }
+    static always_inline type vectorcall bitShiftRight(type x1, int shift)
+    {
+        return base::bitShiftRight(x1, shift);
+    }
+
     static always_inline type vectorcall min(type x1, type x2)
     {
         return base::min(x1, x2);
@@ -723,6 +736,9 @@ template <> struct intrin<int32_t, 8> {
     {
         return bitXor(init(basetype(0)), x);
     }
+    static constexpr auto bitShiftLeft  = _mm256_slli_epi32;
+    static constexpr auto bitShiftRight = _mm256_srai_epi32;
+
     static constexpr auto max = _mm256_max_epi32;
     static constexpr auto min = _mm256_min_epi32;
     static constexpr auto abs = _mm256_abs_epi32;
