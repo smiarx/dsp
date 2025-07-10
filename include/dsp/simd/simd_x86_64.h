@@ -734,7 +734,7 @@ template <> struct intrin<int32_t, 8> {
     static constexpr auto bitXor = _mm256_xor_si256;
     static always_inline type vectorcall bitNeg(type x)
     {
-        return bitXor(init(basetype(0)), x);
+        return bitXor(init(basetype(-1)), x);
     }
     static constexpr auto bitShiftLeft  = _mm256_slli_epi32;
     static constexpr auto bitShiftRight = _mm256_srai_epi32;
@@ -804,7 +804,7 @@ template <> struct intrin<int32_t, 8> {
     static constexpr auto any = _mm256_movemask_epi8;
     static always_inline bool vectorcall all(masktype m)
     {
-        return _mm256_testz_si256(m, m);
+        return any(m) == -1;
     }
 
     // convert
@@ -951,7 +951,7 @@ template <> struct intrin<float, 8> {
     static constexpr auto any = _mm256_movemask_ps;
     static always_inline bool vectorcall all(masktype m)
     {
-        return _mm256_testz_si256((__m256i)m, (__m256i)m);
+        return any(m) == 0x00ff;
     }
 
     // convert
@@ -1085,7 +1085,7 @@ template <> struct intrin<double, 4> {
     static constexpr auto any = _mm256_movemask_pd;
     static always_inline bool vectorcall all(masktype m)
     {
-        return _mm256_testz_si256((__m256i)m, (__m256i)m);
+        return any(m) == 0x000f;
     }
 
     // convert
