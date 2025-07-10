@@ -32,8 +32,16 @@ template <> struct intrin<float, 2> {
 
     static constexpr auto bitAnd = vand_u32;
     static constexpr auto bitOr  = vorr_u32;
-    static constexpr auto bitXor = veor_u32;
     static constexpr auto bitNeg = vmvn_u32;
+    static always_inline masktype vectorcall bitXor(masktype x, masktype y)
+    {
+        return veor_u32(x, y);
+    }
+    static always_inline type vectorcall bitXor(type x, type y)
+    {
+        return vreinterpret_f32_u32(
+            veor_u32(vreinterpret_u32_f32(x), vreinterpret_u32_f32(y)));
+    }
 
     static constexpr auto max = vmax_f32;
     static constexpr auto min = vmin_f32;
@@ -102,8 +110,17 @@ template <> struct intrin<float, 4> {
 
     static constexpr auto bitAnd = vandq_u32;
     static constexpr auto bitOr  = vorrq_u32;
-    static constexpr auto bitXor = veorq_u32;
     static constexpr auto bitNeg = vmvnq_u32;
+
+    static always_inline masktype vectorcall bitXor(masktype x, masktype y)
+    {
+        return veorq_u32(x, y);
+    }
+    static always_inline type vectorcall bitXor(type x, type y)
+    {
+        return vreinterpretq_f32_u32(
+            veorq_u32(vreinterpretq_u32_f32(x), vreinterpretq_u32_f32(y)));
+    }
 
     static constexpr auto max = vmaxq_f32;
     static constexpr auto min = vminq_f32;
@@ -190,7 +207,15 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto bitAnd = vandq_u64;
     static constexpr auto bitOr  = vorrq_u64;
-    static constexpr auto bitXor = veorq_u64;
+    static always_inline masktype vectorcall bitXor(masktype x, masktype y)
+    {
+        return veorq_u64(x, y);
+    }
+    static always_inline type vectorcall bitXor(type x, type y)
+    {
+        return vreinterpretq_f64_u64(
+            veorq_u64(vreinterpretq_u64_f64(x), vreinterpretq_u64_f64(y)));
+    }
     static always_inline auto vectorcall bitNeg(masktype x)
     {
         bitXor(vdupq_n_u64(0), x);
