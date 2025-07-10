@@ -26,6 +26,7 @@ set(test_sources
     LFO.cpp
     Noise.cpp
     Smoother.cpp
+    IIRFilter.cpp
     #RMS.cpp
     #LinAlg.cpp
     #Enveloppe.cpp

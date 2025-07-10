@@ -24,6 +24,11 @@ simd<T, N> always_inline operator-(T s, simd<T, N> x)
 {
     return simd<T, N>(s) - x;
 }
+template <typename T, size_t N>
+simd<T, N> always_inline operator/(T s, simd<T, N> x)
+{
+    return simd<T, N>(s) / x;
+}
 
 template <typename T> always_inline auto get(T x, [[maybe_unused]] size_t i)
 {
