@@ -354,7 +354,7 @@ void Springs::process(const float *const *__restrict in,
 
             // outout is last intermediary value
             for (size_t i = 0; i < N; ++i) {
-                x[0][i] = allpassIntermediary[i];
+                x[0][i] = allpassIntermediary[(kApChainSize - 1) * N + i];
             }
         }
         // save intermediary values
