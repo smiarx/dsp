@@ -17,8 +17,7 @@ TEST_CASE("Springs")
         springs.prepare(kSampleRate, kBlockSize);
         springs.update(0.5, 4500, 0.05, 2.3, 0.3, 0.4, 0.4, 1., 0.3,
                        kBlockSize);
-        springs.free();
-
         BENCHMARK("Springs") { springs.process(ins, ins, kBlockSize); };
+        springs.free();
     }
 }
