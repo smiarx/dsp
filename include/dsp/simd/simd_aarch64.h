@@ -317,6 +317,9 @@ template <> struct intrin<int32_t, 2> {
     }
     static always_inline auto vectorcall bitNeg(type x) { return vmvn_s32(x); }
 
+    static constexpr auto bitShiftLeft  = vshl_n_s32;
+    static constexpr auto bitShiftRight = vshr_n_s32;
+
     static constexpr auto max = vmax_s32;
     static constexpr auto min = vmin_s32;
 
@@ -411,6 +414,9 @@ template <> struct intrin<int32_t, 4> {
         return veorq_s32(x1, x2);
     }
     static always_inline auto vectorcall bitNeg(type x) { return vmvnq_s32(x); }
+
+    static constexpr auto bitShiftLeft  = vshlq_n_s32;
+    static constexpr auto bitShiftRight = vshrq_n_s32;
 
     static constexpr auto max = vmaxq_s32;
     static constexpr auto min = vminq_s32;

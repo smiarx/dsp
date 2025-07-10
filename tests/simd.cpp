@@ -208,6 +208,29 @@ template <typename T, size_t N> class TestSimd
             REQUIRE(!all(b > a));
         }
 
+        if constexpr (std::is_integral_v<T>) {
+            SECTION("Shift left")
+            {
+                auto slx = x << 5;
+                auto sly = y << 3;
+                loop(i)
+                {
+                    REQUIRE(slx[i] == (x[i] << 5));
+                    REQUIRE(sly[i] == (y[i] << 3));
+                }
+            }
+            SECTION("Shift Right")
+            {
+                auto slx = x >> 8;
+                auto sly = y >> 19;
+                loop(i)
+                {
+                    REQUIRE(slx[i] == (x[i] >> 8));
+                    REQUIRE(sly[i] == (y[i] >> 19));
+                }
+            }
+        }
+
         SECTION("store")
         {
             T data[16];
