@@ -48,7 +48,7 @@ template <class T, std::size_t MinSize> class Buffer
             store(data_[pos], val);
             // safely write vor vec read even when writing scalars
             if constexpr (Safe && !std::is_same_v<T, batch<T>>) {
-                if (static_cast<size_t>(pos) < batch<T>::kWidth) {
+                if (static_cast<size_t>(pos) < kVecOffset) {
                     store(data_[kBaseSize + pos], val);
                 }
             }
