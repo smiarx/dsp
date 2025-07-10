@@ -138,6 +138,7 @@ template <typename T, size_t N> struct simd {
     {
         return def::convert(value);
     }
+    static always_inline simd convert(simd<T, N> value) { return value; }
 
     static always_inline simd load(const T *data) { return def::load(data); }
     static always_inline simd loadu(const T *data) { return def::loadu(data); }

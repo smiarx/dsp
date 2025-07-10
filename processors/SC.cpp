@@ -1,7 +1,7 @@
 #include <SC_InterfaceTable.h>
 
 extern void loadTapeDelay();
-// extern void loadSprings();
+extern void loadSprings();
 extern void loadFilters();
 
 extern InterfaceTable *ft;
@@ -10,6 +10,6 @@ PluginLoad(Processors)
 {
     ft = inTable;
     loadTapeDelay();
-    // loadSprings();
+    loadSprings();
     loadFilters();
 }

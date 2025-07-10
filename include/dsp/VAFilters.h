@@ -135,16 +135,18 @@ template <typename T, FilterType FT = kLowPass> class SVF
     template <bool PreWarp = false> void setBandWidth(const T &bandwith)
     {
         static_assert(FT == kBandPass);
+        using bT = baseType<T>;
+
         auto gain = load(gain_);
         auto bw   = load(bandwith);
 
         if constexpr (PreWarp) {
-            auto freqbwm = gain * pow(2, -bw * 0.5);
-            auto freqbwp = gain * pow(2, bw * 0.5);
+            auto freqbwm = gain * pow(bT(2), -bw * 0.5);
+            auto freqbwp = gain * pow(bT(2), bw * 0.5);
             bw           = log(warpGain(freqbwp) / warpGain(freqbwm)) / log(2.);
         }
 
-        auto res = pow(2, bw * 0.5) - pow(2, -bw * 0.5) * 0.5;
+        auto res = pow(bT(2), bw * 0.5) - pow(bT(2), -bw * 0.5) * 0.5;
         setRes(res);
     }
 
