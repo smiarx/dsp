@@ -174,7 +174,11 @@ always_inline simd<T, N> pow(simd<T, N> x, simd<T, N> y)
 }
 template <typename T, size_t N> always_inline simd<T, N> pow(simd<T, N> x, T y)
 {
-    return x.map(std::pow, simd<T, N>::init(y));
+    return x.map(std::pow, simd<T, N>(y));
+}
+template <typename T, size_t N> always_inline simd<T, N> pow(T x, simd<T, N> y)
+{
+    return simd<T, N>(x).map(std::pow, y);
 }
 
 /////////////////// Trig ///////////////////////////

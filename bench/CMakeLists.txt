@@ -6,8 +6,8 @@ set(bench_sources
     VAFilters.cpp
     TapeDelay.cpp
     ../processors/tapedelay/TapeDelay.cpp
-    #Springs.cpp
-    #../processors/springs/Springs.cpp
+    Springs.cpp
+    ../processors/springs/Springs.cpp
 )
 
 add_executable(bench ${bench_sources})

@@ -27,7 +27,8 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
         for (auto &v : *this) v = static_cast<T>(value);
     }
     template <typename... E>
-    constexpr MultiVal(E &&...e) : std::array<T, N>{{std::forward<T>(e)...}}
+    constexpr MultiVal(E &&...e) :
+        std::array<T, N>{{std::forward<const T>(e)...}}
     {
     }
 

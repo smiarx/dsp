@@ -117,7 +117,7 @@ template <typename T> class SmootherLin
 
     void set(const T &target, int count)
     {
-        step_  = (target - value_) / count;
+        step_  = (load(target) - value_) / count;
         count_ = count;
     }
 
