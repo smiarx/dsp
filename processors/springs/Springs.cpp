@@ -12,7 +12,8 @@
 namespace processors
 {
 // multirate converter
-const Springs::MR Springs::kMultirate{};
+const Springs::MRD Springs::kDecimate{};
+const Springs::MRI Springs::kInterpolate{};
 
 void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
@@ -214,33 +215,39 @@ void Springs::process(const float *const *__restrict in,
 
         blockSize = std::min(count, blockSize);
 
-        auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
+        auto ctxtIn =
+            dsp::BufferContext(reinterpret_cast<float *>(x_) + (blockSize * 3),
+                               blockSize, buffer_);
+        auto ctxtOut = dsp::Context(x_, blockSize);
         auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
 
-        CTXTRUN(ctxt)
+        CTXTRUN(ctxtIn)
         {
             auto mix = (*(inl++) + *(inr++)) * 0.5f;
-            ctxt.setOutput(mix);
+            ctxtIn.setOutput(mix);
         };
 
 #ifdef SPRINGS_SHAKE
         // shake springs
-        for (int n = 0; n < ctxt.getBlockSize(); ++n, ctxt.next()) {
-            auto x = ctxt.getInput();
-            if (shakeEnv_.isRunning()) {
-                auto env   = shakeEnv_.process();
-                auto noise = shakeNoise_.process();
-                auto shake = env * noise;
-                x += decltype(x)::convert(shake);
-                ctxt.setOutput(x);
-            } else {
-                break;
+        {
+            auto ctxt = ctxtIn;
+            for (int n = 0; n < ctxt.getBlockSize(); ++n, ctxt.next()) {
+                auto x = ctxt.getInput();
+                if (shakeEnv_.isRunning()) {
+                    auto env   = shakeEnv_.process();
+                    auto noise = shakeNoise_.process();
+                    auto shake = env * noise;
+                    x += shake;
+                    ctxt.setOutput(x);
+                } else {
+                    break;
+                }
             }
         }
 #endif
 
-        kMultirate.decimate(rateFactor_, ctxt, ctxtdec, dldecimate_,
-                            decimateId_);
+        kDecimate.decimate(rateFactor_, ctxtIn, ctxtdec, dldecimate_,
+                           decimateId_);
 
         CTXTRUN(ctxtdec)
         {
@@ -322,22 +329,22 @@ void Springs::process(const float *const *__restrict in,
 
         CTXTRUN(ctxtdec) { lowpass_.process(ctxtdec, lowpassState_); };
 
-        decimateId_ = kMultirate.interpolate(rateFactor_, ctxtdec, ctxt,
-                                             dlinterpolate_, decimateId_);
+        decimateId_ = kInterpolate.interpolate(rateFactor_, ctxtdec, ctxtOut,
+                                               dlinterpolate_, decimateId_);
 
-        CTXTRUN(ctxt)
+        CTXTRUN(ctxtOut)
         {
-            auto x   = ctxt.getInput();
+            auto x   = ctxtOut.getInput();
             auto mix = dsp::reduce<kN / 2>(x);
 
             mix *= 2.f / kN;
 
             float wetsig[2];
-            auto wet  = wet_.step(ctxt);
+            auto wet  = wet_.step(ctxtOut);
             wetsig[0] = dsp::sum(wet * mix);
             wetsig[1] = dsp::sum(wet * dsp::flip<1>(mix));
 
-            auto dry = dry_.step(ctxt);
+            auto dry = dry_.step(ctxtOut);
             *outl    = *inl2 * dry + wetsig[0];
             *outr    = *inr2 * dry + wetsig[1];
             ++outl, ++inl2;
@@ -345,10 +352,10 @@ void Springs::process(const float *const *__restrict in,
         };
 
 #ifdef SPRINGS_RMS
-        rms_.processBlock(ctxt, rmsStack_);
+        rms_.processBlock(ctxtOut, rmsStack_);
 #endif
 
-        buffer_.nextBlock(ctxt);
+        buffer_.nextBlock(ctxtOut);
         bufferDec_.nextBlock(ctxtdec);
 
         count -= blockSize;

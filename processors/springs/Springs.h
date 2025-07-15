@@ -155,15 +155,16 @@ class Springs
     typename decltype(dcblocker_)::State dcblockerState_{};
 
     /* decimate and interpolate memory lines */
-    using MR = dsp::MultiRate<mtype, 15, kMaxDecimate>;
-    static const MR kMultirate;
-    MR::DLDecimate<0> dldecimate_;
-    MR::DLInterpolate<0> dlinterpolate_;
+    using MRD = dsp::MultiRateDecimate<float, 15, kMaxDecimate>;
+    using MRI = dsp::MultiRateInterpolate<mtype, 15, kMaxDecimate>;
+    static const MRD kDecimate;
+    static const MRI kInterpolate;
+    MRD::DLDecimate<0> dldecimate_;
+    MRI::DLInterpolate<0> dlinterpolate_;
     int decimateId_{0};
 
     static constexpr auto kBufSize = nextTo(dldecimate_) + kMaxBlockSize;
-
-    dsp::Buffer<mtype, kBufSize> buffer_;
+    dsp::Buffer<type, kBufSize> buffer_;
 
     dsp::DelayLine<kLoopLength / 2, nextTo(dlinterpolate_)> predelaydl_;
     dsp::TapNoInterp<mtype> predelay_;
@@ -244,17 +245,17 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
         sizeof(mtype) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
 
     // set buffers
-#define allocateBuffer(buffer)                                         \
+#define allocateBuffer(buffer, type)                                   \
     {                                                                  \
         auto *b             = buffer.getData();                        \
         constexpr auto size = sizeof(mtype) * decltype(buffer)::kSize; \
-        b                   = (mtype *)realloc(b, size);               \
+        b                   = (type *)realloc(b, size);                \
         memset(b, 0, size);                                            \
         buffer.setData(b);                                             \
     }
 
-    allocateBuffer(buffer_);
-    allocateBuffer(bufferDec_);
+    allocateBuffer(buffer_, float);
+    allocateBuffer(bufferDec_, mtype);
 
 #undef allocateBuffer
 }
