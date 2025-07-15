@@ -110,11 +110,80 @@ template <class Ctxt> class ContextRun
     Ctxt ctxt_;
 };
 
+template <bool Rev, class Ctxt1, class Ctxt2> class ContextRun2
+{
+  public:
+    ContextRun2(Ctxt1 ctxt1, Ctxt2 ctxt2) :
+        ctxt1_(std::move(ctxt1)), ctxt2_(std::move(ctxt2))
+    {
+    }
+
+    template <typename Func>
+    ContextRun2(Ctxt1 ctxt1, Ctxt2 ctxt2, Func func) :
+        ContextRun2(std::move(ctxt1), std::move(ctxt2))
+    {
+        run(func);
+    }
+
+    template <typename Func> void run(Func func)
+    {
+        static_assert(Ctxt1::kUseVec == Ctxt2::kUseVec);
+        assert(ctxt1_.getBlockSize() == ctxt2_.getBlockSize());
+
+        auto n                   = 0;
+        constexpr int kIncrSize  = Ctxt1::kIncrSize;
+        constexpr auto kNextStep = Rev ? -kIncrSize : kIncrSize;
+
+        if constexpr (Rev) {
+            ctxt1_.next(ctxt1_.getBlockSize() - kIncrSize);
+            ctxt2_.next(ctxt2_.getBlockSize() - kIncrSize);
+        }
+
+        for (; n < ctxt1_.getBlockSize() - kIncrSize + 1;
+             n += kIncrSize, ctxt1_.next(kNextStep), ctxt2_.next(kNextStep)) {
+            func(ctxt1_, ctxt2_);
+        }
+
+        if constexpr (Ctxt1::kUseVec) {
+            auto ctxt1Scal = ctxt1_.scalar();
+            auto ctxt2Scal = ctxt2_.scalar();
+
+            constexpr auto kNextStep = Rev ? -1 : 1;
+
+            for (; n < ctxt1Scal.getBlockSize();
+                 n += 1, ctxt1Scal.next(kNextStep), ctxt2Scal.next(kNextStep)) {
+                func(ctxt1Scal, ctxt2Scal);
+            }
+        }
+    }
+
+    template <typename Func> ContextRun2 &operator=(Func func)
+    {
+        run(func);
+        return *this;
+    }
+
+    explicit operator bool() { return true; }
+
+  private:
+    Ctxt1 ctxt1_;
+    Ctxt2 ctxt2_;
+};
+
 #define CTXTRUN(ctxt) \
     if (dsp::ContextRun contextRun{ctxt}) contextRun = [&](auto ctxt)
 #define CTXTRUNVEC(ctxt)                           \
     if (dsp::ContextRun contextRunVec{ctxt.vec()}) \
     contextRunVec = [&](auto ctxt)
+
+#define CTXTRUN2(ctxt1, ctxt2)                                                \
+    if (dsp::ContextRun2<false, decltype(ctxt1), decltype(ctxt2)> contextRun{ \
+            ctxt1, ctxt2})                                                    \
+    contextRun = [&](auto ctxt1, auto ctxt2)
+#define CTXTRUNREV2(ctxt1, ctxt2)                                            \
+    if (dsp::ContextRun2<true, decltype(ctxt1), decltype(ctxt2)> contextRun{ \
+            ctxt1, ctxt2})                                                   \
+    contextRun = [&](auto ctxt1, auto ctxt2)
 
 #define PROCESSBLOCK_                                \
     template <class Ctxt, class State>               \
