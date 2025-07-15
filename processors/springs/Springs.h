@@ -131,7 +131,7 @@ class Springs
     type scatter_{1.f};
 
     dsp::ControlSmoother<type> dry_{1.f};
-    dsp::ControlSmoother<dsp::mfloat<2>> wet_{};
+    dsp::ControlSmoother<dsp::mfloat<2>> wet_{{1, 0}};
 
     static constexpr type kMinScatter = 0.1;
     [[nodiscard]] auto getScatterFactor() const
@@ -156,17 +156,20 @@ class Springs
 
     /* decimate and interpolate memory lines */
     using MRD = dsp::MultiRateDecimate<float, 15, kMaxDecimate>;
-    using MRI = dsp::MultiRateInterpolate<mtype, 15, kMaxDecimate>;
+    using MRI = dsp::MultiRateInterpolate<dsp::mfloat<2>, 15, kMaxDecimate>;
     static const MRD kDecimate;
     static const MRI kInterpolate;
     MRD::DLDecimate<0> dldecimate_;
     MRI::DLInterpolate<0> dlinterpolate_;
     int decimateId_{0};
 
-    static constexpr auto kBufSize = nextTo(dldecimate_) + kMaxBlockSize;
-    dsp::Buffer<type, kBufSize> buffer_;
+    static constexpr auto kInBufSize = nextTo(dldecimate_) + kMaxBlockSize;
+    dsp::Buffer<type, kInBufSize> bufferIn_;
 
-    dsp::DelayLine<kLoopLength / 2, nextTo(dlinterpolate_)> predelaydl_;
+    static constexpr auto kOutBufSize = nextTo(dlinterpolate_) + kMaxBlockSize;
+    dsp::Buffer<dsp::mfloat<2>, kInBufSize> bufferOut_;
+
+    dsp::DelayLine<kLoopLength / 2> predelaydl_;
     dsp::TapNoInterp<mtype> predelay_;
 
     type loopGain_{};
@@ -187,7 +190,6 @@ class Springs
     dsp::Buffer<mtype, kBufDecSize> bufferDec_;
 
     mtype *x_{};
-    mtype *xdecimate_{};
 
 // section for rms output of springs
 #ifdef SPRINGS_RMS
@@ -238,12 +240,8 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     loopMod_.setFreq(freq);
 
     // alloc ressources
-    x_         = (mtype *)realloc(x_,
-                                  sizeof(mtype) * static_cast<size_t>(maxBlockSize_));
-    xdecimate_ = (mtype *)realloc(
-        xdecimate_,
-        sizeof(mtype) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
-
+    x_ = (mtype *)realloc(x_,
+                          sizeof(mtype) * static_cast<size_t>(maxBlockSize_));
     // set buffers
 #define allocateBuffer(buffer, type)                                   \
     {                                                                  \
@@ -254,7 +252,8 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
         buffer.setData(b);                                             \
     }
 
-    allocateBuffer(buffer_, float);
+    allocateBuffer(bufferIn_, float);
+    allocateBuffer(bufferOut_, dsp::mfloat<2>);
     allocateBuffer(bufferDec_, mtype);
 
 #undef allocateBuffer
@@ -264,11 +263,12 @@ template <class Free> void Springs::free(Free free)
 {
     free(x_);
     x_ = nullptr;
-    free(xdecimate_);
-    xdecimate_ = nullptr;
 
-    free(buffer_.getData());
-    buffer_.setData(nullptr);
+    free(bufferIn_.getData());
+    bufferIn_.setData(nullptr);
+
+    free(bufferOut_.getData());
+    bufferOut_.setData(nullptr);
 
     free(bufferDec_.getData());
     bufferDec_.setData(nullptr);
