@@ -28,8 +28,7 @@ set(test_sources
     Smoother.cpp
     IIRFilter.cpp
     Enveloppe.cpp
-    #RMS.cpp
-    #LinAlg.cpp
+    RMS.cpp
 )
 
 add_executable(tests ${test_sources})
