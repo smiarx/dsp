@@ -71,6 +71,50 @@ struct alignas(sizeof(T) * N) MultiVal : public std::array<T, N> {
     }
 
     // operators
+    always_inline MultiVal &operator*=(MultiVal other)
+    {
+        store(load() * other.load());
+        return *this;
+    }
+
+    always_inline MultiVal &operator+=(MultiVal other)
+    {
+        store(load() + other.load());
+        return *this;
+    }
+
+    always_inline MultiVal &operator-=(MultiVal other)
+    {
+        store(load() - other.load());
+        return *this;
+    }
+
+    always_inline MultiVal &operator/=(MultiVal other)
+    {
+        store(load() / other.load());
+        return *this;
+    }
+
+    always_inline auto operator*(MultiVal other) const
+    {
+        return load() * other.load();
+    }
+
+    always_inline auto operator+(MultiVal other) const
+    {
+        return load() + other.load();
+    }
+
+    always_inline auto operator-(MultiVal other) const
+    {
+        return load() - other.load();
+    }
+
+    always_inline auto operator/(MultiVal other) const
+    {
+        return load() / other.load();
+    }
+
     template <typename T2, size_t N2>
     always_inline MultiVal &operator*=(simd<T2, N2> other)
     {

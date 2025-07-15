@@ -106,8 +106,8 @@ template <typename T> always_inline T blend(bool b, T x, T y)
 {
     return b ? x : y;
 }
-template <typename T, size_t N>
-always_inline auto blend(simdmask<T, N> m, simd<T, N> x, simd<T, N> y)
+template <typename T1, typename T2, size_t N>
+always_inline auto blend(simdmask<T1, N> m, simd<T2, N> x, simd<T2, N> y)
 {
     return m.blend(x, y);
 }
@@ -153,6 +153,16 @@ template <typename T> always_inline T sqrt(T x) { return std::sqrt(x); }
 template <typename T, size_t N> always_inline simd<T, N> sqrt(simd<T, N> x)
 {
     return x.sqrt();
+}
+
+////////////////////// signbit ////////////////////////
+template <typename T> always_inline auto signbit(T x)
+{
+    return std::signbit(x);
+}
+template <typename T, size_t N> always_inline auto signbit(simd<T, N> x)
+{
+    return x.signbit();
 }
 
 ////////////////////// pow ////////////////////////

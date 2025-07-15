@@ -88,6 +88,15 @@ template <typename T, size_t N> struct simdmask {
     {
         return def::blend(value_, x2, x1);
     }
+    template <typename T2>
+    always_inline simd<T2, N> vectorcall blend(simd<T2, N> x2, simd<T2, N> x1)
+    {
+        union {
+            masktype t1;
+            simdmask<T2, N> t2;
+        } value{value_};
+        return intrin<T2, N>::blend(value.t2, x2, x1);
+    }
 
   private:
     masktype value_;
@@ -319,6 +328,11 @@ template <typename T, size_t N> struct simd {
     always_inline simd vectorcall sqrt() const noexcept
     {
         return def::sqrt(value_);
+    }
+
+    always_inline mask vectorcall signbit() const noexcept
+    {
+        return def::signbit(value_);
     }
 
     always_inline basetype vectorcall sum() const noexcept

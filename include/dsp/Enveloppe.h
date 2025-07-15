@@ -1,12 +1,10 @@
 #pragma once
 
 #include "Context.h"
-#include "Signal.h"
-#include <cmath>
 
 namespace dsp
 {
-template <std::size_t N> class DoubleRamp
+template <typename T> class DoubleRamp
 {
   public:
     enum State {
@@ -15,54 +13,58 @@ template <std::size_t N> class DoubleRamp
         kDown,
     };
 
-    void set(fData<N> maxValue, fData<N> up, fData<N> down)
+    void set(const T &maxValue, const T &up, const T &down)
     {
-        arrayFor(maxValue, i)
-        {
-            target_[i]   = maxValue[i];
-            stepUp_[i]   = (maxValue[i] - value_[i]) / up[i];
-            stepDown_[i] = -maxValue[i] / down[i];
-            state_[i]    = kUp;
-        }
+        target_   = maxValue;
+        stepUp_   = (maxValue - value_) / up;
+        stepDown_ = (-load(maxValue)) / down;
+        state_    = kUp;
     }
 
-    bool isRunning()
-    {
-        bool running = false;
-        arrayFor(state_, i) { running |= (state_[i] != kOff); }
-        return running;
-    }
+    bool isRunning() { return !all(load(state_) == kOff); }
 
-    fSample<N> process()
+    auto process()
     {
-        fSample<N> x{};
+        auto value = load(value_);
 
-        arrayFor(x, i)
-        {
-            if (state_[i] == kUp) {
-                value_[i] += stepUp_[i];
-                if (std::abs(value_[i]) >= std::abs(target_[i])) {
-                    value_[i] = 2 * target_[i] - value_[i];
-                    state_[i] = kDown;
-                }
-            } else if (state_[i] == kDown) {
-                value_[i] += stepDown_[i];
-                if (std::signbit(value_[i]) ^ std::signbit(target_[i]) ||
-                    std::abs(value_[i]) < 1e-5f) {
-                    value_[i] = 0.f;
-                    state_[i] = kOff;
-                }
-            }
-            x[i] = value_[i];
+        if (isRunning()) {
+            auto target = load(target_);
+            auto state  = load(state_);
+
+            auto isStateUp   = state == kUp;
+            auto isStateDown = load(state_) == kDown;
+
+            // up part
+            auto valueUp = value + stepUp_;
+
+            auto greaterThanTarget = abs(valueUp) >= abs(target);
+            valueUp = blend(greaterThanTarget, target * 2 - valueUp, valueUp);
+            state   = blend(greaterThanTarget, load(intType<T>(kDown)), state);
+
+            value = blend(isStateUp, valueUp, value);
+
+            // down part
+            auto valueDown = value + stepDown_;
+
+            auto changedSign =
+                signbit(valueDown) ^ signbit(target) || abs(valueDown) < 1e-5;
+            valueDown = blend(changedSign, load(T(0)), valueDown);
+            state     = blend(changedSign, load(intType<T>(kOff)), state);
+
+            value = blend(isStateDown, valueDown, value);
+
+            value_ = value;
+            state_ = state;
         }
-        return x;
+
+        return value;
     }
 
   private:
-    fSample<N> value_{};
-    fData<N> target_{};
-    fData<N> stepUp_{};
-    fData<N> stepDown_{};
-    std::array<State, N> state_{};
+    T value_{};
+    T target_{};
+    T stepUp_{};
+    T stepDown_{};
+    intType<T> state_{};
 };
 } // namespace dsp

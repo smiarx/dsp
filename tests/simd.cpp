@@ -53,16 +53,14 @@ template <typename T, size_t N> class TestSimd
                 loop(i) { cmp(z[i], x[i] * y[i]); }
             }
         }
-        SECTION("div")
-        {
-            if constexpr (!std::is_integral_v<T>) {
+        if constexpr (!std::is_integral_v<T>) {
+            SECTION("div")
+            {
                 auto z = x / y;
                 loop(i) { cmp(z[i], x[i] / y[i]); }
             }
-        }
-        SECTION("sqrt")
-        {
-            if constexpr (!std::is_integral_v<T>) {
+            SECTION("sqrt")
+            {
                 auto z = sqrt(x);
                 loop(i)
                 {
@@ -71,6 +69,11 @@ template <typename T, size_t N> class TestSimd
                         cmp(z[i], sqrtx);
                     }
                 }
+            }
+            SECTION("signbit")
+            {
+                auto sb = x.signbit();
+                loop(i) { cmp(sb[i], std::signbit(x[i])); }
             }
         }
         SECTION("max")
