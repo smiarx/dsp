@@ -92,6 +92,12 @@ template <typename T, size_t N> struct intrin {
         loop(i) x[i] = std::sqrt(x[i]);
         return x;
     }
+    static always_inline masktype signbit(type x)
+    {
+        masktype sb;
+        loop(i) sb[i] = std::signbit(x[i]);
+        return sb;
+    }
 
     static always_inline masktype bitAnd(masktype x1, masktype x2)
     {
@@ -227,6 +233,7 @@ template <typename T> struct intrin<T, 1> {
         return x1 / x2;
     }
     static always_inline type sqrt(type x) { return std::sqrt(x); }
+    static always_inline type signbit(type x) { return std::signbit(x); }
     static always_inline type vectorcall bitAnd(type x1, type x2)
     {
         return x1 & x2;

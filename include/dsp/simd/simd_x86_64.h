@@ -229,6 +229,11 @@ template <> struct intrin<float, 4> {
     static constexpr auto div  = _mm_div_ps;
     static constexpr auto sqrt = _mm_sqrt_ps;
 
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)_mm_srai_epi32((__m128i)x, 31);
+    }
+
     static constexpr auto bitAnd    = _mm_and_ps;
     static constexpr auto bitAndNot = _mm_andnot_ps;
     static constexpr auto bitOr     = _mm_or_ps;
@@ -367,6 +372,10 @@ template <> struct intrin<float, 2> {
         return base::div(x1, x2);
     }
     static always_inline type vectorcall sqrt(type x) { return base::sqrt(x); }
+    static always_inline type vectorcall signbit(type x)
+    {
+        return base::signbit(x);
+    }
     static always_inline type vectorcall bitAnd(type x1, type x2)
     {
         return base::bitAnd(x1, x2);
@@ -554,11 +563,11 @@ template <> struct intrin<int, 2> {
     }
     static always_inline auto vectorcall any(masktype m)
     {
-        return base::any(m);
+        return base::any(m) & 0x00ff;
     }
     static always_inline auto vectorcall all(masktype m)
     {
-        return (any(m) & 0x00ff) == 0x00ff;
+        return any(m) == 0x00ff;
     }
 
     // convert
@@ -590,9 +599,16 @@ template <> struct intrin<double, 2> {
     {
         return sub(init(basetype(0)), x);
     }
-    static constexpr auto mul       = _mm_mul_pd;
-    static constexpr auto div       = _mm_div_pd;
-    static constexpr auto sqrt      = _mm_sqrt_pd;
+    static constexpr auto mul  = _mm_mul_pd;
+    static constexpr auto div  = _mm_div_pd;
+    static constexpr auto sqrt = _mm_sqrt_pd;
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        auto shift = _mm_srai_epi32((__m128i)x, 31);
+        return (masktype)_mm_shuffle_epi32(shift, _MM_SHUFFLE(2, 2, 0, 0));
+    }
+
     static constexpr auto bitAnd    = _mm_and_pd;
     static constexpr auto bitAndNot = _mm_andnot_pd;
     static constexpr auto bitOr     = _mm_or_pd;
@@ -867,6 +883,11 @@ template <> struct intrin<float, 8> {
     static constexpr auto div  = _mm256_div_ps;
     static constexpr auto sqrt = _mm256_sqrt_ps;
 
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)_mm256_srai_epi32((__m256i)x, 31);
+    }
+
     static constexpr auto bitAnd = _mm256_and_ps;
     static constexpr auto bitOr  = _mm256_or_ps;
     static constexpr auto bitXor = _mm256_xor_ps;
@@ -1015,6 +1036,12 @@ template <> struct intrin<double, 4> {
     static constexpr auto mul  = _mm256_mul_pd;
     static constexpr auto div  = _mm256_div_pd;
     static constexpr auto sqrt = _mm256_sqrt_pd;
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        auto shift = _mm256_srai_epi32((__m256i)x, 31);
+        return (masktype)_mm256_shuffle_epi32(shift, _MM_SHUFFLE(2, 2, 0, 0));
+    }
 
     static constexpr auto bitAnd = _mm256_and_pd;
     static constexpr auto bitOr  = _mm256_or_pd;
