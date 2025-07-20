@@ -20,6 +20,8 @@
 
 namespace processors
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 class Springs
 {
@@ -66,8 +68,12 @@ class Springs
     // with y as intermediary values and z as final values
     // reducing the number of computation by 2
     // introduce a delay in chain of size APChainSize
-    static constexpr auto kApChainSize = DSP_MAX_VEC_SIZE / sizeof(type) / kN;
-    static constexpr auto kApCascadeL  = kCascadeL / kApChainSize;
+#ifndef SPRINGS_MAX_VEC_SIZE
+#define SPRINGS_MAX_VEC_SIZE DSP_MAX_VEC_SIZE
+#endif
+    static constexpr auto kApChainSize =
+        SPRINGS_MAX_VEC_SIZE / sizeof(type) / kN;
+    static constexpr auto kApCascadeL = kCascadeL / kApChainSize;
 
     Springs()
     {
@@ -273,4 +279,6 @@ template <class Free> void Springs::free(Free free)
     free(bufferDec_.getData());
     bufferDec_.setData(nullptr);
 }
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace processors

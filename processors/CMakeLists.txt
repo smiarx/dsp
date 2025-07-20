@@ -5,6 +5,10 @@ option(SUPERNOVA "Build plugins for supernova" OFF)
 set(SC_TARGET SCProcessors)
 
 add_library(${SC_TARGET} MODULE SC.cpp)
+target_link_libraries(${SC_TARGET}
+    PUBLIC dsp_include
+    PRIVATE dsp_compile_options
+)
 
 add_library(SuperCollider INTERFACE)
 target_include_directories(SuperCollider INTERFACE
@@ -21,6 +25,11 @@ target_link_libraries(${SC_TARGET}
 
 if (SUPERNOVA)
 add_library(${SC_TARGET}_supernova MODULE SC.cpp)
+target_link_libraries(${SC_TARGET}_supernova
+    PUBLIC dsp_include
+    PRIVATE dsp_compile_options
+)
+
 target_compile_definitions(${SC_TARGET}_supernova
     PUBLIC SUPERNOVA)
 

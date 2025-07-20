@@ -15,6 +15,8 @@
 
 namespace processors
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 class TapeDelay
 {
@@ -212,4 +214,5 @@ template <class Free> void TapeDelay::free(Free free)
     buffer_.setData(nullptr);
 }
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace processors
