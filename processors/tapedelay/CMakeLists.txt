@@ -6,6 +6,16 @@ set(tapedelay_sc_sources
 option(DSP_TAPEDELAY_SWITCH_INDICATOR
     "Compile Tapedelay with switch indicator functionality" OFF)
 
+# add avx2 version for dispatch
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    list(APPEND tapedelay_sources "avx2/TapeDelay.cpp")
+    if(MSVC)
+        set_source_files_properties(avx2/TapeDelay.cpp COMPILE_FLAGS "/arch:AVX2")
+    else()
+        set_source_files_properties(avx2/TapeDelay.cpp COMPILE_FLAGS "-mavx2 -mfma")
+    endif()
+endif()
+
 add_library(dsp_tapedelay_processor STATIC ${tapedelay_sources})
 set_property(TARGET dsp_tapedelay_processor PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(dsp_tapedelay_processor
@@ -21,14 +31,17 @@ if(DSP_TAPEDELAY_SWITCH_INDICATOR)
         PUBLIC TAPEDELAY_SWITCH_INDICATOR)
 endif()
 
-# add avx2 & fma to avx2 file
-if(MSVC)
-    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "/arch:AVX2")
-else()
-    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+if(BUILD_SC)
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    list(APPEND tapedelay_sc_sources "avx2/TapeDelay_SC.cpp")
+    # add avx2 & fma to avx2 file
+    if(MSVC)
+        set_source_files_properties(avx2/TapeDelay_SC.cpp DIRECTORY ../ PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    else()
+        set_source_files_properties(avx2/TapeDelay_SC.cpp DIRECTORY ../ PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+    endif()
 endif()
 
-if(BUILD_SC)
 target_sources(SCProcessors PRIVATE
     ${tapedelay_sc_sources})
 target_link_libraries(SCProcessors PRIVATE dsp_tapedelay_processor)

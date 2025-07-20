@@ -9,6 +9,8 @@
 
 namespace processors
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 TapeDelay::FadeLut TapeDelay::fadeLut;
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
@@ -371,4 +373,6 @@ void TapeDelay::process(const float *const *__restrict in,
     feedbackCompensated_.reset();
     speedMod_.reset();
 }
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace processors
