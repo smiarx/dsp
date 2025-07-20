@@ -254,8 +254,6 @@ template <typename T> class TapNoInterp
     template <class Ctxt, class DL>
     [[nodiscard]] auto read(Ctxt c, const DL &delayline) const
     {
-        using namespace loadfuncs;
-
         constexpr auto kWidth      = kTypeWidth<typename Ctxt::Type>;
         constexpr auto kDelayWidth = kTypeWidth<IntT>;
 
@@ -291,8 +289,6 @@ template <typename T> class TapLin : public TapNoInterp<T>
 
     void setDelay(const T &d)
     {
-        using namespace loadfuncs;
-
         IntT id;
         store(id, toInt(load(d)));
         store(fd_, load(d) - id);
@@ -312,8 +308,6 @@ template <typename T> class TapLin : public TapNoInterp<T>
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        using namespace loadfuncs;
-
         auto id = load(TapNoInterp<T>::id_);
 
         assert(all(id > 0 &&
@@ -341,8 +335,6 @@ template <typename T> class TapCubic : public TapLin<T>
 
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
-        using namespace loadfuncs;
-
         auto id = load(TapNoInterp<T>::id_);
         auto fd = load(TapLin<T>::fd_);
 

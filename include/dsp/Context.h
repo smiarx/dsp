@@ -19,25 +19,25 @@ template <typename T, bool Vec = false> class Context
     using BaseType = T;
     using Type     = std::conditional_t<Vec, batch<T>, T>;
     // input and output type
-    using SigType = std::conditional_t<Vec, decltype(loadfuncs::loadBatch(T{})),
-                                       decltype(loadfuncs::load(T{}))>;
+    using SigType = std::conditional_t<Vec, decltype(dsp::loadBatch(T{})),
+                                       decltype(dsp::load(T{}))>;
 
     void load(T &&) const { static_assert(false, "do not load rvalue"); }
     [[nodiscard]] auto load(const T &x) const
     {
         if constexpr (Vec) {
-            return loadfuncs::loadBatch(x);
+            return dsp::loadBatch(x);
         } else {
-            return loadfuncs::load(x);
+            return dsp::load(x);
         }
     }
 
     [[nodiscard]] auto store(T &dest, SigType val) const
     {
         if constexpr (Vec) {
-            return loadfuncs::storeBatch(dest, val);
+            return dsp::storeBatch(dest, val);
         } else {
-            return loadfuncs::store(dest, val);
+            return dsp::store(dest, val);
         }
     }
 
@@ -122,7 +122,5 @@ template <class Ctxt> class ContextRun
     {                                                \
         CTXTRUN(ctxt) { process(ctxt, state); };     \
     }
-
-using namespace loadfuncs;
 
 } // namespace dsp

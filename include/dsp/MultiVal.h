@@ -192,8 +192,6 @@ template <typename T> using batch = typename Batch<T>::type;
 
 //=============================================================
 
-namespace loadfuncs
-{
 template <typename T> auto *asBatch(T *ptr)
 {
     return reinterpret_cast<batch<T> *>(ptr);
@@ -227,7 +225,6 @@ template <typename T, typename V> void storeBatch(T &dest, V x)
 {
     batch<T>::storeu(asBatch(&dest), x);
 }
-} // namespace loadfuncs
 
 //=============================================================
 

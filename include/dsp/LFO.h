@@ -5,7 +5,6 @@
 
 namespace dsp::lfo
 {
-using namespace loadfuncs;
 
 template <typename T> class Sine
 {

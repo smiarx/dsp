@@ -27,7 +27,6 @@ template <typename T> class INoise
 
     auto process()
     {
-        using namespace loadfuncs;
         state_ = seed_ + state_ * iT::load(kGenerator);
         return load(state_);
     }

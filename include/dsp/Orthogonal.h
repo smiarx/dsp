@@ -24,7 +24,6 @@ template <typename T, size_t H = kTypeWidth<T>> auto hadamardBase(T x)
     // | 1 -1       ||    1     1 |  | 1 -1  1 -1 |
     // |       1  1 || 1    -1    | =| 1  1 -1 -1 |
     // |       1 -1 ||    1    -1 |  | 1 -1 -1  1 |
-    using namespace loadfuncs;
 
     /* compute hadamard transform of sample (without power normalization) */
     static constexpr auto kN = kTypeWidth<T>;
@@ -54,7 +53,6 @@ template <typename T, size_t H = kTypeWidth<T>> auto hadamardBase(T x)
 }
 template <typename T, size_t H = kTypeWidth<T>> auto hadamard(T x)
 {
-    using namespace loadfuncs;
     /* hadamard transform with power normalization */
 
     // first we multiply values by power normalization

@@ -7,7 +7,6 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <iostream>
 
-using namespace dsp::loadfuncs;
 using namespace Catch::Matchers;
 
 template <typename T, int N = 1000> static void testNoise()
@@ -15,7 +14,7 @@ template <typename T, int N = 1000> static void testNoise()
     using bt = dsp::baseType<T>;
     dsp::Noise<T> noise(3848230);
 
-    auto sum = load(T{});
+    auto sum = dsp::load(T{});
     auto var = sum;
     bt covar = 0;
     // run lfo

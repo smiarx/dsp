@@ -28,8 +28,6 @@ template <class T, std::size_t MinSize> class Buffer
     template <typename V, bool Vec = false, bool Safe = false>
     void write(int i, V val)
     {
-        using namespace loadfuncs;
-
         assert(data_ != nullptr);
         assert((0 <= i) && (i <= static_cast<int>(MinSize)));
 
@@ -61,8 +59,6 @@ template <class T, std::size_t MinSize> class Buffer
 
     template <bool Vec = false> [[nodiscard]] auto read(int i) const
     {
-        using namespace loadfuncs;
-
         assert(data_ != nullptr);
         assert((0 <= i) && (i <= static_cast<int>(MinSize)));
 
@@ -80,8 +76,6 @@ template <class T, std::size_t MinSize> class Buffer
     // prepare for next block given ctxt
     template <class Ctxt> void nextBlock(Ctxt ctxt, bool checkLimits = false)
     {
-        using namespace loadfuncs;
-
         nextId(ctxt.getBlockSize());
 
         if (checkLimits && static_cast<size_t>(id_) < batch<T>::kWidth)

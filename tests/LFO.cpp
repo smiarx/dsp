@@ -6,7 +6,6 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-using namespace dsp::loadfuncs;
 using namespace Catch::Matchers;
 
 template <typename T, int N = 200>
@@ -14,8 +13,8 @@ static void testSine(const T &freq, const T &phase = {})
 {
     dsp::lfo::Sine<T> lfo(freq, phase);
 
-    auto f = load(freq);
-    auto p = load(phase);
+    auto f = dsp::load(freq);
+    auto p = dsp::load(phase);
     // run lfo
     for (int i = 0; i < N - 100; ++i) {
         auto x = lfo.process();
@@ -52,7 +51,7 @@ template <typename T, int N = 52> static void testParabolic(const T &freq)
 {
     dsp::lfo::Parabolic<T> lfo(freq);
 
-    auto f = load(freq);
+    auto f = dsp::load(freq);
     // run lfo
     for (int k = 0; k < N; ++k) {
         auto x = lfo.process();

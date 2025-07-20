@@ -20,7 +20,7 @@ template <typename T, size_t Size> class Stack
         return y;
     }
 
-    [[nodiscard]] auto get() const { return loadfuncs::load(stack_[n_]); }
+    [[nodiscard]] auto get() const { return dsp::load(stack_[n_]); }
 
     [[nodiscard]] const T *getSamples() const { return stack_; }
     [[nodiscard]] const size_t *getPos() const { return &n_; }
