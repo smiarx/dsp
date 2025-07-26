@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "simd_aarch64.h"
+#include "simd_arm.h"
 #include "simd_default.h"
 #include "simd_x86_64.h"
 
