@@ -30,6 +30,11 @@ template <> struct intrin<float, 2> {
     static constexpr auto div    = vdiv_f32;
     static constexpr auto sqrt   = vsqrt_f32;
 
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshl_n_s32(vreinterpret_s32_f32(x), 31);
+    }
+
     static constexpr auto bitAnd = vand_u32;
     static constexpr auto bitOr  = vorr_u32;
     static constexpr auto bitNeg = vmvn_u32;
@@ -107,6 +112,11 @@ template <> struct intrin<float, 4> {
     static constexpr auto mul    = vmulq_f32;
     static constexpr auto div    = vdivq_f32;
     static constexpr auto sqrt   = vsqrtq_f32;
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshlq_n_s32(vreinterpretq_s32_f32(x), 31);
+    }
 
     static constexpr auto bitAnd = vandq_u32;
     static constexpr auto bitOr  = vorrq_u32;
@@ -204,6 +214,11 @@ template <> struct intrin<double, 2> {
     static constexpr auto mul    = vmulq_f64;
     static constexpr auto div    = vdivq_f64;
     static constexpr auto sqrt   = vsqrtq_f64;
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshlq_n_s64(vreinterpretq_s64_f64(x), 31);
+    }
 
     static constexpr auto bitAnd = vandq_u64;
     static constexpr auto bitOr  = vorrq_u64;
