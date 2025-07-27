@@ -241,13 +241,13 @@ template <typename T> constexpr auto kTypeWidth = TypeWidth<T>::kWidth;
 
 // int type
 template <typename T> struct IntType {
-    using type = int;
+    using type = int32_t;
 };
 template <typename T, size_t N> struct IntType<multi<T, N>> {
-    using type = multi<int, N>;
+    using type = multi<int32_t, N>;
 };
 template <typename T, size_t N> struct IntType<simd<T, N>> {
-    using type = simd<int, N>;
+    using type = simd<int32_t, N>;
 };
 template <typename T> using intType = typename IntType<T>::type;
 
@@ -274,8 +274,8 @@ using mfloat = multi<float, N>;
 template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(double)>
 using mdouble = multi<double, N>;
 
-template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(int)>
-using mint = multi<int, N>;
+template <size_t N = (size_t)DSP_MAX_VEC_SIZE / sizeof(int32_t)>
+using mint = multi<int32_t, N>;
 
 #if DSP_MAX_VEC_SIZE >= 16
 using mfloat2  = mfloat<2>;

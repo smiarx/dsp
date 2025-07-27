@@ -409,7 +409,7 @@ template <typename T, size_t N> struct simd {
 
     always_inline auto vectorcall toInt()
     {
-        return simd<int, N>::convert(*this);
+        return simd<int32_t, N>::convert(*this);
     }
     template <typename T2> always_inline auto vectorcall toFloat()
     {

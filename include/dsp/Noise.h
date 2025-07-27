@@ -9,10 +9,10 @@ namespace dsp
 
 template <typename T> class INoise
 {
-    using iT                          = multi<int, kTypeWidth<T>>;
-    static constexpr int kGenerator[] = {1296462733, 1487623987, 848278349,
-                                         1987647829, 1837654627, 963782763,
-                                         1492758273, 1746273223};
+    using iT                              = multi<int32_t, kTypeWidth<T>>;
+    static constexpr int32_t kGenerator[] = {1296462733, 1487623987, 848278349,
+                                             1987647829, 1837654627, 963782763,
+                                             1492758273, 1746273223};
 
   public:
     INoise() : INoise(std::random_device{}()) {}
