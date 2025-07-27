@@ -18,7 +18,9 @@ static constexpr std::size_t nextPow2(std::size_t size)
     size |= size >> 4;
     size |= size >> 8;
     size |= size >> 16;
-    size |= size >> 32;
+    if constexpr (sizeof(std::size_t) > 4) {
+        size |= size >> 32;
+    }
     size += 1;
     return size;
 }

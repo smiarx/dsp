@@ -246,7 +246,9 @@ template <typename T, size_t N> class TestSimd
 TEST_CASE("SIMD float 1", "[dsp][simd]") { TestSimd<float, 1>::run(); }
 TEST_CASE("SIMD float 4", "[dsp][simd]") { TestSimd<float, 4>::run(); }
 TEST_CASE("SIMD float 2", "[dsp][simd]") { TestSimd<float, 2>::run(); }
+#if DSP_SIMD_DOUBLE
 TEST_CASE("SIMD double 2", "[dsp][simd]") { TestSimd<double, 2>::run(); }
+#endif
 TEST_CASE("SIMD int32_t 2", "[dsp][simd]") { TestSimd<int32_t, 2>::run(); }
 TEST_CASE("SIMD int32_t 4", "[dsp][simd]") { TestSimd<int32_t, 4>::run(); }
 #if DSP_MAX_VEC_SIZE > 16
@@ -264,7 +266,9 @@ TEST_CASE("Convert", "[dsp][simd]")
     dsp::mint<2> xi2 = {432, -9249};
     dsp::mint<4> xi4 = {19238, -38432, 9383, -492334};
 
+#ifdef DSP_SIMD_DOUBLE
     dsp::mdouble<2> xd2 = {0.5948823, -40.3484834};
+#endif
 
 #if DSP_MAX_VEC_SIZE > 16
     dsp::mfloat<8> xf8  = {9394.233f,        0.4943f,        -12.39483f,
@@ -289,8 +293,10 @@ TEST_CASE("Convert", "[dsp][simd]")
         auto xi4f1 = static_cast<dsp::simd<float, 1>>(xi4);
         REQUIRE((xi4f1[0] == static_cast<float>(xi4[0])));
 
+#ifdef DSP_SIMD_DOUBLE
         auto xd2f1 = static_cast<dsp::simd<float, 1>>(xd2);
         REQUIRE((xd2f1[0] == static_cast<float>(xd2[0])));
+#endif
     }
 
     SECTION("as floatx2")
@@ -311,9 +317,11 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xi4f2[0] == xi4[0]));
         REQUIRE((xi4f2[1] == xi4[1]));
 
+#ifdef DSP_SIMD_DOUBLE
         auto xd2f2 = static_cast<dsp::simd<float, 2>>(xd2);
         REQUIRE((xd2f2[0] == static_cast<float>(xd2[0])));
         REQUIRE((xd2f2[1] == static_cast<float>(xd2[1])));
+#endif
     }
 
     SECTION("as floatx4")
@@ -342,11 +350,13 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xi4f4[2] == static_cast<float>(xi4[2])));
         REQUIRE((xi4f4[3] == static_cast<float>(xi4[3])));
 
+#ifdef DSP_SIMD_DOUBLE
         auto xd2f4 = static_cast<dsp::simd<float, 4>>(xd2);
         REQUIRE((xd2f4[0] == static_cast<float>(xd2[0])));
         REQUIRE((xd2f4[1] == static_cast<float>(xd2[1])));
         REQUIRE((xd2f4[2] == static_cast<float>(xd2[0])));
         REQUIRE((xd2f4[3] == static_cast<float>(xd2[1])));
+#endif
 
 #if DSP_MAX_VEC_SIZE > 16
         auto xf8f4 = static_cast<dsp::simd<float, 4>>(xf8);
@@ -387,9 +397,11 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xf4i2[0] == static_cast<int>(xf4[0])));
         REQUIRE((xf4i2[1] == static_cast<int>(xf4[1])));
 
+#ifdef DSP_SIMD_DOUBLE
         auto xd2i2 = static_cast<dsp::simd<int, 2>>(xd2);
         REQUIRE((xd2i2[0] == static_cast<int>(xd2[0])));
         REQUIRE((xd2i2[1] == static_cast<int>(xd2[1])));
+#endif
 
 #if DSP_MAX_VEC_SIZE > 16
         auto xi8i2 = static_cast<dsp::simd<int, 2>>(xi8);
@@ -432,11 +444,13 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xf4i4[2] == static_cast<int>(xf4[2])));
         REQUIRE((xf4i4[3] == static_cast<int>(xf4[3])));
 
+#ifdef DSP_SIMD_DOUBLE
         auto xd2i4 = static_cast<dsp::simd<int, 4>>(xd2);
         REQUIRE((xd2i4[0] == static_cast<int>(xd2[0])));
         REQUIRE((xd2i4[1] == static_cast<int>(xd2[1])));
         REQUIRE((xd2i4[2] == static_cast<int>(xd2[0])));
         REQUIRE((xd2i4[3] == static_cast<int>(xd2[1])));
+#endif
 
 #if DSP_VEC_SIZE > 4
         auto xi8i4 = static_cast<dsp::simd<int, 4>>(xi8);
@@ -459,6 +473,7 @@ TEST_CASE("Convert", "[dsp][simd]")
 #endif
     }
 
+#ifdef DSP_SIMD_DOUBLE
     SECTION("as doublex2")
     {
         auto xf1d2 = static_cast<dsp::simd<double, 2>>(xf1);
@@ -477,6 +492,7 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xi2d2[0] == static_cast<double>(xi2[0])));
         REQUIRE((xi2d2[1] == static_cast<double>(xi2[1])));
     }
+#endif
 
 #if DSP_VEC_SIZE > 4
 
@@ -675,7 +691,11 @@ TEST_CASE("basic example")
 {
     constexpr auto kEps = 1e-9;
     dsp::mfloat<4> x{2.3f, 4.3f, 9.4f, 3.4f};
+#ifdef DSP_SIMD_DOUBLE
     dsp::mdouble<2> y{1.4, 9.3};
+#else
+    dsp::mfloat<2> y{1.4, 9.3};
+#endif
     dsp::mint<4> z{3, 4, 5, 6};
 
     auto res = sqrt(x.load() + y) * z;
