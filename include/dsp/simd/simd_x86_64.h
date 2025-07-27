@@ -15,6 +15,8 @@
 #define DSP_MAX_VEC_SIZE 16
 #endif
 
+#define DSP_SIMD_DOUBLE
+
 namespace dsp
 {
 
