@@ -25,4 +25,11 @@ if(BUILD_SC)
 target_sources(SCProcessors PRIVATE
     ${tapedelay_sc_sources})
 target_link_libraries(SCProcessors PRIVATE dsp_tapedelay_processor)
+
+if (SUPERNOVA)
+target_sources(SCProcessors_supernova PRIVATE
+    ${tapedelay_sc_sources})
+target_link_libraries(SCProcessors_supernova PRIVATE dsp_tapedelay_processor)
+endif()
+
 endif()
