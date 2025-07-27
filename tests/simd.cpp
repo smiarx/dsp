@@ -381,95 +381,95 @@ TEST_CASE("Convert", "[dsp][simd]")
 
     SECTION("as intx2")
     {
-        auto xf1i2 = static_cast<dsp::simd<int, 2>>(xf1);
-        REQUIRE((xf1i2[0] == static_cast<int>(xf1[0])));
-        REQUIRE((xf1i2[1] == static_cast<int>(xf1[0])));
+        auto xf1i2 = static_cast<dsp::simd<int32_t, 2>>(xf1);
+        REQUIRE((xf1i2[0] == static_cast<int32_t>(xf1[0])));
+        REQUIRE((xf1i2[1] == static_cast<int32_t>(xf1[0])));
 
-        auto xf2i2 = static_cast<dsp::simd<int, 2>>(xf2);
-        REQUIRE((xf2i2[0] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i2[1] == static_cast<int>(xf2[1])));
+        auto xf2i2 = static_cast<dsp::simd<int32_t, 2>>(xf2);
+        REQUIRE((xf2i2[0] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i2[1] == static_cast<int32_t>(xf2[1])));
 
-        auto xi2i2 = static_cast<dsp::simd<int, 2>>(xi2);
-        REQUIRE((xi2i2[0] == static_cast<int>(xi2[0])));
-        REQUIRE((xi2i2[1] == static_cast<int>(xi2[1])));
+        auto xi2i2 = static_cast<dsp::simd<int32_t, 2>>(xi2);
+        REQUIRE((xi2i2[0] == static_cast<int32_t>(xi2[0])));
+        REQUIRE((xi2i2[1] == static_cast<int32_t>(xi2[1])));
 
-        auto xf4i2 = static_cast<dsp::simd<int, 2>>(xf4);
-        REQUIRE((xf4i2[0] == static_cast<int>(xf4[0])));
-        REQUIRE((xf4i2[1] == static_cast<int>(xf4[1])));
+        auto xf4i2 = static_cast<dsp::simd<int32_t, 2>>(xf4);
+        REQUIRE((xf4i2[0] == static_cast<int32_t>(xf4[0])));
+        REQUIRE((xf4i2[1] == static_cast<int32_t>(xf4[1])));
 
 #ifdef DSP_SIMD_DOUBLE
-        auto xd2i2 = static_cast<dsp::simd<int, 2>>(xd2);
-        REQUIRE((xd2i2[0] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i2[1] == static_cast<int>(xd2[1])));
+        auto xd2i2 = static_cast<dsp::simd<int32_t, 2>>(xd2);
+        REQUIRE((xd2i2[0] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i2[1] == static_cast<int32_t>(xd2[1])));
 #endif
 
 #if DSP_MAX_VEC_SIZE > 16
-        auto xi8i2 = static_cast<dsp::simd<int, 2>>(xi8);
+        auto xi8i2 = static_cast<dsp::simd<int32_t, 2>>(xi8);
         REQUIRE((xi8i2[0] == xi8[0]));
         REQUIRE((xi8i2[1] == xi8[1]));
 
-        auto xf8i2 = static_cast<dsp::simd<int, 2>>(xf8);
-        REQUIRE((xf8i2[0] == static_cast<int>(xf8[0])));
-        REQUIRE((xf8i2[1] == static_cast<int>(xf8[1])));
+        auto xf8i2 = static_cast<dsp::simd<int32_t, 2>>(xf8);
+        REQUIRE((xf8i2[0] == static_cast<int32_t>(xf8[0])));
+        REQUIRE((xf8i2[1] == static_cast<int32_t>(xf8[1])));
 
-        auto xd4i2 = static_cast<dsp::simd<int, 2>>(xd4);
-        REQUIRE((xd4i2[0] == static_cast<int>(xd4[0])));
-        REQUIRE((xd4i2[1] == static_cast<int>(xd4[1])));
+        auto xd4i2 = static_cast<dsp::simd<int32_t, 2>>(xd4);
+        REQUIRE((xd4i2[0] == static_cast<int32_t>(xd4[0])));
+        REQUIRE((xd4i2[1] == static_cast<int32_t>(xd4[1])));
 #endif
     }
 
     SECTION("as intx4")
     {
-        auto xf1i4 = static_cast<dsp::simd<int, 4>>(xf1);
-        REQUIRE((xf1i4[0] == static_cast<int>(xf1[0])));
-        REQUIRE((xf1i4[1] == static_cast<int>(xf1[0])));
-        REQUIRE((xf1i4[2] == static_cast<int>(xf1[0])));
-        REQUIRE((xf1i4[3] == static_cast<int>(xf1[0])));
+        auto xf1i4 = static_cast<dsp::simd<int32_t, 4>>(xf1);
+        REQUIRE((xf1i4[0] == static_cast<int32_t>(xf1[0])));
+        REQUIRE((xf1i4[1] == static_cast<int32_t>(xf1[0])));
+        REQUIRE((xf1i4[2] == static_cast<int32_t>(xf1[0])));
+        REQUIRE((xf1i4[3] == static_cast<int32_t>(xf1[0])));
 
-        auto xf2i4 = static_cast<dsp::simd<int, 4>>(xf2);
-        REQUIRE((xf2i4[0] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i4[1] == static_cast<int>(xf2[1])));
-        REQUIRE((xf2i4[2] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i4[3] == static_cast<int>(xf2[1])));
+        auto xf2i4 = static_cast<dsp::simd<int32_t, 4>>(xf2);
+        REQUIRE((xf2i4[0] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i4[1] == static_cast<int32_t>(xf2[1])));
+        REQUIRE((xf2i4[2] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i4[3] == static_cast<int32_t>(xf2[1])));
 
-        auto xi2i4 = static_cast<dsp::simd<int, 4>>(xi2);
-        REQUIRE((xi2i4[0] == static_cast<int>(xi2[0])));
-        REQUIRE((xi2i4[1] == static_cast<int>(xi2[1])));
-        REQUIRE((xi2i4[2] == static_cast<int>(xi2[0])));
-        REQUIRE((xi2i4[3] == static_cast<int>(xi2[1])));
+        auto xi2i4 = static_cast<dsp::simd<int32_t, 4>>(xi2);
+        REQUIRE((xi2i4[0] == static_cast<int32_t>(xi2[0])));
+        REQUIRE((xi2i4[1] == static_cast<int32_t>(xi2[1])));
+        REQUIRE((xi2i4[2] == static_cast<int32_t>(xi2[0])));
+        REQUIRE((xi2i4[3] == static_cast<int32_t>(xi2[1])));
 
-        auto xf4i4 = static_cast<dsp::simd<int, 4>>(xf4);
-        REQUIRE((xf4i4[0] == static_cast<int>(xf4[0])));
-        REQUIRE((xf4i4[1] == static_cast<int>(xf4[1])));
-        REQUIRE((xf4i4[2] == static_cast<int>(xf4[2])));
-        REQUIRE((xf4i4[3] == static_cast<int>(xf4[3])));
+        auto xf4i4 = static_cast<dsp::simd<int32_t, 4>>(xf4);
+        REQUIRE((xf4i4[0] == static_cast<int32_t>(xf4[0])));
+        REQUIRE((xf4i4[1] == static_cast<int32_t>(xf4[1])));
+        REQUIRE((xf4i4[2] == static_cast<int32_t>(xf4[2])));
+        REQUIRE((xf4i4[3] == static_cast<int32_t>(xf4[3])));
 
 #ifdef DSP_SIMD_DOUBLE
-        auto xd2i4 = static_cast<dsp::simd<int, 4>>(xd2);
-        REQUIRE((xd2i4[0] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i4[1] == static_cast<int>(xd2[1])));
-        REQUIRE((xd2i4[2] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i4[3] == static_cast<int>(xd2[1])));
+        auto xd2i4 = static_cast<dsp::simd<int32_t, 4>>(xd2);
+        REQUIRE((xd2i4[0] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i4[1] == static_cast<int32_t>(xd2[1])));
+        REQUIRE((xd2i4[2] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i4[3] == static_cast<int32_t>(xd2[1])));
 #endif
 
 #if DSP_VEC_SIZE > 4
-        auto xi8i4 = static_cast<dsp::simd<int, 4>>(xi8);
+        auto xi8i4 = static_cast<dsp::simd<int32_t, 4>>(xi8);
         REQUIRE((xi8i4[0] == xi8[0]));
         REQUIRE((xi8i4[1] == xi8[1]));
         REQUIRE((xi8i4[2] == xi8[2]));
         REQUIRE((xi8i4[3] == xi8[3]));
 
-        auto xf8i4 = static_cast<dsp::simd<int, 4>>(xf8);
-        REQUIRE((xf8i4[0] == static_cast<int>(xf8[0])));
-        REQUIRE((xf8i4[1] == static_cast<int>(xf8[1])));
-        REQUIRE((xf8i4[2] == static_cast<int>(xf8[2])));
-        REQUIRE((xf8i4[3] == static_cast<int>(xf8[3])));
+        auto xf8i4 = static_cast<dsp::simd<int32_t, 4>>(xf8);
+        REQUIRE((xf8i4[0] == static_cast<int32_t>(xf8[0])));
+        REQUIRE((xf8i4[1] == static_cast<int32_t>(xf8[1])));
+        REQUIRE((xf8i4[2] == static_cast<int32_t>(xf8[2])));
+        REQUIRE((xf8i4[3] == static_cast<int32_t>(xf8[3])));
 
-        auto xd4i4 = static_cast<dsp::simd<int, 4>>(xd4);
-        REQUIRE((xd4i4[0] == static_cast<int>(xd4[0])));
-        REQUIRE((xd4i4[1] == static_cast<int>(xd4[1])));
-        REQUIRE((xd4i4[2] == static_cast<int>(xd4[2])));
-        REQUIRE((xd4i4[3] == static_cast<int>(xd4[3])));
+        auto xd4i4 = static_cast<dsp::simd<int32_t, 4>>(xd4);
+        REQUIRE((xd4i4[0] == static_cast<int32_t>(xd4[0])));
+        REQUIRE((xd4i4[1] == static_cast<int32_t>(xd4[1])));
+        REQUIRE((xd4i4[2] == static_cast<int32_t>(xd4[2])));
+        REQUIRE((xd4i4[3] == static_cast<int32_t>(xd4[3])));
 #endif
     }
 
@@ -581,7 +581,7 @@ TEST_CASE("Convert", "[dsp][simd]")
 
     SECTION("as int")
     {
-        auto xi2i8 = static_cast<dsp::simd<int, 8>>(xi2);
+        auto xi2i8 = static_cast<dsp::simd<int32_t, 8>>(xi2);
         REQUIRE((xi2i8[0] == xi2[0]));
         REQUIRE((xi2i8[1] == xi2[1]));
         REQUIRE((xi2i8[2] == xi2[0]));
@@ -591,7 +591,7 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xi2i8[6] == xi2[0]));
         REQUIRE((xi2i8[7] == xi2[1]));
 
-        auto xi4i8 = static_cast<dsp::simd<int, 8>>(xi4);
+        auto xi4i8 = static_cast<dsp::simd<int32_t, 8>>(xi4);
         REQUIRE((xi4i8[0] == xi4[0]));
         REQUIRE((xi4i8[1] == xi4[1]));
         REQUIRE((xi4i8[2] == xi4[2]));
@@ -601,55 +601,55 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xi4i8[6] == xi4[2]));
         REQUIRE((xi4i8[7] == xi4[3]));
 
-        auto xf4i8 = static_cast<dsp::simd<int, 8>>(xf4);
-        REQUIRE((xf4i8[0] == static_cast<int>(xf4[0])));
-        REQUIRE((xf4i8[1] == static_cast<int>(xf4[1])));
-        REQUIRE((xf4i8[2] == static_cast<int>(xf4[2])));
-        REQUIRE((xf4i8[3] == static_cast<int>(xf4[3])));
-        REQUIRE((xf4i8[4] == static_cast<int>(xf4[0])));
-        REQUIRE((xf4i8[5] == static_cast<int>(xf4[1])));
-        REQUIRE((xf4i8[6] == static_cast<int>(xf4[2])));
-        REQUIRE((xf4i8[7] == static_cast<int>(xf4[3])));
+        auto xf4i8 = static_cast<dsp::simd<int32_t, 8>>(xf4);
+        REQUIRE((xf4i8[0] == static_cast<int32_t>(xf4[0])));
+        REQUIRE((xf4i8[1] == static_cast<int32_t>(xf4[1])));
+        REQUIRE((xf4i8[2] == static_cast<int32_t>(xf4[2])));
+        REQUIRE((xf4i8[3] == static_cast<int32_t>(xf4[3])));
+        REQUIRE((xf4i8[4] == static_cast<int32_t>(xf4[0])));
+        REQUIRE((xf4i8[5] == static_cast<int32_t>(xf4[1])));
+        REQUIRE((xf4i8[6] == static_cast<int32_t>(xf4[2])));
+        REQUIRE((xf4i8[7] == static_cast<int32_t>(xf4[3])));
 
-        auto xf2i8 = static_cast<dsp::simd<int, 8>>(xf2);
-        REQUIRE((xf2i8[0] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i8[1] == static_cast<int>(xf2[1])));
-        REQUIRE((xf2i8[2] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i8[3] == static_cast<int>(xf2[1])));
-        REQUIRE((xf2i8[4] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i8[5] == static_cast<int>(xf2[1])));
-        REQUIRE((xf2i8[6] == static_cast<int>(xf2[0])));
-        REQUIRE((xf2i8[7] == static_cast<int>(xf2[1])));
+        auto xf2i8 = static_cast<dsp::simd<int32_t, 8>>(xf2);
+        REQUIRE((xf2i8[0] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i8[1] == static_cast<int32_t>(xf2[1])));
+        REQUIRE((xf2i8[2] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i8[3] == static_cast<int32_t>(xf2[1])));
+        REQUIRE((xf2i8[4] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i8[5] == static_cast<int32_t>(xf2[1])));
+        REQUIRE((xf2i8[6] == static_cast<int32_t>(xf2[0])));
+        REQUIRE((xf2i8[7] == static_cast<int32_t>(xf2[1])));
 
-        auto xf8i8 = static_cast<dsp::simd<int, 8>>(xf8);
-        REQUIRE((xf8i8[0] == static_cast<int>(xf8[0])));
-        REQUIRE((xf8i8[1] == static_cast<int>(xf8[1])));
-        REQUIRE((xf8i8[2] == static_cast<int>(xf8[2])));
-        REQUIRE((xf8i8[3] == static_cast<int>(xf8[3])));
-        REQUIRE((xf8i8[4] == static_cast<int>(xf8[4])));
-        REQUIRE((xf8i8[5] == static_cast<int>(xf8[5])));
-        REQUIRE((xf8i8[6] == static_cast<int>(xf8[6])));
-        REQUIRE((xf8i8[7] == static_cast<int>(xf8[7])));
+        auto xf8i8 = static_cast<dsp::simd<int32_t, 8>>(xf8);
+        REQUIRE((xf8i8[0] == static_cast<int32_t>(xf8[0])));
+        REQUIRE((xf8i8[1] == static_cast<int32_t>(xf8[1])));
+        REQUIRE((xf8i8[2] == static_cast<int32_t>(xf8[2])));
+        REQUIRE((xf8i8[3] == static_cast<int32_t>(xf8[3])));
+        REQUIRE((xf8i8[4] == static_cast<int32_t>(xf8[4])));
+        REQUIRE((xf8i8[5] == static_cast<int32_t>(xf8[5])));
+        REQUIRE((xf8i8[6] == static_cast<int32_t>(xf8[6])));
+        REQUIRE((xf8i8[7] == static_cast<int32_t>(xf8[7])));
 
-        auto xd2i8 = static_cast<dsp::simd<int, 8>>(xd2);
-        REQUIRE((xd2i8[0] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i8[1] == static_cast<int>(xd2[1])));
-        REQUIRE((xd2i8[2] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i8[3] == static_cast<int>(xd2[1])));
-        REQUIRE((xd2i8[4] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i8[5] == static_cast<int>(xd2[1])));
-        REQUIRE((xd2i8[6] == static_cast<int>(xd2[0])));
-        REQUIRE((xd2i8[7] == static_cast<int>(xd2[1])));
+        auto xd2i8 = static_cast<dsp::simd<int32_t, 8>>(xd2);
+        REQUIRE((xd2i8[0] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i8[1] == static_cast<int32_t>(xd2[1])));
+        REQUIRE((xd2i8[2] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i8[3] == static_cast<int32_t>(xd2[1])));
+        REQUIRE((xd2i8[4] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i8[5] == static_cast<int32_t>(xd2[1])));
+        REQUIRE((xd2i8[6] == static_cast<int32_t>(xd2[0])));
+        REQUIRE((xd2i8[7] == static_cast<int32_t>(xd2[1])));
 
-        auto xd4i8 = static_cast<dsp::simd<int, 8>>(xd4);
-        REQUIRE((xd4i8[0] == static_cast<int>(xd4[0])));
-        REQUIRE((xd4i8[1] == static_cast<int>(xd4[1])));
-        REQUIRE((xd4i8[2] == static_cast<int>(xd4[2])));
-        REQUIRE((xd4i8[3] == static_cast<int>(xd4[3])));
-        REQUIRE((xd4i8[4] == static_cast<int>(xd4[0])));
-        REQUIRE((xd4i8[5] == static_cast<int>(xd4[1])));
-        REQUIRE((xd4i8[6] == static_cast<int>(xd4[2])));
-        REQUIRE((xd4i8[7] == static_cast<int>(xd4[3])));
+        auto xd4i8 = static_cast<dsp::simd<int32_t, 8>>(xd4);
+        REQUIRE((xd4i8[0] == static_cast<int32_t>(xd4[0])));
+        REQUIRE((xd4i8[1] == static_cast<int32_t>(xd4[1])));
+        REQUIRE((xd4i8[2] == static_cast<int32_t>(xd4[2])));
+        REQUIRE((xd4i8[3] == static_cast<int32_t>(xd4[3])));
+        REQUIRE((xd4i8[4] == static_cast<int32_t>(xd4[0])));
+        REQUIRE((xd4i8[5] == static_cast<int32_t>(xd4[1])));
+        REQUIRE((xd4i8[6] == static_cast<int32_t>(xd4[2])));
+        REQUIRE((xd4i8[7] == static_cast<int32_t>(xd4[3])));
     }
 
     SECTION("as doublex4")
