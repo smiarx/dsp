@@ -37,7 +37,11 @@ template <typename T> class DoubleRamp
             // up part
             auto valueUp = value + stepUp_;
 
+#ifdef DSP_ARM32
+            auto greaterThanTarget = abs(valueUp) + 1e-6f >= abs(target);
+#else
             auto greaterThanTarget = abs(valueUp) >= abs(target);
+#endif
             valueUp = blend(greaterThanTarget, target * 2 - valueUp, valueUp);
             state   = blend(greaterThanTarget, load(intType<T>(kDown)), state);
 

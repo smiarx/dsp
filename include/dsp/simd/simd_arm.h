@@ -10,6 +10,8 @@
 #if defined(__aarch64__)
 #define DSP_AARCH64
 #define DSP_SIMD_DOUBLE
+#else
+#define DSP_ARM32
 #endif
 
 namespace dsp
