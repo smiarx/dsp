@@ -246,7 +246,7 @@ template <typename T, size_t N> class TestSimd
 TEST_CASE("SIMD float 1", "[dsp][simd]") { TestSimd<float, 1>::run(); }
 TEST_CASE("SIMD float 4", "[dsp][simd]") { TestSimd<float, 4>::run(); }
 TEST_CASE("SIMD float 2", "[dsp][simd]") { TestSimd<float, 2>::run(); }
-#if DSP_SIMD_DOUBLE
+#ifdef DSP_SIMD_DOUBLE
 TEST_CASE("SIMD double 2", "[dsp][simd]") { TestSimd<double, 2>::run(); }
 #endif
 TEST_CASE("SIMD int32_t 2", "[dsp][simd]") { TestSimd<int32_t, 2>::run(); }
