@@ -21,7 +21,7 @@ class TapeDelay
   public:
     static constexpr auto kN = 2;
     using type               = float;
-    using mtype              = dsp::MultiVal<type, kN>;
+    using mtype              = dsp::multi<type, kN>;
 
     static constexpr auto kMaxBlockSize      = 512;
     static constexpr type kDefaultSampleRate = 48000;

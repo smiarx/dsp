@@ -26,7 +26,7 @@ class Springs
   public:
     static constexpr auto kN = 4;
     using type               = float;
-    using mtype              = dsp::MultiVal<type, kN>;
+    using mtype              = dsp::multi<type, kN>;
 
     static constexpr type kDefaultSamplerRate = 48000.;
 

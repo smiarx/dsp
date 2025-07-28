@@ -9,7 +9,7 @@ namespace dsp
 
 template <typename T> class INoise
 {
-    using iT                          = MultiVal<int, kTypeWidth<T>>;
+    using iT                          = multi<int, kTypeWidth<T>>;
     static constexpr int kGenerator[] = {1296462733, 1487623987, 848278349,
                                          1987647829, 1837654627, 963782763,
                                          1492758273, 1746273223};

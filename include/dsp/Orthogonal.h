@@ -44,7 +44,7 @@ template <typename T, size_t H = kTypeWidth<T>> auto hadamardBase(T x)
         for (size_t i = 0; i < kN; ++i) {
             if (i & kH2) mask[i] = kSignMask.i;
         }
-        auto vmask = MultiVal<baseType<T>, kN>::load((baseType<T> *)mask);
+        auto vmask = multi<baseType<T>, kN>::load((baseType<T> *)mask);
         auto xNeg  = vmask ^ load(x);
 
         auto y = xNeg + xFlip;
