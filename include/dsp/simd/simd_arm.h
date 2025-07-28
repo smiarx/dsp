@@ -1,17 +1,16 @@
 #pragma once
 
-#if defined(__ARM_NEON)
+#include "../cpu/defines.h"
+
+#if DSP_NEON
 
 #include "simd_default.h"
 #include <arm_neon.h>
 
 #define DSP_MAX_VEC_SIZE 16
 
-#if defined(__aarch64__)
-#define DSP_AARCH64
+#if DSP_AARCH64
 #define DSP_SIMD_DOUBLE
-#else
-#define DSP_ARM32
 #endif
 
 namespace dsp
