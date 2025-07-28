@@ -8,9 +8,19 @@
 #include <immintrin.h>
 
 #if DSP_AVX
-#define DSP_MAX_VEC_SIZE 32
+#define DSP_MAX_VEC_SIZE     32
+#define DSP_PADDING_VEC_SIZE 32
+
 #elif DSP_SSE2
 #define DSP_MAX_VEC_SIZE 16
+
+// padding size should have max possible value when dispatching is active
+#if DSP_X86_DISPATCH
+#define DSP_PADDING_VEC_SIZE 32
+#else
+#define DSP_PADDING_VEC_SIZE 32
+#endif
+
 #endif
 
 #define DSP_SIMD_DOUBLE

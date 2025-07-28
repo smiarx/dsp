@@ -24,7 +24,7 @@ namespace dsp
 template <typename T, size_t Order> class FIRFilter
 {
   public:
-    static constexpr auto kPad    = kTypeWidth<batch<T>>;
+    static constexpr auto kPad    = DSP_PADDING_VEC_SIZE / sizeof(T);
     static constexpr auto kNCoeff = Order + 1;
 
     template <typename T_ = T>
@@ -93,7 +93,7 @@ template <typename T, size_t Order, size_t M,
 class FIRDecimate
 {
   public:
-    static constexpr auto kPad    = kTypeWidth<batch<T>>;
+    static constexpr auto kPad    = DSP_PADDING_VEC_SIZE / sizeof(T);
     static constexpr auto kNCoeff = (Order + 1) * M;
 
     template <int Offset = 0>
@@ -196,7 +196,7 @@ template <typename T, size_t Order, size_t L,
 class FIRInterpolate
 {
   public:
-    static constexpr auto kPad    = kTypeWidth<batch<T>>;
+    static constexpr auto kPad    = DSP_PADDING_VEC_SIZE / sizeof(T);
     static constexpr auto kNCoeff = (Order + 1);
 
     template <size_t Offset = 0>
