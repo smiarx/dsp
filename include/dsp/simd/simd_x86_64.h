@@ -17,6 +17,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t N> struct intrin;
 
@@ -1155,6 +1157,7 @@ template <> struct intrin<double, 4> {
 };
 #endif
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
 
 #endif

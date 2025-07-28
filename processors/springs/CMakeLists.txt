@@ -25,6 +25,13 @@ if(DSP_SPRINGS_SHAKE)
         PUBLIC SPRINGS_SHAKE)
 endif()
 
+# add avx2 & fma to avx2 file
+if(MSVC)
+    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+else()
+    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+endif()
+
 if(BUILD_SC)
 target_sources(SCProcessors PRIVATE
     ${springs_sc_sources})
