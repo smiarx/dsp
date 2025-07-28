@@ -21,6 +21,13 @@ if(DSP_TAPEDELAY_SWITCH_INDICATOR)
         PUBLIC TAPEDELAY_SWITCH_INDICATOR)
 endif()
 
+# add avx2 & fma to avx2 file
+if(MSVC)
+    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+else()
+    set_source_files_properties(TapeDelay_avx2.cpp PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+endif()
+
 if(BUILD_SC)
 target_sources(SCProcessors PRIVATE
     ${tapedelay_sc_sources})

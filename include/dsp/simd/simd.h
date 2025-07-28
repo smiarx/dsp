@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "../cpu/defines.h"
 #include "simd_arm.h"
 #include "simd_default.h"
 #include "simd_x86_64.h"
@@ -12,6 +13,8 @@
 #endif
 
 namespace dsp
+{
+inline namespace DSP_ARCH_NAMESPACE
 {
 
 template <typename T, size_t N> struct simd;
@@ -420,4 +423,5 @@ template <typename T, size_t N> struct simd {
     type value_;
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

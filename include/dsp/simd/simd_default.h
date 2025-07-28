@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../cpu/defines.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -13,6 +14,8 @@
 #endif
 
 namespace dsp
+{
+inline namespace DSP_ARCH_NAMESPACE
 {
 
 template <typename> union intFloatUnion;
@@ -297,4 +300,5 @@ template <typename T> struct intrin<T, 1> {
     }
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
