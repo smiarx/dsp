@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(dsp VERSION 0.0.1)
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     OPTION(BUILD_SC  "Build SuperCollider processors"  ON)
     option(BUILD_TESTING "Build tests" ON)

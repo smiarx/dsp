@@ -7,7 +7,8 @@
 #include "simd_default.h"
 #include <arm_neon.h>
 
-#define DSP_MAX_VEC_SIZE 16
+#define DSP_MAX_VEC_SIZE     16
+#define DSP_PADDING_VEC_SIZE 16
 
 #if DSP_AARCH64
 #define DSP_SIMD_DOUBLE
