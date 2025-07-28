@@ -3,7 +3,6 @@
 #include "dsp/Context.h"
 #include "dsp/FastMath.h"
 #include "dsp/Orthogonal.h"
-#include "dsp/Signal.h"
 #include "dsp/Utils.h"
 #include <algorithm>
 #include <cmath>

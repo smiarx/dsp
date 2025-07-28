@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Delay.h"
-#include "Signal.h"
 
 #ifdef __GNUC__
 #ifndef __clang__
