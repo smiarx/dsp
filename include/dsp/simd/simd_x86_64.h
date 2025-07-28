@@ -1,17 +1,15 @@
 #pragma once
 
+#include "../cpu/defines.h"
 #include "simd_default.h"
 
-#if defined(__x86_64__)
+#if DSP_X86
 
 #include <immintrin.h>
 
-#if __AVX__
-#define DSP_AVX          1
-#define DSP_SSE2         1
+#if DSP_AVX
 #define DSP_MAX_VEC_SIZE 32
-#elif __SSE2__
-#define DSP_SSE2         1
+#elif DSP_SSE2
 #define DSP_MAX_VEC_SIZE 16
 #endif
 
