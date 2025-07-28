@@ -1,7 +1,7 @@
 #pragma once
 
-#include "simd/simd.h"
-#include "simd/simd_math.h"
+#include "simd.h"
+#include "simd_math.h"
 #include <array>
 
 namespace dsp

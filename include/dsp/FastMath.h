@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MultiVal.h"
+#include "simd/multi.h"
 #include <cmath>
 
 namespace dsp

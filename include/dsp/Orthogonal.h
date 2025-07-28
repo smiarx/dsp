@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FastMath.h"
-#include "MultiVal.h"
+#include "simd/multi.h"
 
 namespace dsp
 {

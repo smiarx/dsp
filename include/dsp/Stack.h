@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MultiVal.h"
 #include "Utils.h"
+#include "simd/multi.h"
 
 namespace dsp
 {

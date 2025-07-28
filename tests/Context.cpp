@@ -1,5 +1,5 @@
 #include "dsp/Context.h"
-#include "dsp/MultiVal.h"
+#include "dsp/simd/multi.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 
