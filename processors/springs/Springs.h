@@ -202,8 +202,8 @@ class Springs
 // section for rms output of springs
 #ifdef SPRINGS_RMS
   public:
-    static constexpr auto kRmsSize      = 128;
-    static constexpr auto kRmsOverlap   = kRmsSize - 32;
+    static constexpr auto kRmsSize      = 64;
+    static constexpr auto kRmsOverlap   = kRmsSize - 16;
     static constexpr auto kRmsStackSize = 64;
 
     [[nodiscard]] const auto *getRMSStack() const
