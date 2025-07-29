@@ -2,6 +2,8 @@
 #include "dsp/simd/multi.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 TEST_CASE("Context Class", "[context]")
 {
@@ -197,5 +199,49 @@ TEST_CASE("Context Run", "[context-run]")
         for (int j = 0; j < kK; ++j) {
             REQUIRE((data[i][j] == orig[i][j] * 2));
         }
+    }
+}
+
+TEST_CASE("ContextRun2")
+{
+    using ft4 = dsp::mfloat<4>;
+    using ft2 = dsp::mfloat<2>;
+
+    constexpr auto kN = 12;
+
+    ft4 x[] = {
+        {0, 1, 2, 3},     {4, 5, 6, 7},     {8, 9, 10, 11},   {12, 13, 14, 15},
+        {16, 17, 18, 19}, {20, 21, 22, 23}, {24, 25, 26, 27}, {28, 29, 30, 31},
+        {32, 33, 34, 35}, {36, 37, 38, 39}, {40, 41, 42, 43}, {44, 45, 46, 47},
+    };
+    ft2 x2Data[kN]{};
+    ft2 *x2 = x2Data;
+
+    dsp::Context ctxt(x, kN);
+
+    SECTION("Normal")
+    {
+        dsp::Context ctxt2(x2, kN);
+
+        CTXTRUN2(ctxt, ctxt2)
+        {
+            ctxt2.setOutput(dsp::reduce<2>(ctxt.getInput()));
+        };
+    }
+    SECTION("Reverse")
+    {
+        x2 = reinterpret_cast<ft2 *>(&x[kN]) - kN;
+        dsp::Context ctxt2(x2, kN);
+        CTXTRUNREV2(ctxt, ctxt2)
+        {
+            ctxt2.setOutput(dsp::reduce<2>(ctxt.getInput()));
+        };
+    }
+
+    for (size_t n = 0; n < kN; ++n) {
+        for (size_t i = 0; i < 2; ++i)
+            REQUIRE_THAT(x2[n][i],
+                         Catch::Matchers::WithinAbs(
+                             static_cast<float>((n * 4 + i + 1) * 2), 1e-6f));
     }
 }

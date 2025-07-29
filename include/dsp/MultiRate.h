@@ -58,6 +58,21 @@ template <typename T, size_t Order> class MultiRateDecimate<T, Order, 1>
         } else
             assert(false);
     }
+    template <class CtxtIn, class CtxtOut, class DL>
+    int decimate(unsigned int rate, CtxtIn cin, CtxtOut &cout, DL &, int) const
+    {
+        if (rate == 1) {
+            cout.setBlockSize(cin.getBlockSize());
+            auto coutCopy = cout;
+            CTXTRUN(coutCopy)
+            {
+                coutCopy.setOutput(cin.getInput());
+                cin.next();
+            };
+            return 0;
+        } else
+            assert(false);
+    }
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop

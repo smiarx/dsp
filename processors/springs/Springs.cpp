@@ -12,7 +12,8 @@
 namespace processors
 {
 // multirate converter
-const Springs::MR Springs::kMultirate{};
+const Springs::MRD Springs::kDecimate{};
+const Springs::MRI Springs::kInterpolate{};
 
 void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
@@ -174,7 +175,8 @@ void Springs::setWidth(float width, int blockSize)
     auto wetcross   = dsp::sin(theta) * wet;
 
     float invBlockSize = 1.f / static_cast<float>(blockSize);
-    wet_.set({wetchannel, wetcross}, invBlockSize);
+    wet_.set({wetchannel, wetcross},
+             invBlockSize * static_cast<float>(rateFactor_));
 }
 
 void Springs::setDryWet(float drywet, int blockSize)
@@ -214,33 +216,41 @@ void Springs::process(const float *const *__restrict in,
 
         blockSize = std::min(count, blockSize);
 
-        auto ctxt    = dsp::BufferContext(x_, blockSize, buffer_);
-        auto ctxtdec = dsp::BufferContext(xdecimate_, blockSize, bufferDec_);
+        auto ctxtIn =
+            dsp::BufferContext(reinterpret_cast<float *>(x_) +
+                                   (static_cast<ptrdiff_t>(blockSize * 3)),
+                               blockSize, bufferIn_);
+        auto ctxtOut =
+            dsp::Context(reinterpret_cast<dsp::mfloat<2> *>(x_), blockSize);
+        auto ctxtdec = dsp::BufferContext(x_, blockSize, bufferDec_);
 
-        CTXTRUN(ctxt)
+        CTXTRUN(ctxtIn)
         {
             auto mix = (*(inl++) + *(inr++)) * 0.5f;
-            ctxt.setOutput(mix);
+            ctxtIn.setOutput(mix);
         };
 
 #ifdef SPRINGS_SHAKE
         // shake springs
-        for (int n = 0; n < ctxt.getBlockSize(); ++n, ctxt.next()) {
-            auto x = ctxt.getInput();
-            if (shakeEnv_.isRunning()) {
-                auto env   = shakeEnv_.process();
-                auto noise = shakeNoise_.process();
-                auto shake = env * noise;
-                x += decltype(x)::convert(shake);
-                ctxt.setOutput(x);
-            } else {
-                break;
+        {
+            auto ctxt = ctxtIn;
+            for (int n = 0; n < ctxt.getBlockSize(); ++n, ctxt.next()) {
+                auto x = ctxt.getInput();
+                if (shakeEnv_.isRunning()) {
+                    auto env   = shakeEnv_.process();
+                    auto noise = shakeNoise_.process();
+                    auto shake = env * noise;
+                    x += shake;
+                    ctxt.setOutput(x);
+                } else {
+                    break;
+                }
             }
         }
 #endif
 
-        kMultirate.decimate(rateFactor_, ctxt, ctxtdec, dldecimate_,
-                            decimateId_);
+        kDecimate.decimate(rateFactor_, ctxtIn, ctxtdec, dldecimate_,
+                           decimateId_);
 
         CTXTRUN(ctxtdec)
         {
@@ -322,33 +332,47 @@ void Springs::process(const float *const *__restrict in,
 
         CTXTRUN(ctxtdec) { lowpass_.process(ctxtdec, lowpassState_); };
 
-        decimateId_ = kMultirate.interpolate(rateFactor_, ctxtdec, ctxt,
-                                             dlinterpolate_, decimateId_);
+#ifdef SPRINGS_RMS
+        rms_.processBlock(ctxtdec, rmsStack_);
+#endif
 
-        CTXTRUN(ctxt)
+        auto ctxtdecOut = dsp::BufferContext(
+            reinterpret_cast<dsp::mfloat<2> *>(&x_[blockSize]) -
+                (static_cast<ptrdiff_t>(ctxtdec.getBlockSize())),
+            ctxtdec.getBlockSize(), bufferOut_);
+        CTXTRUNREV2(ctxtdec, ctxtdecOut)
         {
-            auto x   = ctxt.getInput();
-            auto mix = dsp::reduce<kN / 2>(x);
+            ctxtdecOut.setOutput(dsp::reduce<2>(ctxtdec.getInput()));
+        };
+        CTXTRUN(ctxtdecOut)
+        {
+            auto mix = ctxtdecOut.getInput();
 
             mix *= 2.f / kN;
 
-            float wetsig[2];
-            auto wet  = wet_.step(ctxt);
+            dsp::mfloat<2> wetsig;
+            auto wet  = wet_.step(ctxtOut);
             wetsig[0] = dsp::sum(wet * mix);
             wetsig[1] = dsp::sum(wet * dsp::flip<1>(mix));
 
-            auto dry = dry_.step(ctxt);
-            *outl    = *inl2 * dry + wetsig[0];
-            *outr    = *inr2 * dry + wetsig[1];
+            ctxtdecOut.setOutput(wetsig);
+        };
+
+        decimateId_ = kInterpolate.interpolate(rateFactor_, ctxtdecOut, ctxtOut,
+                                               dlinterpolate_, decimateId_);
+
+        CTXTRUN(ctxtOut)
+        {
+            auto wetsig = ctxtOut.getInput();
+            auto dry    = dry_.step(ctxtOut);
+            *outl       = *inl2 * dry + wetsig[0];
+            *outr       = *inr2 * dry + wetsig[1];
             ++outl, ++inl2;
             ++outr, ++inr2;
         };
 
-#ifdef SPRINGS_RMS
-        rms_.processBlock(ctxt, rmsStack_);
-#endif
-
-        buffer_.nextBlock(ctxt);
+        bufferIn_.nextBlock(ctxtIn);
+        bufferOut_.nextBlock(ctxtdecOut);
         bufferDec_.nextBlock(ctxtdec);
 
         count -= blockSize;
