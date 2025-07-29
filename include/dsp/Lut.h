@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Signal.h"
 #include "Utils.h"
 
 namespace dsp

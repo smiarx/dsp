@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Signal.h"
-#include "Utils.h"
+#include "simd/multi.h"
 #include <cmath>
 
 namespace dsp
@@ -9,23 +8,25 @@ namespace dsp
 
 // constants
 // NOLINTBEGIN (readability-identifier-naming)
-template <typename F> struct constants {
+template <typename T> struct constants {
+    using F                       = baseType<T>;
     static constexpr auto pi      = F(3.14159265358979323846);
     static constexpr auto pi_2    = F(1.57079632679489661923);
     static constexpr auto pi_4    = F(0.78539816339744830962);
     static constexpr auto sqrt1_2 = F(0.70710678118654752440);
 };
+
 // NOLINTEND (readability-identifier-naming)
 
 // https://varietyofsound.wordpress.com/2011/02/14/efficient-tanh-computation-using-lamberts-continued-fraction/
-template <typename F> static inline constexpr F tanh(F x)
+template <typename F> static inline constexpr F fasttanh(F x)
 {
     F xsq    = x * x;
     F num    = x * (F(135135) + xsq * (F(17325) + xsq * (F(378) + xsq)));
     F den    = F(135135.) + xsq * (F(62370) + xsq * (F(3150) + F(28) * xsq));
     F result = num / den;
-    result   = result > F(1) ? F(1) : result;
-    result   = result < -F(1) ? -F(1) : result;
+    result   = blend(result > 1, F(1), result);
+    result   = blend(result < -1, F(-1), result);
     return result;
 }
 

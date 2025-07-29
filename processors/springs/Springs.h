@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsp/AllPass.h"
+#include "dsp/Buffer.h"
 #include "dsp/IIRFilter.h"
 #include "dsp/LFO.h"
 #include "dsp/MultiRate.h"
@@ -23,38 +24,39 @@ namespace processors
 class Springs
 {
   public:
-    static constexpr auto N = 4;
+    static constexpr auto kN = 4;
+    using type               = float;
+    using mtype              = dsp::multi<type, kN>;
 
-    static constexpr auto kDefaultSamplerRate = 48000.f;
+    static constexpr type kDefaultSamplerRate = 48000.;
 
     static constexpr auto kMaxBlockSize         = 512;
     static constexpr auto kMaxDecimate          = 8;
-    static constexpr auto kMaxLoopLengthSeconds = 0.2f;
-    static constexpr auto kLoopLengthSeconds    = 0.25f;
+    static constexpr type kMaxLoopLengthSeconds = 0.2;
+    static constexpr type kLoopLengthSeconds    = 0.25;
     static constexpr auto kLoopLength =
         static_cast<int>(kLoopLengthSeconds * kDefaultSamplerRate);
     static constexpr auto kCascadeL = 160;
 
-    static constexpr auto kDecimateMaxFreq = 0.78f;
-    static constexpr auto kDcBlockFreq     = 10.f;
+    static constexpr type kDecimateMaxFreq = 0.78;
+    static constexpr type kDcBlockFreq     = 10.;
 
-    static constexpr auto kEqBandWidth = 5.f;
+    static constexpr type kEqBandWidth = 5.;
 
-    static constexpr auto kMinRWithMaxCascadeL = 0.1f;
+    static constexpr type kMinRWithMaxCascadeL = 0.1;
 
-    static constexpr auto kNonLinearityGain = 0.2f;
+    static constexpr type kNonLinearityGain = 0.2;
 
-    static constexpr auto kToneMin = 80.f;
-    static constexpr auto kToneMax = 5000.f;
+    static constexpr type kToneMin = 80.;
+    static constexpr type kToneMax = 5000.;
 
-    static constexpr float kFreqFactor[]   = {0.98f, 1.02f, 0.97f, 1.03f};
-    static constexpr float kRFactor[]      = {1.08f, 0.97f, 1.05f, 0.98f};
-    static constexpr float kLoopTdFactor[] = {
-        0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
-    static constexpr float kLoopModFreq[]   = {0.2f, 0.4f, 0.2f, 0.3f};
-    static constexpr float kLoopModFactor[] = {0.0035f, 0.002f, 0.0038f,
-                                               0.0027f};
-    static constexpr float kLoopRippleGain  = 0.016f;
+    static constexpr mtype kFreqFactor   = {0.98, 1.02, 0.97, 1.03};
+    static constexpr mtype kRFactor      = {1.08, 0.97, 1.05, 0.98};
+    static constexpr mtype kLoopTdFactor = {
+        0.8293183583208989, 1.1876863056468745, 0.94273342, 1.2432815625};
+    static constexpr mtype kLoopModFreq   = {0.2, 0.4, 0.2, 0.3f};
+    static constexpr mtype kLoopModFactor = {0.0035, 0.002, 0.0038, 0.0027};
+    static constexpr type kLoopRippleGain = 0.016;
 
     // use simd to improve all pass chain
     // for example
@@ -64,14 +66,13 @@ class Springs
     // with y as intermediary values and z as final values
     // reducing the number of computation by 2
     // introduce a delay in chain of size APChainSize
-    static constexpr auto kApChainSize = SIMDSIZE / sizeof(float) / N;
-    static constexpr auto kNap         = N * kApChainSize;
+    static constexpr auto kApChainSize = DSP_MAX_VEC_SIZE / sizeof(type) / kN;
     static constexpr auto kApCascadeL  = kCascadeL / kApChainSize;
 
     Springs()
     {
         /* loop modulation */
-        dsp::INoise<N> noise;
+        dsp::INoise<mtype> noise;
         loopMod_.setPhase(noise.process());
     }
 
@@ -115,83 +116,77 @@ class Springs
 
   private:
     int rateFactor_{1};
-    float sampleRate_{kDefaultSamplerRate};
-    float freqScale_{2.f / kDefaultSamplerRate};
+    type sampleRate_{kDefaultSamplerRate};
+    type freqScale_{2.f / kDefaultSamplerRate};
     int maxBlockSize_{};
 
-    float drywet_{0.f};
-    float width_{1.f};
-    float r_{0.f};
-    float freq_{0.f};
-    float td_{0.f};
-    float t60_{0.f};
-    float tone_{0.f};
-    float chaos_{0.f};
-    float scatter_{1.f};
+    type drywet_{0.f};
+    type width_{1.f};
+    type r_{0.f};
+    type freq_{0.f};
+    type td_{0.f};
+    type t60_{0.f};
+    type tone_{0.f};
+    type chaos_{0.f};
+    type scatter_{1.f};
 
-    dsp::ControlSmoother<1> dry_{{1.f}};
-    dsp::ControlSmoother<2> wet_{{}};
+    dsp::ControlSmoother<type> dry_{1.f};
+    dsp::ControlSmoother<dsp::mfloat<2>> wet_{};
 
-    static constexpr auto kMinScatter = 0.1f;
+    static constexpr type kMinScatter = 0.1;
     [[nodiscard]] auto getScatterFactor() const
     {
         return kMinScatter + scatter_;
     }
 
     // allpass
-    dsp::AllPass2<kNap> allpass_{};
-    dsp::fSample<kNap> allpassIntermediary_{};
+    dsp::AllPass2<dsp::batch<mtype>> allpass_{};
+    std::array<mtype, kApChainSize> allpassIntermediary_{};
     typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
     unsigned int apNStages_{kApCascadeL};
 
-    dsp::IIRFilter<N, 10> lowpass_{};
-    typename decltype(lowpass_)::Mem<N> lowpassState_{};
+    dsp::IIRFilter<mtype, 10> lowpass_{};
+    typename decltype(lowpass_)::State lowpassState_{};
 
-    dsp::va::SVF<N, dsp::va::kBandPass> eq_{};
+    dsp::va::SVF<mtype, dsp::va::kBandPass> eq_{};
     typename decltype(eq_)::State eqState_{};
 
-    dsp::va::OnePole<N, dsp::va::kHighPass> dcblocker_{};
+    dsp::va::OnePole<mtype, dsp::va::kHighPass> dcblocker_{};
     typename decltype(dcblocker_)::State dcblockerState_{};
 
     /* decimate and interpolate memory lines */
-    using MR = dsp::MultiRate<N, 15, kMaxDecimate>;
-    MR::DLDecimate dldecimate_;
-    MR::DLInterpolate dlinterpolate_;
+    using MR = dsp::MultiRate<mtype, 15, kMaxDecimate>;
+    static const MR kMultirate;
+    MR::DLDecimate<0> dldecimate_;
+    MR::DLInterpolate<0> dlinterpolate_;
     int decimateId_{0};
 
     static constexpr auto kBufSize = nextTo(dldecimate_) + kMaxBlockSize;
 
-    // multirate pointer
-  public:
-    using MRs = MR::WithBuffer<kBufSize>;
+    dsp::Buffer<mtype, kBufSize> buffer_;
 
-  private:
-    const MRs::Base *multirate_;
+    dsp::DelayLine<kLoopLength / 2, nextTo(dlinterpolate_)> predelaydl_;
+    dsp::TapNoInterp<mtype> predelay_;
 
-    dsp::Buffer<dsp::fSample<N>, kBufSize> buffer_;
-
-    dsp::DelayLine<kLoopLength / 2> predelaydl_;
-    dsp::TapNoInterp<N> predelay_;
-
-    float loopGain_{0.f};
-    static constexpr auto kDefaultTd = kLoopLength * 0.1f;
-    dsp::ControlSmoother<N> loopTd_{
+    type loopGain_{};
+    static constexpr type kDefaultTd    = kLoopLength * 0.1;
+    dsp::ControlSmoother<mtype> loopTd_ = {
         {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
-    dsp::fData<N> loopModAmp_{};
-    dsp::LFOParabolic<N> loopMod_{};
-    dsp::Noise<N> loopChaosNoise_{};
-    dsp::SmootherLin<N> loopChaos_{};
-    dsp::fData<N> loopChaosMod_{};
-    using LoopType = dsp::TapCubic<N>;
+    mtype loopModAmp_{};
+    dsp::lfo::Parabolic<mtype> loopMod_{};
+    dsp::Noise<mtype> loopChaosNoise_{};
+    dsp::SmootherLin<mtype> loopChaos_{};
+    mtype loopChaosMod_{};
+    using LoopType = dsp::TapCubic<mtype>;
     dsp::DelayLine<kLoopLength, nextTo(predelaydl_)> loopdl_;
 
-    dsp::CopyDelayLine<N, 1, nextTo(loopdl_)> loopRippleDL_;
+    dsp::CopyDelayLine<mtype, 1, nextTo(loopdl_)> loopRippleDL_;
 
     static constexpr auto kBufDecSize = nextTo(loopRippleDL_) + kMaxBlockSize;
-    dsp::Buffer<dsp::fSample<N>, kBufDecSize> bufferDec_;
+    dsp::Buffer<mtype, kBufDecSize> bufferDec_;
 
-    dsp::fSample<N> *x_{};
-    dsp::fSample<N> *xdecimate_{};
+    mtype *x_{};
+    mtype *xdecimate_{};
 
 // section for rms output of springs
 #ifdef SPRINGS_RMS
@@ -200,7 +195,7 @@ class Springs
     static constexpr auto kRmsOverlap   = kRmsSize - 32;
     static constexpr auto kRmsStackSize = 64;
 
-    [[nodiscard]] const dsp::fSample<N> *getRMSStack() const
+    [[nodiscard]] const auto *getRMSStack() const
     {
         return rmsStack_.getSamples();
     }
@@ -210,8 +205,8 @@ class Springs
     }
 
   private:
-    dsp::RMS<N, kRmsSize, kRmsOverlap> rms_;
-    dsp::Stack<N, kRmsStackSize> rmsStack_;
+    dsp::RMS<mtype, kRmsSize, kRmsOverlap> rms_;
+    dsp::Stack<mtype, kRmsStackSize> rmsStack_;
 #endif
 
 #ifdef SPRINGS_SHAKE
@@ -220,13 +215,13 @@ class Springs
     static constexpr auto kShakeEnvDown = 0.045f;
     void shake()
     {
-        shakeEnv_.set({1.f}, {kShakeEnvUp * sampleRate_},
+        shakeEnv_.set(1.f, {kShakeEnvUp * sampleRate_},
                       {kShakeEnvDown * sampleRate_});
     }
 
   private:
-    dsp::DoubleRamp<1> shakeEnv_;
-    dsp::Noise<1> shakeNoise_;
+    dsp::DoubleRamp<type> shakeEnv_;
+    dsp::Noise<type> shakeNoise_;
 #endif
 };
 
@@ -238,28 +233,24 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     maxBlockSize_ = std::min(blockSize, kMaxBlockSize);
 
     /* loop size modulation */
-    dsp::fData<N> freq;
-    for (size_t i = 0; i < N; ++i) {
-        freq[i] = kLoopModFreq[i] * freqScale_;
-    }
+    mtype freq = dsp::load(kLoopModFreq) * freqScale_;
     loopMod_.setFreq(freq);
 
     // alloc ressources
-    x_         = (dsp::fSample<N> *)realloc(x_, sizeof(dsp::fSample<N>) *
-                                                    static_cast<size_t>(maxBlockSize_));
-    xdecimate_ = (dsp::fSample<N> *)realloc(
+    x_         = (mtype *)realloc(x_,
+                                  sizeof(mtype) * static_cast<size_t>(maxBlockSize_));
+    xdecimate_ = (mtype *)realloc(
         xdecimate_,
-        sizeof(dsp::fSample<N>) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
+        sizeof(mtype) * static_cast<size_t>((maxBlockSize_ + 1) / 2));
 
     // set buffers
-#define allocateBuffer(buffer)                                 \
-    {                                                          \
-        auto *b = buffer.getBuffer();                          \
-        constexpr auto size =                                  \
-            sizeof(dsp::fSample<N>) * decltype(buffer)::kSize; \
-        b = (dsp::fSample<N> *)realloc(b, size);               \
-        memset(b, 0, size);                                    \
-        buffer.setBuffer(b);                                   \
+#define allocateBuffer(buffer)                                         \
+    {                                                                  \
+        auto *b             = buffer.getData();                        \
+        constexpr auto size = sizeof(mtype) * decltype(buffer)::kSize; \
+        b                   = (mtype *)realloc(b, size);               \
+        memset(b, 0, size);                                            \
+        buffer.setData(b);                                             \
     }
 
     allocateBuffer(buffer_);
@@ -272,11 +263,13 @@ template <class Free> void Springs::free(Free free)
 {
     free(x_);
     x_ = nullptr;
+    free(xdecimate_);
+    xdecimate_ = nullptr;
 
-    free(buffer_.getBuffer());
-    buffer_.setBuffer(nullptr);
+    free(buffer_.getData());
+    buffer_.setData(nullptr);
 
-    free(bufferDec_.getBuffer());
-    bufferDec_.setBuffer(nullptr);
+    free(bufferDec_.getData());
+    bufferDec_.setData(nullptr);
 }
 } // namespace processors

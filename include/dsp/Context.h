@@ -1,89 +1,126 @@
 #pragma once
 
 #include <cassert>
-#include <cstdlib>
-#include <tuple>
+
+#include "simd/multi.h"
 
 namespace dsp
 {
-template <typename In, bool Vectorize = false> class Context
+template <typename T, bool Vec = false> class Context
 {
   public:
-    Context(In *in, int blockSize = 1) : blockSize_(blockSize), in_(in) {}
+    Context(T *data, int blockSize = 1) : blockSize_(blockSize), data_(data) {}
     Context(const Context &ctxt)            = default;
     Context &operator=(const Context &ctxt) = default;
 
-    static constexpr auto kVecSize       = Vectorize ? In::kVectorSize : 1;
-    static constexpr auto kIsUsingVector = Vectorize;
-    using BaseType                       = In;
-    using Type =
-        std::conditional_t<Vectorize, typename In::Vector, typename In::Scalar>;
+    static constexpr auto kIncrSize = Vec ? sizeof(batch<T>) / sizeof(T) : 1;
+    static constexpr bool kUseVec   = Vec;
 
-    [[nodiscard]] auto vec() const
+    using BaseType = T;
+    using Type     = std::conditional_t<Vec, batch<T>, T>;
+    // input and output type
+    using SigType = std::conditional_t<Vec, decltype(dsp::loadBatch(T{})),
+                                       decltype(dsp::load(T{}))>;
+
+    void load(T &&) const { static_assert(false, "do not load rvalue"); }
+    [[nodiscard]] auto load(const T &x) const
     {
-        return Context<In, true>(in_, blockSize_);
+        if constexpr (Vec) {
+            return dsp::loadBatch(x);
+        } else {
+            return dsp::load(x);
+        }
     }
-    [[nodiscard]] auto scalar() const
+
+    [[nodiscard]] auto store(T &dest, SigType val) const
     {
-        return Context<In, false>(in_, blockSize_);
+        if constexpr (Vec) {
+            return dsp::storeBatch(dest, val);
+        } else {
+            return dsp::store(dest, val);
+        }
     }
 
-    [[nodiscard]] int vecSize() const { return kVecSize; }
-    [[nodiscard]] int getStep() const { return kVecSize; }
+    [[nodiscard]] auto getInput() const { return load(*data_); }
+    template <typename S> void setOutput(S value) { store(*data_, value); }
 
-    auto &getSignal() { return in_->template toSignal<Vectorize>(); }
-
-    template <typename T> void setSamples(T &x) { in_ = &x[0]; }
-
-    void next(int incr = kVecSize) { nextIn(incr); }
+    void next(int incr = kIncrSize) { nextData(incr); }
 
     [[nodiscard]] int getBlockSize() const { return blockSize_; }
     void setBlockSize(int blockSize) { blockSize_ = blockSize; }
 
+    void setData(T *data) { data_ = data; }
+    [[nodiscard]] const T *getData() const { return data_; }
+
+    [[nodiscard]] auto vec() const
+    {
+        return Context<T, true>(data_, blockSize_);
+    }
+    [[nodiscard]] auto scalar() const
+    {
+        return Context<T, false>(data_, blockSize_);
+    }
+
   protected:
-    void nextIn(int incr) { in_ += incr; }
+    void nextData(int incr) { data_ += incr; }
 
   private:
     int blockSize_;
-    In *__restrict in_;
+    T *__restrict data_;
 };
 
-// template <class Ctxt, class... Ctxts>
-// void ctxtInfos(int &blockSize, int &step, Ctxt c, Ctxts... cs)
-//{
-//     blockSize = c.getBlockSize();
-//     step      = c.getStep();
-//     /* check if blockSize and incr are the same */
-//     (
-//         [&] {
-//             auto cblockSize = cs.getBlockSize();
-//             assert(blockSize == cblockSize);
-//         }(),
-//         ...);
-//     (
-//         [&] {
-//             auto cstep = cs.getStep();
-//             assert(step == cstep);
-//         }(),
-//         ...);
-// }
+template <class Ctxt> class ContextRun
+{
+  public:
+    ContextRun(Ctxt ctxt) : ctxt_(std::move(ctxt)) {}
 
-#define contextFor(ctxt)                                          \
-    for (auto [c, n] = std::tuple{ctxt, 0}; n < c.getBlockSize(); \
-         n += c.getStep(), c.next())
+    template <typename Func>
+    ContextRun(Ctxt ctxt, Func func) : ContextRun(std::move(ctxt))
+    {
+        run(func);
+    }
 
-#define vecFor(ctxt) for (auto i = 0; i < ctxt.getStep(); ++i)
+    template <typename Func> void run(Func func)
+    {
+        auto n                  = 0;
+        constexpr int kIncrSize = Ctxt::kIncrSize;
+        for (; n < ctxt_.getBlockSize() - kIncrSize + 1;
+             n += kIncrSize, ctxt_.next()) {
+            func(ctxt_);
+        }
 
-#define arrayFor(x, k) for (size_t k = 0; k < x.size(); ++k)
-#define inFor(x, k, i)                    \
-    for (size_t k = 0; k < x.size(); ++k) \
-        for (size_t i = 0; i < x[0].size(); ++i)
+        if constexpr (Ctxt::kUseVec) {
+            auto ctxtScal = ctxt_.scalar();
+
+            for (; n < ctxtScal.getBlockSize(); n += 1, ctxtScal.next()) {
+                func(ctxtScal);
+            }
+        }
+    }
+
+    template <typename Func> ContextRun &operator=(Func func)
+    {
+        run(func);
+        return *this;
+    }
+
+    explicit operator bool() { return true; }
+
+  private:
+    Ctxt ctxt_;
+};
+
+#define CTXTRUN(ctxt) \
+    if (dsp::ContextRun contextRun{ctxt}) contextRun = [&](auto ctxt)
+#define CTXTRUNVEC(ctxt)                           \
+    if (dsp::ContextRun contextRunVec{ctxt.vec()}) \
+    contextRunVec = [&](auto ctxt)
 
 #define PROCESSBLOCK_                                \
     template <class Ctxt, class State>               \
     void processBlock(Ctxt ctxt, State &state) const \
     {                                                \
-        contextFor(ctxt) { process(c, state); }      \
+        CTXTRUN(ctxt) { process(ctxt, state); };     \
     }
 
 } // namespace dsp

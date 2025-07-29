@@ -6,104 +6,146 @@
 
 namespace dsp
 {
-template <class In, std::size_t MinSize = 0> class Buffer
+template <class T, std::size_t MinSize> class Buffer
 {
+    /* implements ring buffer */
   public:
-    /* let the Offset first element be free and copy and of buffer to it so that
-     * we can always retrieve Vec */
-    static constexpr auto kOffset   = In::kVectorSize;
-    static constexpr auto kBaseSize = nextPow2(MinSize);
-    static constexpr int kMask      = kBaseSize - 1;
-    static constexpr auto kSize     = kBaseSize + kOffset;
+    // offset to allow vectorized computing
+    static constexpr auto kVecOffset = sizeof(batch<T>) / sizeof(T);
+    static constexpr auto kBaseSize  = nextPow2(MinSize);
+    static constexpr int kMask       = kBaseSize - 1;
+    static constexpr auto kSize      = kBaseSize + kVecOffset;
 
-    using Type = In;
+    using Type = T;
+
+    Buffer() = default;
 
     static constexpr auto getMinSize() { return MinSize; }
 
-    void setBuffer(In *buffer) { buffer_ = buffer; }
-    In *getBuffer() { return buffer_; }
+    void setData(T *data) { data_ = data; }
+    T *getData() { return data_; }
 
-    void write(int i, const In &x) { buffer_[(bufId_ - i) & kMask] = x; }
-    template <bool Safe = true> void write(int i, const typename In::Vector &x)
+    template <typename V, bool Vec = false, bool Safe = false>
+    void write(int i, V val)
     {
-        const auto pos = (bufId_ - i) & kMask;
-        if constexpr (Safe) {
-            /* copy at the end of buffer for vector continuity */
-            if (pos == 0) {
-                buffer_[kBaseSize].toVector() = x;
+        assert(data_ != nullptr);
+        assert((0 <= i) && (i <= static_cast<int>(MinSize)));
+
+        const auto pos = position(i);
+        if constexpr (Vec) {
+            storeBatch(data_[pos], val);
+            /* copy end to beginning of buffer for vector continuity */
+            if (static_cast<size_t>(pos) < V::kWidth) {
+                // copy begining to end
+                storeBatch(data_[kBaseSize], loadBatch(data_[0]));
+            } else if (static_cast<size_t>(pos) > kBaseSize - V::kWidth) {
+                // copy end to begining
+                storeBatch(data_[0], loadBatch(data_[kBaseSize]));
+            }
+        } else {
+            store(data_[pos], val);
+            // safely write vor vec read even when writing scalars
+            if constexpr (Safe && !std::is_same_v<T, batch<T>>) {
+                if (static_cast<size_t>(pos) < kVecOffset) {
+                    store(data_[kBaseSize + pos], val);
+                }
             }
         }
-        buffer_[pos].toVector() = x;
     }
-    void write(int i, const typename In::Scalar &x)
+    template <typename V> void writeVec(int i, V val)
     {
-        buffer_[(bufId_ - i) & kMask].toScalar() = x;
-    }
-    [[nodiscard]] const In &read(int i) const
-    {
-        assert(i <= static_cast<int>(MinSize));
-        return buffer_[(bufId_ - i) & kMask];
+        write<V, true>(i, val);
     }
 
-    void nextBufId(int incr) { bufId_ = (bufId_ + incr) & kMask; }
+    template <bool Vec = false> [[nodiscard]] auto read(int i) const
+    {
+        assert(data_ != nullptr);
+        assert((0 <= i) && (i <= static_cast<int>(MinSize)));
+
+        const auto pos = position(i);
+        if constexpr (Vec) {
+            return loadBatch(data_[pos]);
+        } else {
+            return load(data_[pos]);
+        }
+    }
+    [[nodiscard]] auto readVec(int i) const { return read<true>(i); }
+
+    void nextId(int incr) { id_ = (id_ + incr) & kMask; }
 
     // prepare for next block given ctxt
-    template <class Ctxt> void nextBlock(Ctxt ctxt)
+    template <class Ctxt> void nextBlock(Ctxt ctxt, bool checkLimits = false)
     {
-        nextBufId(ctxt.getBlockSize());
+        nextId(ctxt.getBlockSize());
+
+        if (checkLimits && static_cast<size_t>(id_) < batch<T>::kWidth)
+            // copy begining to end
+            storeBatch(data_[kBaseSize], loadBatch(data_[0]));
     }
 
-    void setLimits() { buffer_[kBaseSize].toVector() = buffer_[0].toVector(); }
+    [[nodiscard]] int getId() const { return id_; }
 
   private:
-    bool isBufferOffset_{false};
-    int bufId_{kOffset};
-    In *__restrict buffer_{nullptr};
+    int id_{kVecOffset};
+    T *__restrict data_{nullptr};
+
+    // give data position given i
+    inline auto position(int i) const { return (id_ - i) & kMask; }
 };
 
-template <class In, class Buffer, bool Vectorize = false>
-class BufferContext : public Context<In, Vectorize>
+template <class T, size_t MinSize, bool Vec = false>
+class BufferContext : public Context<T, Vec>
 {
-    using Parent = Context<In, Vectorize>;
+    using Parent  = Context<T, Vec>;
+    using BufferT = Buffer<T, MinSize>;
+    using SigType = typename Parent::SigType;
 
   public:
-    BufferContext(In *in, int blockSize, const Buffer &buffer) :
+    BufferContext(T *in, int blockSize, const BufferT &buffer) :
         Parent(in, blockSize), buffer_(buffer)
     {
     }
-    BufferContext(const Parent &ctxt, const Buffer &buffer) :
+    BufferContext(const Parent &ctxt, const BufferT &buffer) :
         Parent(ctxt), buffer_(buffer)
     {
     }
 
     [[nodiscard]] auto vec() const
     {
-        return BufferContext<In, Buffer, true>(Context<In, Vectorize>::vec(),
-                                               buffer_);
+        return BufferContext<T, MinSize, true>(Context<T, Vec>::vec(), buffer_);
     }
     [[nodiscard]] auto scalar() const
     {
-        return BufferContext<In, Buffer, false>(
-            Context<In, Vectorize>::scalar(), buffer_);
+        return BufferContext<T, MinSize, false>(Context<T, Vec>::scalar(),
+                                                buffer_);
     }
 
-    Buffer &getBuffer() { return buffer_; }
+    BufferT &getBuffer() { return buffer_; }
 
-    void next(int incr = Parent::kVecSize)
+    void next(int incr = Parent::kIncrSize)
     {
-        buffer_.nextBufId(incr);
+        buffer_.nextId(incr);
         Parent::next(incr);
     }
 
-    void bufferLimits() { buffer_.setLimits(); }
+    void bufferSafeForVectorization() { buffer_.setLimits(); }
 
-    [[nodiscard]] const auto &read(int i) const
+    [[nodiscard]] auto read(int i) const
     {
-        auto &x = buffer_.read(i);
-        return x.template toSignal<Vectorize>();
+        return buffer_.template read<Vec>(i);
     }
 
-  protected:
-    Buffer buffer_;
+    void write(int i, SigType val)
+    {
+        return buffer_.template write<SigType, Vec>(i, val);
+    }
+
+    void writeSafe(int i, SigType val)
+    {
+        return buffer_.template write<SigType, Vec, true>(i, val);
+    }
+
+  private:
+    BufferT buffer_;
 };
 } // namespace dsp

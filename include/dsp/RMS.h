@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Delay.h"
-#include "Signal.h"
 
 #ifdef __GNUC__
 #ifndef __clang__
@@ -14,7 +13,7 @@
 namespace dsp
 {
 
-template <size_t N, size_t Size, size_t Overlap = 0> class RMS
+template <typename T, size_t Size, size_t Overlap = 0> class RMS
 {
   public:
     static constexpr size_t kShift         = Size - Overlap;
@@ -24,94 +23,70 @@ template <size_t N, size_t Size, size_t Overlap = 0> class RMS
     template <class Ctxt, class Stack>
     void processBlock(Ctxt ctxt, Stack &stack)
     {
-        contextFor(ctxt)
+        CTXTRUN(ctxt)
         {
-            auto &x = c.getSignal();
+            auto x = ctxt.getInput();
 
-            arrayFor(x, k)
-            {
-                auto &xk = x[k];
-                arrayFor(xk, i) { firstOverlap_[i] += xk[i] * xk[i]; }
-
-                if constexpr (!kShiftDivideSize) {
-                    moveMeanSq(c);
-                }
-
-                n_ = (n_ + 1) % kShift;
-                if (n_ == 0) {
-                    if constexpr (kShiftDivideSize) {
-                        moveMeanSq(c);
-                    }
-
-                    decltype(sumsq_) rms;
-                    arrayFor(sumsq_, i)
-                    {
-                        rms[i] = sqrtf(sumsq_[i] / float(Size));
-                    }
-                    stack.push(rms);
-                }
+            firstOverlap_ += x * x;
+            if constexpr (!kShiftDivideSize) {
+                moveMeanSq(ctxt);
             }
-        }
+
+            n_ = (n_ + 1) % kShift;
+            if (n_ == 0) {
+                if constexpr (kShiftDivideSize) {
+                    moveMeanSq(ctxt);
+                }
+                auto rms = sqrt(load(sumsq_) / static_cast<baseType<T>>(Size));
+                stack.push(rms);
+            }
+        };
     }
 
   private:
     template <class Ctxt> void moveMeanSq(Ctxt c)
     {
-        static_assert(Ctxt::kVecSize == 1);
+        static_assert(!Ctxt::kUseVec);
 
-        auto &lastOverlap = overlaps_.tail(c)[0];
+        auto lastOverlap = overlaps_.tail(c);
 
-        arrayFor(sumsq_, i)
-        {
-            sumsq_[i] += firstOverlap_[i] - lastOverlap[i];
-            sumsq_[i] = std::max(
-                0.f, sumsq_[i]); // protect from really small negative numbers
-        }
+        sumsq_ = max(load(T(0)), load(sumsq_) + firstOverlap_ - lastOverlap);
 
-        overlaps_.write(c, firstOverlap_.toSignal());
+        overlaps_.write(c, firstOverlap_);
         firstOverlap_ = {};
     }
 
     size_t n_ = 0;
-    fSample<N> firstOverlap_{};
-    CopyDelayLine<N, kNOverlaps> overlaps_{};
-    fSample<N> sumsq_{};
+    T firstOverlap_{};
+    CopyDelayLine<T, kNOverlaps> overlaps_{};
+    T sumsq_{};
 };
 
 /* no overlap */
-template <size_t N, size_t Size> class RMS<N, Size>
+template <typename T, size_t Size> class RMS<T, Size>
 {
   public:
     template <class Ctxt, class Stack>
     void processBlock(Ctxt ctxt, Stack &stack)
     {
-        contextFor(ctxt)
+        CTXTRUN(ctxt)
         {
-            auto &x = c.getSignal();
+            auto x = ctxt.getInput();
 
-            arrayFor(x, k)
-            {
-                auto &xk = x[k];
-                arrayFor(xk, i) { sumsq_[i] += xk[i] * xk[i]; }
+            sumsq_ += x * x;
+            n_ = (n_ + 1) % Size;
 
-                n_ = (n_ + 1) % Size;
-                if (n_ == 0) {
-
-                    decltype(sumsq_) rms;
-                    arrayFor(sumsq_, i)
-                    {
-                        rms[i] = sqrtf(sumsq_[i] / float(Size));
-                    }
-                    stack.push(rms);
-                    sumsq_ = {};
-                }
+            if (n_ == 0) {
+                auto rms = sqrt(load(sumsq_) / static_cast<baseType<T>>(Size));
+                stack.push(rms);
+                sumsq_ = {};
             }
-        }
+        };
     }
 
   private:
     size_t n_ = 0;
-    fSample<N> sumsq_{};
+    T sumsq_{};
 };
 } // namespace dsp
 

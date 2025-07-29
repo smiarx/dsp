@@ -1,24 +1,23 @@
 #include "dsp/Enveloppe.h"
 #include "dsp/Context.h"
-#include "dsp/Signal.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <cstddef>
 
 TEST_CASE("DoubleRamp", "[dsp][doubleramp]")
 {
     SECTION("Reference")
     {
-        constexpr size_t kN              = 2;
-        constexpr dsp::fData<kN> kTarget = {1.f, 2.f};
-        constexpr dsp::fData<kN> kUp     = {10.f, 15.f};
-        constexpr dsp::fData<kN> kDown   = {40.f, 45.f};
+        constexpr size_t kN  = 2;
+        using ft             = dsp::mfloat<kN>;
+        constexpr ft kTarget = {1.f, 2.f};
+        constexpr ft kUp     = {10.f, 15.f};
+        constexpr ft kDown   = {40.f, 45.f};
 
-        dsp::DoubleRamp<kN> ramp;
+        dsp::DoubleRamp<ft> ramp;
         ramp.set(kTarget, kUp, kDown);
 
-        const dsp::fData<kN> expect[]{
+        const ft expect[]{
             {0.1f, 0.133333f},   {0.2f, 0.266667f},   {0.3f, 0.4f},
             {0.4f, 0.533333f},   {0.5f, 0.666667f},   {0.6f, 0.8f},
             {0.7f, 0.933333f},   {0.8f, 1.06667f},    {0.9f, 1.2f},
@@ -43,9 +42,8 @@ TEST_CASE("DoubleRamp", "[dsp][doubleramp]")
 
         size_t n = 0;
         while (ramp.isRunning()) {
-            dsp::fSample<kN> x = ramp.process();
-            arrayFor(x, i)
-            {
+            auto x = ramp.process();
+            for (size_t i = 0; i < kN; ++i) {
                 REQUIRE_THAT(x[i],
                              Catch::Matchers::WithinAbs(expect[n][i], 1e-4));
             }

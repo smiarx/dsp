@@ -12,16 +12,23 @@ if(NOT ${Catch2_FOUND})
 endif()
 
 set(test_sources
-    SIMD.cpp
-    Signal.cpp
+    simd.cpp
     Context.cpp
-    FIRFilter.cpp
-    VAFilters.cpp
-    RMS.cpp
-    LinAlg.cpp
-    Hadamard.cpp
+    Buffer.cpp
+    Delay.cpp
     AllPass.cpp
+    FIRFilter.cpp
+    MultiRate.cpp
+    Windows.cpp
+    VAFilters.cpp
+    Orthogonal.cpp
+    Kernel.cpp
+    LFO.cpp
+    Noise.cpp
+    Smoother.cpp
+    IIRFilter.cpp
     Enveloppe.cpp
+    RMS.cpp
 )
 
 add_executable(tests ${test_sources})

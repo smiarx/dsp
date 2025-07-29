@@ -1,117 +1,154 @@
 #pragma once
 
-#include "Buffer.h"
 #include "FIRFilter.h"
 
 namespace dsp
 {
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
-          size_t BufSize = 0, size_t M = MaxM>
-class BaseMultiRate : public BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
+/////////////////////////////////////////////////////////////////////////
+// MultiRate Decimate
+
+template <typename T, size_t Order, size_t M>
+class MultiRateDecimate : public MultiRateDecimate<T, Order, M - 1>
 {
   public:
-    using Base          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>;
-    using Next          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
-    using BufCtxt       = typename Next::BufCtxt;
-    using Ctxt          = typename Next::Ctxt;
-    using DLDecimate    = typename Next::DLDecimate;
-    using DLInterpolate = typename Next::DLInterpolate;
+    using Base = MultiRateDecimate<T, Order, 1>;
+    using Next = MultiRateDecimate<T, Order, M - 1>;
 
-    template <size_t BufSize_>
-    using WithBuffer = BaseMultiRate<N, Order, MaxM, Offset, BufSize_, M>;
+    template <size_t Offset = 0>
+    using DLDecimate = typename FIRDecimate<T, Order, M>::template DL<Offset>;
 
-    BaseMultiRate(float cutoff = 1.f) :
-        firdecimate_(cutoff), firinterpolate_(cutoff)
-    {
-    }
+    MultiRateDecimate(baseType<T> cutoff = 1) : firdecimate_(cutoff) {}
 
-    int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl,
-                 int decimateId) const override
+    template <class CtxtIn, class CtxtOut, class DL>
+    int decimate(unsigned int rate, CtxtIn cin, CtxtOut &cout, DL &dl,
+                 int decimateId) const
     {
-        auto id = firdecimate_.decimate(cin.vec(), cout, dl, decimateId);
-        return id;
-    }
-    int interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl,
-                    int interpolateId) const override
-    {
-        auto id = firinterpolate_.interpolate(cin, cout, dl, interpolateId);
-        return id;
+        if (rate == M)
+            return firdecimate_.decimate(cin.vec(), cout, dl, decimateId);
+        else
+            return Next::decimate(rate, cin, cout, dl, decimateId);
     }
 
   private:
-    const FIRDecimate<N, Order, M> firdecimate_;
-    const FIRInterpolate<N, Order, M> firinterpolate_;
+    const FIRDecimate<T, Order, M> firdecimate_;
 };
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
-class BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>
+template <typename T, size_t Order> class MultiRateDecimate<T, Order, 1>
 {
   public:
-    using BufCtxt = BufferContext<fSample<N>, Buffer<fSample<N>, BufSize>>;
-    using Ctxt    = Context<fSample<N>>;
-    using DLDecimate =
-        typename FIRDecimate<N, Order, MaxM>::template DL<Offset>;
+// function seems more efficient with unknown behaviour
+// when rate > M. be careful
+// ignore warning "return-type'
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4715)
+#endif
+
+    template <typename F, bool Vec, class DL>
+    int decimate(unsigned int rate, Context<F, Vec> cin, Context<F, Vec> &cout,
+                 DL &, int) const
+    {
+        if (rate == 1) {
+            cout = cin;
+            return 0;
+        } else
+            assert(false);
+    }
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    constexpr float getDelay(unsigned int rate)
+    {
+        return ((Order + 1) * rate - 1) / 2.f;
+    }
+};
+
+/////////////////////////////////////////////////////////////////////////
+// MultiRate Interpolate
+
+template <typename T, size_t Order, size_t M>
+class MultiRateInterpolate : public MultiRateInterpolate<T, Order, M - 1>
+{
+  public:
+    using Base = MultiRateInterpolate<T, Order, 1>;
+    using Next = MultiRateInterpolate<T, Order, M - 1>;
+
+    template <size_t Offset = 0>
     using DLInterpolate =
-        typename FIRInterpolate<N, Order, MaxM>::template DL<N>;
+        typename FIRInterpolate<T, Order, M>::template DL<Offset>;
 
-    virtual int decimate(BufCtxt cin, Ctxt &cout, DLDecimate &dl, int) const
-    {
-        (void)dl;
-        cout = cin;
-        return 0;
-    }
-    virtual int interpolate(Ctxt cin, Ctxt &cout, DLInterpolate &dl, int) const
-    {
-        (void)dl;
-        cout = cin;
-        return 0;
-    }
-};
+    MultiRateInterpolate(baseType<T> cutoff = 1) : firinterpolate_(cutoff) {}
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset = 0,
-          size_t BufSize = 0, size_t M = MaxM>
-class MultiRate : public MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>
-{
-  public:
-    MultiRate(float cutoff = 1.f) : Next(cutoff), multirate_(cutoff) {}
-
-    using Next = MultiRate<N, Order, MaxM, Offset, BufSize, M - 1>;
-    using Base = typename Next::Base;
-    template <size_t BufSize_>
-    using WithBuffer = MultiRate<N, Order, MaxM, Offset, BufSize_, M>;
-    [[nodiscard]] const typename Next::Base *get(int i) const
+    template <class CtxtIn, class CtxtOut, class DL>
+    int interpolate(unsigned int rate, CtxtIn cin, CtxtOut &cout, DL &dl,
+                    int interpolateId) const
     {
-        if (i >= static_cast<int>(M)) {
-            return &multirate_;
-        } else {
-            return Next::get(i);
-        }
+        if (rate == M)
+            return firinterpolate_.interpolate(cin, cout, dl, interpolateId);
+        else
+            return Next::interpolate(rate, cin, cout, dl, interpolateId);
     }
 
   private:
-    const BaseMultiRate<N, Order, MaxM, Offset, BufSize, M> multirate_;
+    const FIRInterpolate<T, Order, M> firinterpolate_;
 };
 
-template <size_t N, size_t Order, size_t MaxM, size_t Offset, size_t BufSize>
-class MultiRate<N, Order, MaxM, Offset, BufSize, 1>
+template <typename T, size_t Order> class MultiRateInterpolate<T, Order, 1>
 {
   public:
-    MultiRate(float cutoff = 1.f) { (void)cutoff; }
+// function seems more efficient with unknown behaviour
+// when rate > M. be careful
+// ignore warning "return-type'
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4715)
+#endif
 
-    using Base          = BaseMultiRate<N, Order, MaxM, Offset, BufSize, 1>;
-    using BufCtxt       = typename Base::BufCtxt;
-    using Ctxt          = typename Base::Ctxt;
-    using DLDecimate    = typename Base::DLDecimate;
-    using DLInterpolate = typename Base::DLInterpolate;
-    [[nodiscard]] const Base *get(int i) const
+    template <typename F, bool Vec, class DL>
+    int interpolate(unsigned int rate, Context<F, Vec> cin,
+                    Context<F, Vec> &cout, DL &, int) const
     {
-        (void)i;
-        return &multirate_;
+        if (rate == 1) {
+            cout = cin;
+            return 0;
+        } else
+            assert(false);
     }
 
-  private:
-    const Base multirate_;
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+    constexpr float getDelay(unsigned int rate)
+    {
+        return ((Order + 1) * rate - 1) / 2.f;
+    }
 };
 
+/////////////////////////////////////////////////////////////////////////
+// MultiRate
+
+template <typename T, size_t Order, size_t M>
+class MultiRate : public MultiRateDecimate<T, Order, M>,
+                  public MultiRateInterpolate<T, Order, M>
+{
+  public:
+    constexpr int getDelay(unsigned int rate)
+    {
+        return ((Order + 1) * rate - 1);
+    }
+};
 } // namespace dsp

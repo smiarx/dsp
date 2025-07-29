@@ -11,8 +11,9 @@ TEST_CASE("Allpass")
 {
     constexpr size_t kK = 2;
     constexpr size_t kN = 512;
+    using ft            = dsp::mfloat<kK>;
 
-    dsp::fSample<kK> x[kN];
+    ft x[kN];
     for (auto &xn : x)
         for (size_t i = 0; i < kK; ++i) {
             xn[i] = GENERATE(take(1, random(-1.f, 1.f)));
@@ -24,22 +25,22 @@ TEST_CASE("Allpass")
     auto ctxt = dsp::Context(x, kN);
 
     {
-        dsp::AllPass<kK> ap1;
-        dsp::CopyDelayLine<kK, 1> ap1state{};
+        dsp::AllPass<ft> ap1;
+        dsp::CopyDelayLine<ft, 1> ap1state{};
         ap1.setCoeff({a0, a0});
         BENCHMARK("1st order")
         {
-            contextFor(ctxt) { ap1.process(c, ap1state); }
+            CTXTRUN(ctxt) { ap1.process(ctxt, ap1state); };
             return x;
         };
     }
     {
-        dsp::AllPass2<kK> ap2;
+        dsp::AllPass2<ft> ap2;
         decltype(ap2)::State ap2state{};
         ap2.setCoeffs({a0, a0}, {a1, a1});
         BENCHMARK("2nd order")
         {
-            contextFor(ctxt) { ap2.process(c, ap2state); }
+            CTXTRUN(ctxt) { ap2.process(ctxt, ap2state); };
             return x;
         };
     }

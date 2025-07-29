@@ -1,53 +1,54 @@
 #pragma once
 
-#include "Signal.h"
-#include <cstdlib>
+#include "simd/multi.h"
 #include <limits>
+#include <random>
 
 namespace dsp
 {
 
-template <size_t N> class INoise
+template <typename T> class INoise
 {
+    using iT                          = multi<int, kTypeWidth<T>>;
     static constexpr int kGenerator[] = {1296462733, 1487623987, 848278349,
                                          1987647829, 1837654627, 963782763,
                                          1492758273, 1746273223};
 
   public:
-    INoise()
+    INoise() : INoise(std::random_device{}()) {}
+    INoise(int seed)
     {
-        for (size_t i = 0; i < N; ++i) {
-            seed_[i] = rand();
+        auto rnd = seed;
+        for (size_t i = 0; i < kTypeWidth<iT>; ++i) {
+            seed_[i] = rnd;
+            rnd      = (rnd + seed) * 1103515245;
         }
     }
 
     auto process()
     {
-        for (size_t i = 0; i < N; ++i) {
-            state_[i] = seed_[i] + state_[i] * kGenerator[i];
-        }
-        return state_;
+        state_ = seed_ + state_ * iT::load(kGenerator);
+        return load(state_);
     }
 
   private:
-    iData<N> seed_;
-    iData<N> state_{0};
+    iT seed_;
+    iT state_{0};
 };
 
-template <size_t N> class Noise : public INoise<N>
+template <typename T> class Noise : public INoise<T>
 {
   public:
+    Noise(int seed) : INoise<T>(seed) {}
+    Noise() = default;
     auto process()
     {
-        using type  = typename fData<N>::Type;
-        using itype = typename iData<N>::Type;
-        fData<N> y;
+        using type  = baseType<T>;
+        using itype = intType<T>;
 
-        auto iy = INoise<N>::process();
-        for (size_t i = 0; i < N; ++i) {
-            y[i] = static_cast<type>(iy[i]) /
-                   static_cast<type>(std::numeric_limits<itype>::max());
-        }
+        auto iy = INoise<T>::process();
+        auto y  = toFloat<type>(iy) /
+                 static_cast<type>(std::numeric_limits<baseType<itype>>::max());
         return y;
     }
 };

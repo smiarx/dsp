@@ -2,13 +2,12 @@
 
 #include "Delay.h"
 #include "Lut.h"
-#include "Signal.h"
 #include <cmath>
 
 namespace dsp
 {
 
-namespace kernel
+namespace kernels
 {
 
 template <int A, class Window> class Sinc
@@ -16,55 +15,45 @@ template <int A, class Window> class Sinc
   public:
     Sinc()                      = delete;
     static constexpr auto kSize = A;
-    static constexpr auto generate(float x)
+    template <typename F> static constexpr auto generate(F x)
     {
-        auto xpi = x * dsp::constants<float>::pi;
-        return sinf(xpi) / (xpi)*Window::generate(x / A);
+        auto xpi = x * dsp::constants<F>::pi;
+        return sin(xpi) / (xpi)*Window::generate(x / A);
     }
 };
 
-template <int A> class Lanczos
-{
-  public:
-    Lanczos()                   = delete;
-    static constexpr auto kSize = A;
-    static constexpr auto generate(float x)
-    {
-        auto xpi = x * dsp::constants<float>::pi;
-        return sinf(xpi) * sinf(xpi / A) / (xpi * xpi) * A;
-    }
-};
-} // namespace kernel
+} // namespace kernels
 
-template <size_t N, class Kernel, size_t LutSize>
-class TapKernel : public TapLin<1>
+template <typename T, class Kernel, size_t LutSize>
+class TapKernel : public TapLin<baseType<T>>
 {
   private:
+    using bt                           = baseType<T>;
     static constexpr auto kA           = Kernel::kSize;
     static constexpr auto kFilterWidth = kA * 2;
 
     // type used in lookup table
-    class KernelType : public std::array<fData<N>, kFilterWidth>
+    class KernelType : public std::array<T, kFilterWidth>
     {
       public:
         KernelType &operator+=(const KernelType &rhs)
         {
             for (size_t k = 0; k < kFilterWidth; ++k) {
-                for (size_t i = 0; i < N; ++i) (*this)[k][i] += rhs[k][i];
+                (*this)[k] += load(rhs[k]);
             }
             return *this;
         }
         friend auto operator-(KernelType lhs, const KernelType &rhs)
         {
             for (size_t k = 0; k < kFilterWidth; ++k) {
-                for (size_t i = 0; i < N; ++i) lhs[k][i] -= rhs[k][i];
+                lhs[k] -= load(rhs[k]);
             }
             return lhs;
         }
         friend auto operator*(KernelType lhs, const float rhs)
         {
             for (size_t k = 0; k < kFilterWidth; ++k) {
-                for (size_t i = 0; i < N; ++i) lhs[k][i] *= rhs;
+                lhs[k] = load(lhs[k]) * rhs;
             }
             return lhs;
         }
@@ -80,20 +69,14 @@ class TapKernel : public TapLin<1>
             Lut<KernelType, LutSize>::fill([](float x) -> auto {
                 KernelType kernels = {};
                 if (std::fabs(x) < 1e-7) {
-                    for (size_t i = 0; i < N; ++i) {
-                        kernels[idFromKernel(0)][i] = 1.f;
-                    }
+                    kernels[idFromKernel(0)] = bt(1);
                 } else if (std::fabs(x - 1.f) < 1e-7) {
-                    for (size_t i = 0; i < N; ++i) {
-                        kernels[idFromKernel(-1)][i] = 1.f;
-                    }
+                    kernels[idFromKernel(-1)] = bt(1);
                 } else {
                     for (size_t id = 0; id < kFilterWidth; ++id) {
-                        auto k     = static_cast<float>(kernelFromId(id));
-                        auto value = Kernel::generate(-k - x);
-                        for (size_t i = 0; i < N; ++i) {
-                            kernels[id][i] = value;
-                        }
+                        auto k      = static_cast<bt>(kernelFromId(id));
+                        auto value  = Kernel::generate(-k - x);
+                        kernels[id] = value;
                     }
                 }
 
@@ -122,29 +105,28 @@ class TapKernel : public TapLin<1>
   public:
     template <class Ctxt, class DL> auto read(Ctxt c, const DL &delayline)
     {
-        static_assert(Ctxt::kVecSize == 1);
+        static_assert(!Ctxt::kUseVec);
 
-        typename Ctxt::Type x = {};
+        decltype(c.getInput()) x{};
 
-        auto idelay = TapNoInterp<1>::id_[0];
-        auto fdelay = TapLin<1>::fd_[0];
+        auto idelay = TapNoInterp<bt>::id_;
+        auto fdelay = TapLin<bt>::fd_;
+        auto delay  = idelay - kernelFromId(0);
 
         auto kernels = lut.read(fdelay);
 
-        constexpr auto kVecSize = Ctxt::BaseType::kVectorSize;
-        for (size_t l = 0; l < kFilterWidth - kFilterWidth % kVecSize;
-             l += kVecSize) {
-            auto delay  = idelay - kernelFromId(l);
-            auto points = delayline.read(c, delay)[0].toVector();
-            inFor(points, k, i) { points[k][i] *= kernels[l + k][i]; }
-            inFor(points, k, i) { x[0][i] += points[k][i]; }
-        }
-        for (size_t l = kFilterWidth - kFilterWidth % kVecSize;
-             l < kFilterWidth; ++l) {
-            auto delay = idelay - kernelFromId(l);
-            auto point = delayline.read(c, delay)[0].toVector();
-            arrayFor(point[0], i) { x[0][i] += point[0][i] * kernels[l][i]; }
-        }
+        auto l        = 0;
+        auto kernCtxt = c.vec();
+        kernCtxt.setBlockSize(kFilterWidth);
+        kernCtxt.setData(kernels.data());
+
+        CTXTRUN(kernCtxt)
+        {
+            auto points = delayline.read(kernCtxt, delay);
+            points *= kernCtxt.getInput();
+            x += reduce<kTypeWidth<T>>(points);
+            l += decltype(kernCtxt)::kIncrSize;
+        };
 
         return x;
     }
@@ -173,7 +155,7 @@ class TapKernel : public TapLin<1>
 };
 
 // define static variable
-template <size_t N, class Kernel, size_t LutSize>
-typename TapKernel<N, Kernel, LutSize>::LutType
-    TapKernel<N, Kernel, LutSize>::lut;
+template <typename T, class Kernel, size_t LutSize>
+typename TapKernel<T, Kernel, LutSize>::LutType
+    TapKernel<T, Kernel, LutSize>::lut;
 } // namespace dsp
