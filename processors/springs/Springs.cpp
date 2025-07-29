@@ -95,6 +95,8 @@ void Springs::setFreq(float freq, int blockSize)
 
         setTd(td_, blockSize);
         setTone(tone_, blockSize);
+
+        setNStages();
     }
 }
 
@@ -108,18 +110,11 @@ void Springs::setRes(float r, int blockSize)
 
     allpass_.setRes(dsp::batch<mtype>::simdtype::convert(rs));
 
-    /* if abs(R) smaller than a certain value, reduce the cascade size
-     * this helps to avoid long ringing around allpass phasing frequency */
-    if (std::abs(r) < kMinRWithMaxCascadeL) {
-        apNStages_ = static_cast<unsigned int>(
-            std::abs(r) / kMinRWithMaxCascadeL * kApCascadeL);
-    } else {
-        apNStages_ = kApCascadeL;
-    }
-
     if (signChanged) {
         setFreq(freq_, blockSize);
     }
+
+    setNStages();
 }
 
 void Springs::setTd(float td, int blockSize)
@@ -197,6 +192,21 @@ void Springs::setScatter(float scatter, int blockSize)
     scatter_ = scatter;
     setTd(td_, blockSize);
     setFreq(freq_, blockSize);
+}
+
+void Springs::setNStages()
+{
+    /* if abs(R) smaller than a certain value, reduce the cascade size
+     * this helps to avoid long ringing around allpass phasing frequency */
+    if (std::abs(r_) < kMinRWithMaxCascadeL) {
+        apNStages_ = static_cast<unsigned int>(
+            std::abs(r_) / kMinRWithMaxCascadeL * kApCascadeL);
+    } else {
+        apNStages_ = kApCascadeL;
+    }
+
+    // divide by rate factor
+    apNStages_ = (apNStages_ + rateFactor_ - 1) / rateFactor_;
 }
 
 void Springs::process(const float *const *__restrict in,

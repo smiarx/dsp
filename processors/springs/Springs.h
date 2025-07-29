@@ -121,6 +121,8 @@ class Springs
                  float *const *__restrict out, int count);
 
   private:
+    void setNStages();
+
     int rateFactor_{1};
     type sampleRate_{kDefaultSamplerRate};
     type freqScale_{2.f / kDefaultSamplerRate};
