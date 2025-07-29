@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "simd_aarch64.h"
+#include "simd_arm.h"
 #include "simd_default.h"
 #include "simd_x86_64.h"
 
@@ -409,7 +409,7 @@ template <typename T, size_t N> struct simd {
 
     always_inline auto vectorcall toInt()
     {
-        return simd<int, N>::convert(*this);
+        return simd<int32_t, N>::convert(*this);
     }
     template <typename T2> always_inline auto vectorcall toFloat()
     {

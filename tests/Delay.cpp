@@ -14,8 +14,8 @@ using namespace Catch::Matchers;
 template <typename V>
 static inline void checkValue(V delay, int i, float value, float offset = 0.f)
 {
-    if (i < delay) REQUIRE_THAT(value, WithinRel(0.f));
-    else
+    if (i < (int)delay) REQUIRE_THAT(value, WithinRel(0.));
+    else if (i > (int)delay)
         REQUIRE_THAT(value, WithinRel(float(i) - delay + offset));
 }
 template <typename V>
@@ -332,7 +332,13 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
     {
         using namespace Catch::Matchers;
 
-        using ft = dsp::mdouble<2>;
+#ifdef DSP_SIMD_DOUBLE
+        using ft    = dsp::mdouble<2>;
+        using fscal = double;
+#else
+        using ft    = dsp::mfloat<2>;
+        using fscal = float;
+#endif
 
         constexpr auto kDelayMax  = 13;
         constexpr auto kBlockSize = 29;
@@ -346,14 +352,14 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
         ft bufdata[decltype(buffer)::kSize]{};
         buffer.setData(bufdata);
 
-        int i      = 0;
-        double off = 6.;
+        int i     = 0;
+        fscal off = 6.;
 
         for (size_t j = 0; j < kNBlocks; ++j) {
 
             for (size_t k = 0; k < kBlockSize; ++k) {
-                data[k][0] = static_cast<double>(k + j * kBlockSize);
-                data[k][1] = static_cast<double>(k + j * kBlockSize) + off;
+                data[k][0] = static_cast<fscal>(k + j * kBlockSize);
+                data[k][1] = static_cast<fscal>(k + j * kBlockSize) + off;
             }
 
             dsp::BufferContext ctxt(data, kBlockSize, buffer);
@@ -379,27 +385,31 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                 }
                 // TapLin
                 {
-                    ft d   = {GENERATE(take(1, random(1., static_cast<double>(
-                                                            kDelayMax - 1)))),
-                              GENERATE(take(1, random(1., static_cast<double>(
-                                                            kDelayMax - 1))))};
+                    ft d   = {GENERATE(take(
+                                1, random(fscal(1.),
+                                            static_cast<fscal>(kDelayMax - 1)))),
+                              GENERATE(take(
+                                1, random(fscal(1.),
+                                            static_cast<fscal>(kDelayMax - 1))))};
                     auto v = dsp::TapLin<ft>(d).read(ctxt, delay);
                     checkValue(d[0], i, v[0]);
                     checkValue(d[1], i, v[1], off);
                 }
                 // TapCubic
                 {
-                    ft d   = {GENERATE(take(1, random(2., static_cast<double>(
-                                                            kDelayMax - 2)))),
-                              GENERATE(take(1, random(2., static_cast<double>(
-                                                            kDelayMax - 2))))};
+                    ft d   = {GENERATE(take(
+                                1, random(fscal(2.),
+                                            static_cast<fscal>(kDelayMax - 2)))),
+                              GENERATE(take(
+                                1, random(fscal(2.),
+                                            static_cast<fscal>(kDelayMax - 2))))};
                     auto v = dsp::TapCubic<ft>(d).read(ctxt, delay);
 
                     for (int j = 0; j < 2; ++j) {
-                        double x0  = i - static_cast<int>(d[j]) + off;
-                        double x1  = x0 - 1;
-                        double x2  = x1 - 1;
-                        double xm1 = x0 + 1;
+                        fscal x0  = i - static_cast<int>(d[j]) + off;
+                        fscal x1  = x0 - 1;
+                        fscal x2  = x1 - 1;
+                        fscal xm1 = x0 + 1;
                         if (j == 1) {
                             // set offset
                             x0  = x0 < off ? 0. : x0;

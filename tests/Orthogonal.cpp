@@ -74,6 +74,7 @@ TEST_CASE("Hadamard transform", "[dsp][hadamard]")
             CHECK(y[0] == 3.f * isqrt2);  // 1 + 2
             CHECK(y[1] == -1.f * isqrt2); // 1 - 2
         }
+#ifdef DSP_SIMD_DOUBLE
         SECTION("double")
         {
             dsp::mdouble<2> x     = {1., 2.};
@@ -82,6 +83,7 @@ TEST_CASE("Hadamard transform", "[dsp][hadamard]")
             CHECK(y[0] == 3. * isqrt2);  // 1 + 2
             CHECK(y[1] == -1. * isqrt2); // 1 - 2
         }
+#endif
     }
 
     SECTION("N=4")

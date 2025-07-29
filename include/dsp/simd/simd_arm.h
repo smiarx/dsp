@@ -1,11 +1,18 @@
 #pragma once
 
-#if defined(__aarch64__)
+#if defined(__ARM_NEON)
 
 #include "simd_default.h"
 #include <arm_neon.h>
 
 #define DSP_MAX_VEC_SIZE 16
+
+#if defined(__aarch64__)
+#define DSP_AARCH64
+#define DSP_SIMD_DOUBLE
+#else
+#define DSP_ARM32
+#endif
 
 namespace dsp
 {
@@ -27,8 +34,26 @@ template <> struct intrin<float, 2> {
     static constexpr auto sub    = vsub_f32;
     static constexpr auto neg    = vneg_f32;
     static constexpr auto mul    = vmul_f32;
-    static constexpr auto div    = vdiv_f32;
-    static constexpr auto sqrt   = vsqrt_f32;
+#ifdef DSP_AARCH64
+    static constexpr auto div  = vdiv_f32;
+    static constexpr auto sqrt = vsqrt_f32;
+#else
+    static always_inline type vectorcall div(type x, type y)
+    {
+        for (size_t i = 0; i < 2; ++i) x[i] /= y[i];
+        return x;
+    }
+    static always_inline type vectorcall sqrt(type x)
+    {
+        for (size_t i = 0; i < 2; ++i) x[i] = std::sqrt(x[i]);
+        return x;
+    }
+#endif
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshl_n_s32(vreinterpret_s32_f32(x), 31);
+    }
 
     static constexpr auto bitAnd = vand_u32;
     static constexpr auto bitOr  = vorr_u32;
@@ -47,7 +72,14 @@ template <> struct intrin<float, 2> {
     static constexpr auto min = vmin_f32;
 
     static constexpr auto abs = vabs_f32;
+#ifdef DSP_AARCH64
     static constexpr auto sum = vaddv_f32;
+#else
+    static always_inline basetype vectorcall sum(type value)
+    {
+        return vget_lane_f32(vpadd_f32(value, value), 0);
+    }
+#endif
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -63,11 +95,11 @@ template <> struct intrin<float, 2> {
 
     static always_inline auto vectorcall any(masktype x)
     {
-        return vmaxv_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u32(x), 0) != 0;
     }
     static always_inline auto vectorcall all(masktype x)
     {
-        return vminv_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u32(x), 0) == 0xffffffffffffffff;
     }
 
     // convert
@@ -84,10 +116,12 @@ template <> struct intrin<float, 2> {
     {
         return vcvt_f32_s32(value);
     }
+#ifdef DSP_AARCH64
     static always_inline type convert(float64x2_t value)
     {
         return vcvt_f32_f64(value);
     }
+#endif
 };
 
 ///////////////// FLOAT x 4 ////////////////
@@ -105,8 +139,26 @@ template <> struct intrin<float, 4> {
     static constexpr auto sub    = vsubq_f32;
     static constexpr auto neg    = vnegq_f32;
     static constexpr auto mul    = vmulq_f32;
-    static constexpr auto div    = vdivq_f32;
-    static constexpr auto sqrt   = vsqrtq_f32;
+#ifdef DSP_AARCH64
+    static constexpr auto div  = vdivq_f32;
+    static constexpr auto sqrt = vsqrtq_f32;
+#else
+    static always_inline type vectorcall div(type x, type y)
+    {
+        for (size_t i = 0; i < 4; ++i) x[i] /= y[i];
+        return x;
+    }
+    static always_inline type vectorcall sqrt(type x)
+    {
+        for (size_t i = 0; i < 4; ++i) x[i] = std::sqrt(x[i]);
+        return x;
+    }
+#endif
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshlq_n_s32(vreinterpretq_s32_f32(x), 31);
+    }
 
     static constexpr auto bitAnd = vandq_u32;
     static constexpr auto bitOr  = vorrq_u32;
@@ -126,7 +178,15 @@ template <> struct intrin<float, 4> {
     static constexpr auto min = vminq_f32;
 
     static constexpr auto abs = vabsq_f32;
+#ifdef DSP_AARCH64
     static constexpr auto sum = vaddvq_f32;
+#else
+    static always_inline basetype vectorcall sum(type value)
+    {
+        auto sum = vpadd_f32(vget_low_f32(value), vget_high_f32(value));
+        return vget_lane_f32(vpadd_f32(sum, sum), 0);
+    }
+#endif
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -134,9 +194,13 @@ template <> struct intrin<float, 4> {
     }
     static always_inline type vectorcall flip2(type value)
     {
+#ifdef DSP_AARCH64
         auto valued = vreinterpretq_f64_f32(value);
         auto shufd  = vextq_f64(valued, valued, 1);
         return vreinterpretq_f32_f64(shufd);
+#else
+        return vcombine_f32(vget_high_f32(value), vget_low_f32(value));
+#endif
     }
     static always_inline float32x2_t vectorcall reduce2(type x)
     {
@@ -152,11 +216,12 @@ template <> struct intrin<float, 4> {
 
     static always_inline auto vectorcall any(masktype x)
     {
-        return vmaxvq_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u16(vqmovn_u32(x)), 0) != 0;
     }
     static always_inline auto vectorcall all(masktype x)
     {
-        return vminvq_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u16(vqmovn_u32(x)), 0) ==
+               0xffffffffffffffff;
     }
 
     // convert
@@ -181,12 +246,15 @@ template <> struct intrin<float, 4> {
     {
         return vcombine_f32(value, value);
     }
+#ifdef DSP_AARCH64
     static always_inline type convert(float64x2_t value)
     {
         return convert(intrin<float, 2>::convert(value));
     }
+#endif
 };
 
+#ifdef DSP_AARCH64
 ///////////////// DOUBLE x 2 ////////////////
 template <> struct intrin<double, 2> {
     using basetype               = double;
@@ -204,6 +272,11 @@ template <> struct intrin<double, 2> {
     static constexpr auto mul    = vmulq_f64;
     static constexpr auto div    = vdivq_f64;
     static constexpr auto sqrt   = vsqrtq_f64;
+
+    static always_inline masktype vectorcall signbit(type x)
+    {
+        return (masktype)vshlq_n_s64(vreinterpretq_s64_f64(x), 31);
+    }
 
     static constexpr auto bitAnd = vandq_u64;
     static constexpr auto bitOr  = vorrq_u64;
@@ -241,11 +314,12 @@ template <> struct intrin<double, 2> {
 
     static always_inline auto vectorcall any(masktype x)
     {
-        return vmaxvq_u32(vreinterpretq_u32_u64(x));
+        return vget_lane_u64(vreinterpret_u64_u32(vqmovn_u64(x)), 0) != 0;
     }
     static always_inline auto vectorcall all(masktype x)
     {
-        return vminvq_u32(vreinterpretq_u32_u64(x));
+        return vget_lane_u64(vreinterpret_u64_u32(vqmovn_u64(x)), 0) ==
+               0xffffffffffffffff;
     }
 
     // convert
@@ -269,6 +343,7 @@ template <> struct intrin<double, 2> {
         return vcvt_f64_f32(value);
     }
 };
+#endif
 
 ///////////////// INT x 2 ////////////////
 template <> struct intrin<int32_t, 2> {
@@ -324,7 +399,15 @@ template <> struct intrin<int32_t, 2> {
     static constexpr auto min = vmin_s32;
 
     static constexpr auto abs = vabs_s32;
+#ifdef DSP_AARCH64
     static constexpr auto sum = vaddv_s32;
+#else
+    static always_inline basetype vectorcall sum(type value)
+    {
+        return vget_lane_s32(vpadd_s32(value, value), 0);
+    }
+#endif
+
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64_s32(value);
@@ -339,11 +422,19 @@ template <> struct intrin<int32_t, 2> {
 
     static always_inline auto vectorcall any(masktype x)
     {
+#ifdef DSP_AARCH64
         return vmaxv_u32(x) != 0;
+#else
+        return vget_lane_u64(vreinterpret_u64_u32(x), 0) != 0;
+#endif
     }
     static always_inline auto vectorcall all(masktype x)
     {
+#ifdef DSP_AARCH64
         return vminv_u32(x) != 0;
+#else
+        return vget_lane_u64(vreinterpret_u64_u32(x), 0) == 0xffffffffffffffff;
+#endif
     }
 
     // convert
@@ -362,10 +453,12 @@ template <> struct intrin<int32_t, 2> {
         return vcvt_s32_f32(value);
     }
 
+#ifdef DSP_AARCH64
     static always_inline type convert(float64x2_t value)
     {
         return convert(vcvt_f32_f64(value));
     }
+#endif
 };
 
 ///////////////// INT x 4 ////////////////
@@ -422,7 +515,16 @@ template <> struct intrin<int32_t, 4> {
     static constexpr auto min = vminq_s32;
 
     static constexpr auto abs = vabsq_s32;
+
+#ifdef DSP_AARCH64
     static constexpr auto sum = vaddvq_s32;
+#else
+    static always_inline basetype vectorcall sum(type value)
+    {
+        auto sum = vpadd_s32(vget_low_s32(value), vget_high_s32(value));
+        return vget_lane_s32(vpadd_s32(sum, sum), 0);
+    }
+#endif
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -449,11 +551,12 @@ template <> struct intrin<int32_t, 4> {
 
     static always_inline auto vectorcall any(masktype x)
     {
-        return vmaxvq_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u16(vqmovn_u32(x)), 0) != 0;
     }
     static always_inline auto vectorcall all(masktype x)
     {
-        return vminvq_u32(x) != 0;
+        return vget_lane_u64(vreinterpret_u64_u16(vqmovn_u32(x)), 0) ==
+               0xffffffffffffffff;
     }
 
     // convert
@@ -482,10 +585,12 @@ template <> struct intrin<int32_t, 4> {
         return convert(vcvt_s32_f32(value));
     }
 
+#ifdef DSP_AARCH64
     static always_inline type convert(float64x2_t value)
     {
         return convert(vcvt_f32_f64(value));
     }
+#endif
 };
 
 } // namespace dsp

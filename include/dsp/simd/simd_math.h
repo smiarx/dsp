@@ -117,17 +117,17 @@ always_inline auto blend(simdmask<T1, N> m, simd<T2, N> x, simd<T2, N> y)
 /////////////////// int ////////////////////////////
 template <typename T> always_inline auto toInt(T x)
 {
-    return static_cast<int>(x);
+    return static_cast<int32_t>(x);
 }
 template <typename T, size_t N> always_inline auto toInt(simd<T, N> x)
 {
     return x.toInt();
 }
-template <typename T> always_inline auto toFloat(int x)
+template <typename T> always_inline auto toFloat(int32_t x)
 {
     return static_cast<T>(x);
 }
-template <typename T, size_t N> always_inline auto toFloat(simd<int, N> x)
+template <typename T, size_t N> always_inline auto toFloat(simd<int32_t, N> x)
 {
     return x.template toFloat<T>();
 }

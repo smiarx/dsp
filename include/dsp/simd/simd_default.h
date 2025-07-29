@@ -49,7 +49,7 @@ template <> struct maskWithType<double> {
 template <> struct maskWithType<int> {
     using type = uint32_t;
 };
-template <> struct maskWithType<uint> {
+template <> struct maskWithType<unsigned int> {
     using type = uint32_t;
 };
 
