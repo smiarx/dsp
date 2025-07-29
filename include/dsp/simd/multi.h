@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t N>
 struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
@@ -290,4 +292,5 @@ using mdouble4 = mdouble<4>;
 using mint8    = mint<8>;
 #endif
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

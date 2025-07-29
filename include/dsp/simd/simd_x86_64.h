@@ -1,23 +1,33 @@
 #pragma once
 
+#include "../cpu/defines.h"
 #include "simd_default.h"
 
-#if defined(__x86_64__)
+#if DSP_X86
 
 #include <immintrin.h>
 
-#if __AVX__
-#define DSP_AVX          1
-#define DSP_SSE2         1
-#define DSP_MAX_VEC_SIZE 32
-#elif __SSE2__
-#define DSP_SSE2         1
+#if DSP_AVX
+#define DSP_MAX_VEC_SIZE     32
+#define DSP_PADDING_VEC_SIZE 32
+
+#elif DSP_SSE2
 #define DSP_MAX_VEC_SIZE 16
+
+// padding size should have max possible value when dispatching is active
+#if DSP_X86_DISPATCH
+#define DSP_PADDING_VEC_SIZE 32
+#else
+#define DSP_PADDING_VEC_SIZE 32
+#endif
+
 #endif
 
 #define DSP_SIMD_DOUBLE
 
 namespace dsp
+{
+inline namespace DSP_ARCH_NAMESPACE
 {
 
 template <typename T, size_t N> struct intrin;
@@ -1157,6 +1167,7 @@ template <> struct intrin<double, 4> {
 };
 #endif
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
 
 #endif

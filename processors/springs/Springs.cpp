@@ -11,6 +11,9 @@
 
 namespace processors
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
+
 // multirate converter
 const Springs::MRD Springs::kDecimate{};
 const Springs::MRI Springs::kInterpolate{};
@@ -382,4 +385,6 @@ void Springs::process(const float *const *__restrict in,
     wet_.reset();
     loopTd_.reset();
 }
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace processors
