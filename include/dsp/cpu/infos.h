@@ -37,7 +37,7 @@ static auto xcr0() noexcept
     return xcr0;
 };
 
-static auto cpuid(int reg[4], unsigned int level,
+static auto cpuid(uint32_t reg[4], unsigned int level,
                   unsigned int count = 0) noexcept
 {
 #if defined(_MSC_VER)
@@ -80,7 +80,7 @@ struct Infos {
 
 static inline auto getInfos() noexcept
 {
-    int regs1[4];
+    uint32_t regs1[4];
 
     internal::cpuid(regs1, 0x1);
 
@@ -115,15 +115,15 @@ static inline auto getInfos() noexcept
 
     infos.avx = regs1[2] >> 28 & avxStateOsEnabled;
 
-    int regs8[4];
+    uint32_t regs8[4];
     internal::cpuid(regs8, 0x80000001);
     infos.fma4 = regs8[2] >> 16 & avxStateOsEnabled;
 
-    int regs7[4];
+    uint32_t regs7[4];
     internal::cpuid(regs7, 0x7);
     infos.avx2 = regs7[1] >> 5 & avxStateOsEnabled;
 
-    int regs7a[4];
+    uint32_t regs7a[4];
     internal::cpuid(regs7a, 0x7, 0x1);
     infos.avxvnni = regs7a[0] >> 4 & avxStateOsEnabled;
 
