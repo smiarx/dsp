@@ -125,6 +125,8 @@ template <class Vec> class AbstractVector
 };
 
 } // namespace internal
+  //
+template <typename T, size_t H, size_t W> class Matrix;
 
 ///////////////////////// Vector ///////////////////////////////////
 template <typename T, size_t N> class Vector
@@ -230,6 +232,31 @@ template <typename T, size_t N> class Vector
         return AbstractVector(std::move(op));
     }
 
+    template <size_t W> class Outer
+    {
+      public:
+        Outer(const Vector &v1, const Vector<T, W> &v2) : v1_(v1), v2_(v2) {}
+
+        template <size_t I, size_t J> [[nodiscard]] auto getSIMD() const
+        {
+            using Mat         = Matrix<T, N, W>;
+            auto v1           = v1_.getSIMD<I>();
+            constexpr auto kJ = J + Mat::kWOffset;
+            auto v2           = v2_.template getSIMD<kJ / kSIMDSize>();
+
+            return v1 * v2[kJ % kSIMDSize];
+        }
+
+      private:
+        const Vector &v1_;
+        const Vector<T, W> &v2_;
+    };
+
+    template <class V> auto outer(const V &other) const
+    {
+        return Outer<internal::kMatrixHeight<V>>(*this, other);
+    }
+
   private:
     std::array<multi<T, kSIMDSize>, kNsimd> data_{};
 };
@@ -283,17 +310,23 @@ template <typename T, size_t H, size_t W> class Matrix
         return data_[I][J].load();
     }
 
+    template <class M> Matrix &operator=(const M &matrix)
+    {
+        store(matrix);
+        return *this;
+    }
+
     template <class M, size_t I = 0, size_t J = 0>
     inline void store(const M &matrix)
     {
-        if constexpr (J == W) {
-            if constexpr (I == kSubMatH) return;
-            else {
-                store<M, I + 1, 0>(matrix);
-            }
+        if constexpr (I == kSubMatH) {
+            return;
+        } else if constexpr (J == W) {
+            store<M, I + 1, 0>(matrix);
+        } else {
+            data_[I][J].store(matrix.template getSIMD<I, J>());
+            store<M, I, J + 1>(matrix);
         }
-        data_[J][I].store(getSIMD<I, J>(matrix));
-        store<M, I, J + 1>(matrix);
     }
 
     template <class V> auto mul(const V &v) const
