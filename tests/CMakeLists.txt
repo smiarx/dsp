@@ -27,8 +27,9 @@ set(test_sources
     Noise.cpp
     Smoother.cpp
     IIRFilter.cpp
-    #Enveloppe.cpp
+    Enveloppe.cpp
     RMS.cpp
+    LinearAlgebra.cpp
 )
 
 add_executable(tests ${test_sources})

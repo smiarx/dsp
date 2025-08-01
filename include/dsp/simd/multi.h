@@ -48,6 +48,11 @@ struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
         return simdtype::loadu(data->data());
     }
 
+    [[nodiscard]] static always_inline simdtype loadu(const T *data)
+    {
+        return simdtype::loadu(data);
+    }
+
     always_inline void store(simdtype val) { val.store(this->data()); }
 
     static always_inline void storeu(multi *dest, simdtype val)
