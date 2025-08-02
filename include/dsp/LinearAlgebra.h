@@ -6,6 +6,7 @@
 #include "simd/simd.h"
 #include "simd/simd_math.h"
 #include <array>
+#include <cassert>
 
 namespace dsp::linalg
 {
@@ -26,12 +27,18 @@ static constexpr auto kMatrixHeight   = MatrixInfos<M>::kHeight;
 template <class M> using MatrixBase_t = typename MatrixInfos<M>::type;
 
 ///////////////////////// getSIMD ///////////////////////////////////
-template <size_t K, class V> inline auto getSIMD(const V &v)
+template <class V> inline auto getSIMD(const V &v, size_t k)
 {
-    return v.template getSIMD<K>();
+    return v.getSIMD(k);
 }
-template <size_t K> inline auto getSIMD(const float &value) { return value; }
-template <size_t K> inline auto getSIMD(const double &value) { return value; }
+template <> inline auto getSIMD(const float &value, [[maybe_unused]] size_t k)
+{
+    return value;
+}
+template <> inline auto getSIMD(const double &value, [[maybe_unused]] size_t k)
+{
+    return value;
+}
 
 ///////////////////////// Operators ///////////////////////////////////
 enum class Op {
@@ -50,17 +57,17 @@ template <Op op, typename X1, typename X2> class VecOp
   public:
     VecOp(const X1 &x1, const X2 &x2) : x1_(x1), x2_(x2) {}
 
-    template <size_t K> auto getSIMD() const
+    auto getSIMD(size_t k) const
     {
         namespace itrn = internal;
         if constexpr (op == Op::kAdd) {
-            return itrn::getSIMD<K>(x1_) + itrn::getSIMD<K>(x2_);
+            return itrn::getSIMD(x1_, k) + itrn::getSIMD(x2_, k);
         } else if constexpr (op == Op::kSub) {
-            return itrn::getSIMD<K>(x1_) - itrn::getSIMD<K>(x2_);
+            return itrn::getSIMD(x1_, k) - itrn::getSIMD(x2_, k);
         } else if constexpr (op == Op::kMul) {
-            return itrn::getSIMD<K>(x1_) * itrn::getSIMD<K>(x2_);
+            return itrn::getSIMD(x1_, k) * itrn::getSIMD(x2_, k);
         } else if constexpr (op == Op::kDiv) {
-            return itrn::getSIMD<K>(x1_) / itrn::getSIMD<K>(x2_);
+            return itrn::getSIMD(x1_, k) / itrn::getSIMD(x2_, k);
         } else {
             static_assert(false, "Invalid operator");
         }
@@ -87,10 +94,7 @@ template <class Vec> class AbstractVector
   public:
     AbstractVector(Vec &&vec) : v_(vec) {}
 
-    template <size_t K> inline auto getSIMD() const
-    {
-        return internal::getSIMD<K>(v_);
-    }
+    inline auto getSIMD(size_t k) const { return internal::getSIMD(v_, k); }
 
     template <class V> auto operator+(const V &other) const
     {
@@ -174,10 +178,10 @@ template <typename T, size_t N> class Vector
         return data_[k][i];
     }
 
-    template <size_t K> [[nodiscard]] auto getSIMD() const
+    [[nodiscard]] auto getSIMD(size_t k) const
     {
-        static_assert(K < kNsimd);
-        return data_[K].load();
+        assert(k < kNsimd);
+        return data_[k].load();
     }
 
     template <class V> Vector &operator=(const V &vector)
@@ -188,19 +192,14 @@ template <typename T, size_t N> class Vector
 
     template <class V, size_t K = 0> inline auto store(const V &vector)
     {
-        if constexpr (K == kNsimd) return;
-        else {
-            data_[K].store(vector.template getSIMD<K>());
-            store<V, K + 1>(vector);
-        }
+        for (size_t k = 0; k < kNsimd; ++k) data_[k].store(vector.getSIMD(k));
     }
 
-    template <class V, size_t K = 0> inline auto dot(const V &vector)
+    template <class V> inline auto dot(const V &vector)
     {
-        auto res = sum(getSIMD<K>() * (vector.template getSIMD<K>()));
-        if constexpr (K + 1 < kNsimd) {
-            res += dot<V, K + 1>(vector);
-        }
+        T res{};
+        for (size_t k = 0; k < kNsimd; ++k)
+            res += sum(getSIMD(k) * (vector.getSIMD(k)));
         return res;
     }
 
@@ -237,14 +236,14 @@ template <typename T, size_t N> class Vector
       public:
         Outer(const Vector &v1, const Vector<T, W> &v2) : v1_(v1), v2_(v2) {}
 
-        template <size_t I, size_t J> [[nodiscard]] auto getSIMD() const
+        [[nodiscard]] auto getSIMD(size_t i, size_t j) const
         {
-            using Mat         = Matrix<T, N, W>;
-            auto v1           = v1_.getSIMD<I>();
-            constexpr auto kJ = J + Mat::kWOffset;
-            auto v2           = v2_.template getSIMD<kJ / kSIMDSize>();
+            using Mat = Matrix<T, N, W>;
+            auto v1   = v1_.getSIMD(i);
+            j += Mat::kWOffset;
+            auto v2 = v2_.getSIMD(j / kSIMDSize);
 
-            return v1 * v2[kJ % kSIMDSize];
+            return v1 * v2[j % kSIMDSize];
         }
 
       private:
@@ -305,9 +304,10 @@ template <typename T, size_t H, size_t W> class Matrix
         return data_[i / kSIMDSize][j][i % kSIMDSize];
     }
 
-    template <size_t I, size_t J> auto getSIMD() const
+    auto getSIMD(size_t i, size_t j) const { return data_[i][j].load(); }
+    auto setSIMD(size_t i, size_t j, simd<T, kSIMDSize> s)
     {
-        return data_[I][J].load();
+        return data_[i][j].store(s);
     }
 
     template <class M> Matrix &operator=(const M &matrix)
@@ -316,17 +316,10 @@ template <typename T, size_t H, size_t W> class Matrix
         return *this;
     }
 
-    template <class M, size_t I = 0, size_t J = 0>
-    inline void store(const M &matrix)
+    template <class M> inline void store(const M &matrix)
     {
-        if constexpr (I == kSubMatH) {
-            return;
-        } else if constexpr (J == W) {
-            store<M, I + 1, 0>(matrix);
-        } else {
-            data_[I][J].store(matrix.template getSIMD<I, J>());
-            store<M, I, J + 1>(matrix);
-        }
+        for (size_t i = 0; i < kSubMatH; ++i)
+            for (size_t j = 0; j < W; ++j) setSIMD(i, j, matrix.getSIMD(i, j));
     }
 
     template <class V> auto mul(const V &v) const
@@ -342,33 +335,21 @@ template <typename T, size_t H, size_t W> class Matrix
         {
         }
 
-        template <size_t I, size_t K = 0> auto getSIMD() const
+        auto getSIMD(size_t i) const
         {
-            auto vec = vec_.template getSIMD<K>();
-            auto res = submatmul<I, K>(vec);
-
-            if constexpr (K + 1 < kSubMatW) {
-                res += getSIMD<I, K + 1>();
+            simd<T, kSIMDSize> res{};
+            for (size_t k = 0; k < kSubMatW; ++k) {
+                auto vec = vec_.getSIMD(k);
+                for (size_t j = k == 0 ? kWOffset : 0; j < kSIMDSize; ++j) {
+                    auto matsimd =
+                        mat_.getSIMD(i, (k * kSIMDSize - kWOffset + j));
+                    res += vec[j] * matsimd;
+                }
             }
             return res;
         }
 
       private:
-        template <size_t I, size_t J, size_t K = J == 0 ? kWOffset : 0>
-        auto submatmul(simd<T, kSIMDSize> vec) const
-        {
-            if constexpr (K == kSIMDSize) return T{};
-            else {
-                auto matsimd =
-                    mat_.template getSIMD<I, (J * kSIMDSize - kWOffset + K)>();
-                auto res = vec[K] * matsimd;
-
-                if constexpr (K + 1 < kSIMDSize) {
-                    res += submatmul<I, J, K + 1>(vec);
-                }
-                return res;
-            };
-        };
         const Matrix &mat_;
         const Vector<T, W> &vec_;
     };
