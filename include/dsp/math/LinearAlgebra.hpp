@@ -13,6 +13,8 @@ namespace dsp::linalg
 inline namespace DSP_ARCH_NAMESPACE
 {
 
+template <typename, size_t, size_t> class Matrix;
+
 namespace internal
 {
 
@@ -94,6 +96,83 @@ struct MatrixInfos<MatOp<op, X1, X2>> {
     using type                    = MatrixBase_t<X1>;
 };
 
+///////////////////////// Matmul ///////////////////////////////////
+template <class M1, class M2> class MatMul
+{
+    static_assert(kMatrixWidth<M1> == kMatrixHeight<M2>);
+
+    using T                   = MatrixBase_t<M1>;
+    static constexpr auto kH  = kMatrixHeight<M1>;
+    static constexpr auto kW  = kMatrixWidth<M1>;
+    static constexpr auto kW2 = kMatrixHeight<M2>;
+    using M1B                 = Matrix<T, kH, kW>;
+
+  public:
+    MatMul(const M1 &mat1, const M2 &mat2) : mat1_(mat1), mat2_(mat2) {}
+
+    auto getSIMD(size_t i, size_t j = 0) const
+    {
+        simd<T, M1B::kSIMDSize> out;
+        for (size_t k = 0; k < M1B::kSubMatW; ++k) {
+            auto vec = mat2_.getSIMD(k, j);
+            for (size_t l = k == 0 ? M1B::kWOffset : 0; l < M1B::kSIMDSize;
+                 ++l) {
+                auto matsimd =
+                    mat1_.getSIMD(i, (k * M1B::kSIMDSize - M1B::kWOffset + l));
+                auto res = vec[l] * matsimd;
+                if (l == 0 && k == 0) out = res;
+                else
+                    out += res;
+            }
+        }
+        return out;
+    }
+
+  private:
+    const M1 &mat1_;
+    const M2 &mat2_;
+};
+
+template <class M1, class M2> struct MatrixInfos<MatMul<M1, M2>> {
+    static constexpr auto kHeight = kMatrixHeight<M1>;
+    static constexpr auto kWidth  = kMatrixWidth<M2>;
+    using type                    = MatrixBase_t<M1>;
+};
+
+///////////////////////// Outer ///////////////////////////////////
+template <class V1, class V2> class Outer
+{
+    static_assert(kMatrixWidth<V1> == 1 && kMatrixWidth<V2> == 1);
+
+    using T                   = MatrixBase_t<V1>;
+    static constexpr auto kN1 = kMatrixHeight<V1>;
+    static constexpr auto kN2 = kMatrixHeight<V2>;
+    using V1B                 = Matrix<T, kN1, 1>;
+    using V2B                 = Matrix<T, kN2, 1>;
+
+  public:
+    Outer(const V1 &v1, const V2 &v2) : v1_(v1), v2_(v2) {}
+
+    [[nodiscard]] auto getSIMD(size_t i, size_t j) const
+    {
+        auto v1 = v1_.getSIMD(i);
+        j += V2B::kHOffset;
+        auto v2 = v2_.getSIMD(j / V1B::kSIMDSize);
+
+        return v1 * v2[j % V1B::kSIMDSize];
+    }
+
+  private:
+    const V1 &v1_;
+    const V2 &v2_;
+};
+
+template <class V1, class V2> struct MatrixInfos<Outer<V1, V2>> {
+    static constexpr auto kHeight = kMatrixHeight<V1>;
+    static constexpr auto kWidth  = kMatrixHeight<V2>;
+    using type                    = MatrixBase_t<V1>;
+};
+
 ///////////////////////// AbstractMatrix ///////////////////////////////////
 template <class Mat> class AbstractMatrix
 {
@@ -105,6 +184,10 @@ template <class Mat> class AbstractMatrix
     {
         return internal::getSIMD(mat_, i, j);
     }
+
+    template <class M> auto mul(const M &other) { return MatMul(mat_, other); }
+
+    template <class M> auto outer(const M &other) { return Outer(mat_, other); }
 
     template <class M> auto operator+(const M &other) const
     {
@@ -138,7 +221,15 @@ template <class Mat> class AbstractMatrix
     const Mat mat_;
 };
 
+template <class M>
+struct MatrixInfos<AbstractMatrix<M>> : public MatrixInfos<M> {
+};
+
 } // namespace internal
+
+using internal::kMatrixHeight;
+using internal::kMatrixWidth;
+using internal::MatrixBase_t;
 
 ///////////////////////// Matrix ///////////////////////////////////
 template <typename T, size_t H, size_t W> class Matrix
@@ -202,37 +293,8 @@ template <typename T, size_t H, size_t W> class Matrix
 
     template <class V> auto mul(const V &v) const
     {
-        return internal::AbstractMatrix(MatMul(*this, v));
+        return internal::AbstractMatrix(internal::MatMul(*this, v));
     }
-
-    template <class Mat2> class MatMul
-    {
-      public:
-        MatMul(const Matrix &mat1, const Mat2 &mat2) : mat1_(mat1), mat2_(mat2)
-        {
-        }
-
-        auto getSIMD(size_t i, size_t j = 0) const
-        {
-            simd<T, kSIMDSize> out;
-            for (size_t k = 0; k < kSubMatW; ++k) {
-                auto vec = mat2_.getSIMD(k, j);
-                for (size_t l = k == 0 ? kWOffset : 0; l < kSIMDSize; ++l) {
-                    auto matsimd =
-                        mat1_.getSIMD(i, (k * kSIMDSize - kWOffset + l));
-                    auto res = vec[l] * matsimd;
-                    if (l == 0 && k == 0) out = res;
-                    else
-                        out += res;
-                }
-            }
-            return out;
-        }
-
-      private:
-        const Matrix &mat1_;
-        const Mat2 &mat2_;
-    };
 
     template <class M> auto operator+(const M &other) const
     {
@@ -305,30 +367,9 @@ template <typename T, size_t N> class Vector : public Matrix<T, N, 1>
         return res;
     }
 
-    template <class V2> class Outer
-    {
-        static_assert(internal::kMatrixWidth<V2> == 1);
-
-      public:
-        Outer(const Vector &v1, const V2 &v2) : v1_(v1), v2_(v2) {}
-
-        [[nodiscard]] auto getSIMD(size_t i, size_t j) const
-        {
-            auto v1 = v1_.getSIMD(i);
-            j += V2::kHOffset;
-            auto v2 = v2_.getSIMD(j / kSIMDSize);
-
-            return v1 * v2[j % kSIMDSize];
-        }
-
-      private:
-        const Vector &v1_;
-        const V2 &v2_;
-    };
-
     template <class V2> auto outer(const V2 &other) const
     {
-        return Outer<V2>(*this, other);
+        return internal::AbstractMatrix(internal::Outer(*this, other));
     }
 };
 
