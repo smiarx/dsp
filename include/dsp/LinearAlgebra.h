@@ -99,6 +99,7 @@ template <class Mat> class AbstractMatrix
 {
   public:
     AbstractMatrix(Mat &&mat) : mat_(mat) {}
+    AbstractMatrix(const Mat &mat) : mat_(mat) {}
 
     always_inline auto getSIMD(size_t i, size_t j = 0) const
     {
@@ -109,28 +110,28 @@ template <class Mat> class AbstractMatrix
     {
         using namespace internal;
         auto op = MatOp<Op::kAdd, AbstractMatrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator-(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kSub, AbstractMatrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator*(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kMul, AbstractMatrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator/(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kDiv, AbstractMatrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
   private:
@@ -204,10 +205,8 @@ template <typename T, size_t H, size_t W> class Matrix
         return internal::AbstractMatrix(MatMul(*this, v));
     }
 
-    template <size_t W2> class MatMul
+    template <class Mat2> class MatMul
     {
-        using Mat2 = Matrix<T, W, W2>;
-
       public:
         MatMul(const Matrix &mat1, const Mat2 &mat2) : mat1_(mat1), mat2_(mat2)
         {
@@ -215,16 +214,19 @@ template <typename T, size_t H, size_t W> class Matrix
 
         auto getSIMD(size_t i, size_t j = 0) const
         {
-            simd<T, kSIMDSize> res{};
+            simd<T, kSIMDSize> out;
             for (size_t k = 0; k < kSubMatW; ++k) {
                 auto vec = mat2_.getSIMD(k, j);
                 for (size_t l = k == 0 ? kWOffset : 0; l < kSIMDSize; ++l) {
                     auto matsimd =
                         mat1_.getSIMD(i, (k * kSIMDSize - kWOffset + l));
-                    res += vec[l] * matsimd;
+                    auto res = vec[l] * matsimd;
+                    if (l == 0 && k == 0) out = res;
+                    else
+                        out += res;
                 }
             }
-            return res;
+            return out;
         }
 
       private:
@@ -236,28 +238,28 @@ template <typename T, size_t H, size_t W> class Matrix
     {
         using namespace internal;
         auto op = MatOp<Op::kAdd, Matrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator-(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kSub, Matrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator*(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kMul, Matrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
     template <class M> auto operator/(const M &other) const
     {
         using namespace internal;
         auto op = MatOp<Op::kDiv, Matrix, M>(*this, other);
-        return AbstractMatrix(std::move(op));
+        return AbstractMatrix<decltype(op)>(std::move(op));
     }
 
   private:
@@ -303,16 +305,17 @@ template <typename T, size_t N> class Vector : public Matrix<T, N, 1>
         return res;
     }
 
-    template <size_t W> class Outer
+    template <class V2> class Outer
     {
+        static_assert(internal::kMatrixWidth<V2> == 1);
+
       public:
-        Outer(const Vector &v1, const Vector<T, W> &v2) : v1_(v1), v2_(v2) {}
+        Outer(const Vector &v1, const V2 &v2) : v1_(v1), v2_(v2) {}
 
         [[nodiscard]] auto getSIMD(size_t i, size_t j) const
         {
-            using Mat = Matrix<T, N, W>;
-            auto v1   = v1_.getSIMD(i);
-            j += Mat::kWOffset;
+            auto v1 = v1_.getSIMD(i);
+            j += V2::kHOffset;
             auto v2 = v2_.getSIMD(j / kSIMDSize);
 
             return v1 * v2[j % kSIMDSize];
@@ -320,20 +323,23 @@ template <typename T, size_t N> class Vector : public Matrix<T, N, 1>
 
       private:
         const Vector &v1_;
-        const Vector<T, W> &v2_;
+        const V2 &v2_;
     };
 
-    template <class V> auto outer(const V &other) const
+    template <class V2> auto outer(const V2 &other) const
     {
-        return Outer<internal::kMatrixHeight<V>>(*this, other);
+        return Outer<V2>(*this, other);
     }
 };
 
-template <typename T, size_t N> struct internal::MatrixInfos<Vector<T, N>> {
+namespace internal
+{
+template <typename T, size_t N> struct MatrixInfos<Vector<T, N>> {
     static constexpr auto kHeight = N;
     static constexpr auto kWidth  = 1;
     using type                    = T;
 };
+} // namespace internal
 
 template <typename T, size_t H, size_t W>
 struct internal::MatrixInfos<Matrix<T, H, W>> {
