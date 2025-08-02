@@ -27,7 +27,8 @@ static constexpr auto kMatrixHeight   = MatrixInfos<M>::kHeight;
 template <class M> using MatrixBase_t = typename MatrixInfos<M>::type;
 
 ///////////////////////// getSIMD ///////////////////////////////////
-template <class V> inline auto getSIMD(const V &v, size_t i, size_t j = 0)
+template <class V>
+always_inline auto getSIMD(const V &v, size_t i, size_t j = 0)
 {
     return v.getSIMD(i, j);
 }
@@ -342,4 +343,55 @@ struct internal::MatrixInfos<Matrix<T, H, W>> {
 };
 
 } // namespace DSP_ARCH_NAMESPACE
+//////////////////////////// Identity ////////////////////////////
+
+template <typename T, size_t N> class Identity
+{
+  public:
+    static constexpr auto kSIMDSize = Matrix<T, N, N>::kSIMDSize;
+    static constexpr auto kN        = Matrix<T, N, N>::kH;
+    static constexpr auto kSubMatN  = Matrix<T, N, N>::kSubMatH;
+    static constexpr auto kNOffset  = Matrix<T, N, N>::kHOffset;
+    Identity()                      = default;
+
+    auto getSIMD(size_t i, size_t j) const
+    {
+        multi<T, kSIMDSize> out{};
+        if ((j + kNOffset) / kSIMDSize == i) {
+            out[(j + kNOffset) % kSIMDSize] = T{1};
+        }
+        return out;
+    }
+
+    template <class M> auto &mul(const M &mat) { return mat; }
+
+    template <class M> auto operator+(const M &other) const
+    {
+        using namespace internal;
+        auto op = MatOp<Op::kAdd, Identity, M>(*this, other);
+        return AbstractMatrix(std::move(op));
+    }
+
+    template <class M> auto operator-(const M &other) const
+    {
+        using namespace internal;
+        auto op = MatOp<Op::kSub, Identity, M>(*this, other);
+        return AbstractMatrix(std::move(op));
+    }
+
+    template <class M> auto operator*(const M &other) const
+    {
+        using namespace internal;
+        auto op = MatOp<Op::kMul, Identity, M>(*this, other);
+        return AbstractMatrix(std::move(op));
+    }
+
+    template <class M> auto operator/(const M &other) const
+    {
+        using namespace internal;
+        auto op = MatOp<Op::kDiv, Identity, M>(*this, other);
+        return AbstractMatrix(std::move(op));
+    }
+};
+
 } // namespace dsp::linalg
