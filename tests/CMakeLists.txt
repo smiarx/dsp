@@ -30,6 +30,7 @@ set(test_sources
     Enveloppe.cpp
     RMS.cpp
     LinearAlgebra.cpp
+    AdaptiveFilter.cpp
 )
 
 add_executable(tests ${test_sources})

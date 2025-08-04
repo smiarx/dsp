@@ -1,5 +1,6 @@
 #pragma once
 
+#include "simd/simd.h"
 #include <cmath>
 
 namespace dsp
@@ -24,6 +25,11 @@ static constexpr std::size_t nextPow2(std::size_t size)
     size += 1;
     return size;
 }
+
+template <typename T, size_t N>
+static constexpr auto kUsedSIMDSize =
+    std::min(static_cast<size_t>(DSP_MAX_VEC_SIZE), nextPow2(sizeof(T) * N)) /
+    sizeof(T);
 
 static constexpr bool isPow2(int v) { return v && ((v & (v - 1)) == 0); }
 

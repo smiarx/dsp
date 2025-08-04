@@ -238,11 +238,9 @@ template <typename T, size_t H, size_t W> class Matrix
     // we pad zeros in the front rows
     //
   public:
-    static constexpr auto kSIMDSize =
-        std::min(DSP_MAX_VEC_SIZE, static_cast<int>(nextPow2(sizeof(T) * H))) /
-        sizeof(T);
-    static constexpr auto kH       = nextAlignedOffset(H, kSIMDSize);
-    static constexpr auto kSubMatH = kH / kSIMDSize;
+    static constexpr auto kSIMDSize = kUsedSIMDSize<T, H>;
+    static constexpr auto kH        = nextAlignedOffset(H, kSIMDSize);
+    static constexpr auto kSubMatH  = kH / kSIMDSize;
 
     static constexpr auto kW       = nextAlignedOffset(W, kSIMDSize);
     static constexpr auto kSubMatW = kW / kSIMDSize;
@@ -359,7 +357,7 @@ template <typename T, size_t N> class Vector : public Matrix<T, N, 1>
         return *this;
     }
 
-    template <class V> inline auto dot(const V &vector)
+    template <class V> inline auto dot(const V &vector) const
     {
         T res{};
         for (size_t k = 0; k < kNsimd; ++k)

@@ -2,6 +2,7 @@
 
 #include "Context.h"
 #include "FastMath.h"
+#include "LinearAlgebra.h"
 #include "Utils.h"
 #include <cassert>
 
@@ -101,16 +102,14 @@ template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
 {
   public:
     static_assert(L > 0, "Length must be bigger than 0");
-    static constexpr auto kLength     = L;
-    static constexpr auto kOffset     = Off;
+    static constexpr auto kLength = nextAlignedOffset(L, kUsedSIMDSize<T, L>);
+    static constexpr auto kOffset = Off;
     static constexpr auto kNextOffset = kOffset;
 
     template <int O> using WithOffset = CopyDelayLine<T, L, O>;
 
-    template <class Ctxt, typename V> void write(Ctxt c, V x)
+    template <class Ctxt, typename V> void write([[maybe_unused]] Ctxt c, V x)
     {
-        (void)c;
-
         constexpr auto kVecSize = Ctxt::kIncrSize;
         auto lastNonVector      = kLength % kVecSize;
 
@@ -141,6 +140,8 @@ template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
     {
         return read(c, kLength);
     }
+
+    auto asVector() { return *reinterpret_cast<linalg::Vector<T, L> *>(mem_); }
 
   private:
     T mem_[kLength]{};
