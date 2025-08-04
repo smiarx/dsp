@@ -173,6 +173,30 @@ template <class V1, class V2> struct MatrixInfos<Outer<V1, V2>> {
     using type                    = MatrixBase_t<V1>;
 };
 
+///////////////////////// Column ///////////////////////////////////
+template <class M> class Column
+{
+    using T = MatrixBase_t<M>;
+
+  public:
+    Column(const M &m, size_t j) : m_(m), j_(j) {}
+
+    [[nodiscard]] auto getSIMD(size_t i, [[maybe_unused]] size_t j) const
+    {
+        return m_.getSIMD(i, j_);
+    }
+
+  private:
+    const M &m_;
+    const size_t j_;
+};
+
+template <class M> struct MatrixInfos<Column<M>> {
+    static constexpr auto kHeight = kMatrixHeight<M>;
+    static constexpr auto kWidth  = 1;
+    using type                    = MatrixBase_t<M>;
+};
+
 ///////////////////////// AbstractMatrix ///////////////////////////////////
 template <class Mat> class AbstractMatrix
 {
@@ -265,7 +289,7 @@ template <typename T, size_t H, size_t W> class Matrix
         i += kHOffset;
         data_[i / kSIMDSize][j][i % kSIMDSize] = value;
     }
-    const T &get(size_t i, size_t j) const
+    const T &get(size_t i, size_t j = 0) const
     {
         i += kHOffset;
         return data_[i / kSIMDSize][j][i % kSIMDSize];
@@ -292,6 +316,11 @@ template <typename T, size_t H, size_t W> class Matrix
     template <class V> auto mul(const V &v) const
     {
         return internal::AbstractMatrix(internal::MatMul(*this, v));
+    }
+
+    auto column(size_t j)
+    {
+        return internal::AbstractMatrix(internal::Column(*this, j));
     }
 
     template <class M> auto operator+(const M &other) const
