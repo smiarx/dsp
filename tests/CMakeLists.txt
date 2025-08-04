@@ -31,6 +31,7 @@ set(test_sources
     RMS.cpp
     FastMath.cpp
     LinearAlgebra.cpp
+    AdaptiveFilter.cpp
 )
 
 add_executable(tests ${test_sources})
