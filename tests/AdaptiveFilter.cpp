@@ -39,4 +39,12 @@ TEST_CASE("Adaptive Filter", "[dsp][adaptive][filter]")
             SECTION("double") { testSine<dsp::RLS, double>(); }
         }
     }
+    SECTION("RLS-DCD")
+    {
+        SECTION("Sine")
+        {
+            SECTION("float") { testSine<dsp::RLSDCD, float>(); }
+            SECTION("double") { testSine<dsp::RLSDCD, double>(); }
+        }
+    }
 }

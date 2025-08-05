@@ -81,4 +81,81 @@ template <typename T, size_t Order> class RLS
     linalg::Matrix<T, Order, Order> P_{}; // invert covariance matrix;
 };
 
+template <typename T, size_t Order> class RLSDCD
+{
+  public:
+    RLSDCD(T lambda = 0.99)
+    {
+        setForgetFactor(lambda);
+
+        for (size_t i = 0; i < Order; ++i) R_.set(i, i, 0.05);
+    }
+
+    void setForgetFactor(T lambda) { lambda_ = lambda; }
+
+    // https://core.ac.uk/download/pdf/1145733.pdf
+    template <class Ctxt, class Delay>
+    void process(Ctxt ctxt, Delay &delay, AdaptiveFilter<T, Order> &filter)
+    {
+        // get previous input as vector
+        auto x = delay.asVector();
+
+        // analyze with filter and write error
+        filter.analyze(ctxt, x);
+        auto e = ctxt.getInput();
+
+        // covariance matrix
+        R_ = R_ * lambda_ + x.outer(x);
+
+        // residual
+        r_                = r_ * lambda_ + x * e;
+        const auto deltaA = dcd();
+
+        filter.update(deltaA);
+    }
+
+    auto dcd()
+    {
+        // dichotomous coordinate descent
+        linalg::Vector<T, Order> deltaA{};
+        T alpha = 2.f;
+        int m   = 1;
+
+        for (int k = 1; k < 128; ++k) {
+            // arg max r
+            int n   = 0;
+            auto rn = r_.get(0);
+            for (size_t i = 1; i < Order; ++i) {
+                auto ri = r_.get(i);
+                if (std::abs(ri) > std::abs(rn)) {
+                    n  = i;
+                    rn = ri;
+                }
+            }
+            auto Rnn = R_.get(n, n);
+
+            while (std::abs(rn) <= alpha / 2 * Rnn) {
+                ++m;
+                if (m == 28) {
+                    return deltaA;
+                }
+                alpha = alpha / 2;
+            }
+
+            if (rn > 0) {
+                deltaA.set(n, 0, deltaA.get(n) + alpha);
+                r_ = r_ - R_.column(n) * alpha;
+            } else {
+                deltaA.set(n, 0, deltaA.get(n) - alpha);
+                r_ = r_ + R_.column(n) * alpha;
+            }
+        }
+        return deltaA;
+    }
+
+  private:
+    T lambda_{0.99};
+    linalg::Vector<T, Order> r_{};        // residual solution
+    linalg::Matrix<T, Order, Order> R_{}; // covariance matrix;
+};
 }; // namespace dsp
