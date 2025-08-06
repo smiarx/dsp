@@ -1,6 +1,7 @@
 #include "dsp/cpu/infos.h"
 #include <SC_InterfaceTable.h>
 
+#include "adaptive/Adaptive_SC.h"
 #include "springs/Springs_SC.h"
 #include "tapedelay/TapeDelay_SC.h"
 
@@ -18,6 +19,7 @@ PluginLoad(Processors)
         loadTapeDelayAVX2();
         loadSpringsAVX2();
         loadFilters();
+        loadAdaptive();
         return;
     }
 #endif
@@ -25,4 +27,5 @@ PluginLoad(Processors)
     loadTapeDelay();
     loadSprings();
     loadFilters();
+    loadAdaptive();
 }
