@@ -18,7 +18,7 @@ template <typename T, size_t Order> class AdaptiveFilter
         static_assert(!Ctxt::kUseVec);
 
         // x is previous inputs
-        auto x = delay.asVector();
+        auto x = delay.asVector(ctxt);
 
         // d is desired signal (current input)
         auto d = ctxt.getInput();
@@ -37,7 +37,7 @@ template <typename T, size_t Order> class AdaptiveFilter
 
     template <class Ctxt, class DL> void reconstruct(Ctxt ctxt, DL &delay)
     {
-        linalg::Vector<T, Order> y = delay.asVector();
+        linalg::Vector<T, Order> y = delay.asVector(ctxt);
         auto e                     = ctxt.getInput();
         auto out                   = e + y.dot(a_);
 

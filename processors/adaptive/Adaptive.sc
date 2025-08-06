@@ -17,8 +17,14 @@ Adaptive {
 }
 
 RLS : Filter {
-	*ar { arg in = 0.0, adaptive, mul=1.0, add=0.0;
-		^this.multiNew('audio', in, adaptive.order, adaptive.buffer).madd(mul, add)
+	*ar { arg in = 0.0, adaptive, lambda=0.995, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, adaptive.order, adaptive.buffer, lambda).madd(mul, add)
+	}
+}
+
+RLSWarped : Filter {
+	*ar { arg in = 0.0, adaptive, lambda=0.995, warp=0, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, adaptive.order, adaptive.buffer, lambda, warp).madd(mul, add)
 	}
 }
 
