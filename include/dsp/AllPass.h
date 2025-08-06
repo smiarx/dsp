@@ -187,6 +187,38 @@ template <typename T> class AllPass2
     T a_[2]; // allpass coeffs
 };
 
+/////////////////////// AllPassDelayLine /////////////////////////////
+template <typename T, size_t L, size_t Off = 0>
+class AllPassDelayLine : public CopyDelayLine<T, L, Off>
+{
+    // delay line where every delay unit is replaced by an allpass filter
+    using Parent = CopyDelayLine<T, L, Off>;
+
+  public:
+    void setCoeff(T a) { coeff_ = a; }
+
+    template <class Ctxt> auto asVector(Ctxt ctxt)
+    {
+        auto prevInput = prevInput_;
+        auto input     = ctxt.getInput();
+        for (size_t i = 0; i < L; ++i) {
+            auto prevOutput = Parent::get(i);
+            auto output     = prevInput + coeff_ * (input - prevOutput);
+            Parent::set(i, output);
+            prevInput = prevOutput;
+            input     = output;
+        }
+
+        return Parent::asVector(ctxt);
+    }
+
+    template <class Ctxt> void write(Ctxt, T x) { prevInput_ = x; }
+
+  private:
+    T coeff_{};
+    T prevInput_{};
+};
+
 // template <size_t N, bool EnergyPreserving = false> class AllPass2
 //{
 //     /* 2nd order allpass */

@@ -141,7 +141,14 @@ template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
         return read(c, kLength);
     }
 
-    auto asVector() { return *reinterpret_cast<linalg::Vector<T, L> *>(mem_); }
+    template <class Ctxt> [[nodiscard]] auto asVector(Ctxt)
+    {
+        return *reinterpret_cast<linalg::Vector<T, L> *>(mem_);
+    }
+
+  protected:
+    auto get(size_t i) { return mem_[kLength - 1 - i]; }
+    auto set(size_t i, T value) { mem_[kLength - 1 - i] = value; }
 
   private:
     T mem_[kLength]{};

@@ -1,23 +1,25 @@
 #include "Adaptive_SC.h"
 #include "dsp/AdaptiveFilter.h"
+#include "dsp/AllPass.h"
 #include "dsp/Context.h"
 
 struct RLSUnit : public Unit {
     float fbufnum_;
     SndBuf *buf_;
 
-    template <size_t Order> struct RLS {
+    template <size_t Order, bool Warp> struct RLS {
+        RLS(float lambda = 0.0995) : rls_{lambda} {}
         using aFilter = dsp::AdaptiveFilter<float, Order>;
-        using DL      = typename aFilter::DL;
-        dsp::RLSDCD<float, Order> rls_{0.995};
+        using DL = std::conditional_t<!Warp, dsp::CopyDelayLine<float, Order>,
+                                      dsp::AllPassDelayLine<float, Order>>;
+        dsp::RLSDCD<float, Order> rls_;
         DL dlin;
     };
     void *rls_;
 };
 
-static void rlsCtor(RLSUnit *unit);
-
-template <size_t Order> static void rlsNext(RLSUnit *unit, int inNumSamples)
+template <size_t Order, bool Warp>
+static void rlsNext(RLSUnit *unit, int inNumSamples)
 {
     float fbufnum = IN0(2);
     if (fbufnum != unit->fbufnum_) {
@@ -31,8 +33,12 @@ template <size_t Order> static void rlsNext(RLSUnit *unit, int inNumSamples)
     const SndBuf *buf = unit->buf_;
     ACQUIRE_SNDBUF_SHARED(buf);
 
-    auto *filter = (typename RLSUnit::RLS<Order>::aFilter *)buf->data;
-    auto *rls    = (RLSUnit::RLS<Order> *)unit->rls_;
+    auto *filter = (typename RLSUnit::RLS<Order, Warp>::aFilter *)buf->data;
+    auto *rls    = (RLSUnit::RLS<Order, Warp> *)unit->rls_;
+
+    if constexpr (Warp) {
+        rls->dlin.setCoeff(IN0(4));
+    }
 
     auto *in  = IN(0);
     auto *out = OUT(0);
@@ -47,39 +53,41 @@ template <size_t Order> static void rlsNext(RLSUnit *unit, int inNumSamples)
     RELEASE_SNDBUF_SHARED(buf);
 }
 
-template <size_t Order> static void rlsAllocate(RLSUnit *unit)
+template <size_t Order, bool Warp> static void rlsAllocate(RLSUnit *unit)
 {
-    unit->rls_ = RTAlloc(unit->mWorld, sizeof(RLSUnit::RLS<Order>));
-    new (unit->rls_) RLSUnit::RLS<Order>();
+    unit->rls_ = RTAlloc(unit->mWorld, sizeof(RLSUnit::RLS<Order, Warp>));
+    new (unit->rls_) RLSUnit::RLS<Order, Warp>(IN0(3));
 
-    SETCALC(rlsNext<Order>);
+#define CMA ,
+    SETCALC(rlsNext<Order CMA Warp>);
+#undef CMA
 }
 
-void rlsCtor(RLSUnit *unit)
+template <bool Warp = false> static void rlsCtor(RLSUnit *unit)
 {
     int order      = static_cast<int>(IN0(1));
     unit->fbufnum_ = -1e9f;
     switch (order) {
     case 2:
-        rlsAllocate<2>(unit);
+        rlsAllocate<2, Warp>(unit);
         break;
     case 3:
-        rlsAllocate<3>(unit);
+        rlsAllocate<3, Warp>(unit);
         break;
     case 4:
-        rlsAllocate<4>(unit);
+        rlsAllocate<4, Warp>(unit);
         break;
     case 5:
-        rlsAllocate<5>(unit);
+        rlsAllocate<5, Warp>(unit);
         break;
     case 6:
-        rlsAllocate<6>(unit);
+        rlsAllocate<6, Warp>(unit);
         break;
     case 7:
-        rlsAllocate<7>(unit);
+        rlsAllocate<7, Warp>(unit);
         break;
     case 8:
-        rlsAllocate<8>(unit);
+        rlsAllocate<8, Warp>(unit);
         break;
     default:
         return;
@@ -179,8 +187,10 @@ static void reconstructDtor(ReconstructUnit *unit)
 
 void loadAdaptive()
 {
-    (*ft->fDefineUnit)("RLS", sizeof(RLSUnit), (UnitCtorFunc)&rlsCtor,
+    (*ft->fDefineUnit)("RLS", sizeof(RLSUnit), (UnitCtorFunc)&rlsCtor<>,
                        (UnitDtorFunc)&rlsDtor, 0);
+    (*ft->fDefineUnit)("RLSWarped", sizeof(RLSUnit),
+                       (UnitCtorFunc)&rlsCtor<true>, (UnitDtorFunc)&rlsDtor, 0);
     (*ft->fDefineUnit)("AdaptiveReconstruct", sizeof(ReconstructUnit),
                        (UnitCtorFunc)reconstructCtor,
                        (UnitDtorFunc)&reconstructDtor, 0);
