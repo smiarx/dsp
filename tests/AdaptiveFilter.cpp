@@ -21,9 +21,7 @@ static void testSine()
     const auto &a       = afilter.getCoeffs();
     for (size_t n = 0; n < kN; ++n) {
         auto sig = std::sin(dsp::constants<T>::pi * 2 * T(n) / 12.f);
-        auto x   = sig;
         rls.process(dsp::Context(&sig), delay, afilter);
-        delay.write(dsp::Context(&sig), x);
     }
     REQUIRE_THAT(a.get(0), WithinAbs(-1.f, 1e-4f));
     REQUIRE_THAT(a.get(1), WithinAbs(std::sqrt(3.f), 1e-4f));
