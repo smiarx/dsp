@@ -12,12 +12,14 @@ template <typename T, size_t Order> class AdaptiveFilter
     static constexpr auto kDelaySize = Order;
     using DL                         = CopyDelayLine<T, Order>;
 
-    template <class Ctxt>
-    void analyze(Ctxt ctxt, const linalg::Vector<T, Order> &x) const
+    template <class Ctxt, class Delay>
+    linalg::Vector<T, Order> analyze(Ctxt ctxt, Delay &delay) const
     {
         static_assert(!Ctxt::kUseVec);
 
         // x is previous inputs
+        auto x = delay.asVector();
+
         // d is desired signal (current input)
         auto d = ctxt.getInput();
 
@@ -26,6 +28,21 @@ template <typename T, size_t Order> class AdaptiveFilter
 
         // write error in ouput
         ctxt.setOutput(e);
+
+        // write new value to input
+        delay.write(ctxt, d);
+
+        return x;
+    }
+
+    template <class Ctxt, class DL> void reconstruct(Ctxt ctxt, DL &delay)
+    {
+        linalg::Vector<T, Order> y = delay.asVector();
+        auto e                     = ctxt.getInput();
+        auto out                   = e + y.dot(a_);
+
+        delay.write(ctxt, out);
+        ctxt.setOutput(out);
     }
 
     void update(const linalg::Vector<T, Order> &deltaA) { a_ = a_ + deltaA; }
@@ -56,11 +73,8 @@ template <typename T, size_t Order> class RLS
     template <class Ctxt, class Delay>
     void process(Ctxt ctxt, Delay &delay, AdaptiveFilter<T, Order> &filter)
     {
-        // get previous input as vector
-        auto x = delay.asVector();
-
         // analyze with filter and write error
-        filter.analyze(ctxt, x);
+        auto x = filter.analyze(ctxt, delay);
         auto e = ctxt.getInput();
 
         // update filter
@@ -97,11 +111,8 @@ template <typename T, size_t Order> class RLSDCD
     template <class Ctxt, class Delay>
     void process(Ctxt ctxt, Delay &delay, AdaptiveFilter<T, Order> &filter)
     {
-        // get previous input as vector
-        auto x = delay.asVector();
-
         // analyze with filter and write error
-        filter.analyze(ctxt, x);
+        auto x = filter.analyze(ctxt, delay);
         auto e = ctxt.getInput();
 
         // covariance matrix
