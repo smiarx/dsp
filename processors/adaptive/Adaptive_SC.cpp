@@ -12,7 +12,7 @@ struct RLSUnit : public Unit {
         using aFilter = dsp::AdaptiveFilter<float, Order>;
         using DL = std::conditional_t<!Warp, dsp::CopyDelayLine<float, Order>,
                                       dsp::AllPassDelayLine<float, Order>>;
-        dsp::RLSDCD<float, Order> rls_;
+        dsp::RLS<float, Order> rls_;
         DL dlin;
     };
     void *rls_;
@@ -42,10 +42,15 @@ static void rlsNext(RLSUnit *unit, int inNumSamples)
 
     auto *in  = IN(0);
     auto *out = OUT(0);
+
+    auto afilter = filter[inNumSamples];
+    filter[0]    = afilter;
+
     for (int n = 0; n < inNumSamples; ++n) {
         auto x = *in;
-        rls->rls_.process(dsp::Context(&x), rls->dlin, *filter);
-        *out = x;
+        rls->rls_.process(dsp::Context(&x), rls->dlin, afilter);
+        filter[n + 1] = afilter;
+        *out          = x;
         ++in;
         ++out;
     }
@@ -135,15 +140,12 @@ static void reconstructNext(ReconstructUnit *unit, int inNumSamples)
     auto *reconstruct =
         (ReconstructUnit::Reconstruct<Order, Warp> *)unit->reconstruct_;
 
-    if constexpr (Warp) {
-        filter->setCoeff(IN0(3));
-    }
     for (int n = 0; n < inNumSamples; ++n) {
         auto x = IN(0)[n];
         if constexpr (!Warp)
-            filter->reconstruct(dsp::Context(&x), reconstruct->dlout);
+            filter[n].reconstruct(dsp::Context(&x), reconstruct->dlout);
         else
-            filter->reconstruct(dsp::Context(&x), reconstruct->state);
+            filter[n].reconstruct(dsp::Context(&x), reconstruct->state, IN0(3));
         OUT(0)[n] = x;
     }
 

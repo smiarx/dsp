@@ -59,8 +59,7 @@ template <typename T> static void testWIIRFilter0()
     dsp::CopyDelayLine<T, 1> dl{};
 
     typename decltype(wiir)::State wiirState{};
-    T warp = 0.0;
-    wiir.setCoeff(warp);
+    T warp                         = 0.0;
     dsp::AdaptiveFilter<T, 1> &iir = wiir;
 
     for (int i = 0; i < 30; ++i) {
@@ -68,7 +67,7 @@ template <typename T> static void testWIIRFilter0()
         T sig  = x;
         T sig2 = x;
 
-        wiir.reconstruct(dsp::Context(&sig), wiirState);
+        wiir.reconstruct(dsp::Context(&sig), wiirState, warp);
         iir.reconstruct(dsp::Context(&sig2), dl);
         REQUIRE_THAT(sig, WithinAbs(sig2, 1e-6f));
     }
@@ -82,6 +81,8 @@ static void testReconstructWarped()
     typename decltype(afilter)::DL delay;
     typename decltype(afilter)::State rstate{};
 
+    T warp = 0.5;
+    delay.setCoeff(warp);
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
         auto sig = T(rand()) / T(INT_MAX);
@@ -90,7 +91,7 @@ static void testReconstructWarped()
         dsp::Context ctxt{&sig};
         auto oafilter = afilter;
         rls.process(ctxt, delay, afilter);
-        oafilter.reconstruct(ctxt, rstate);
+        oafilter.reconstruct(ctxt, rstate, warp);
         // reconstructed is the same as original
         REQUIRE_THAT(sig, WithinAbs(x, 1e-6f));
     }
