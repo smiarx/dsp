@@ -100,20 +100,24 @@ struct ReconstructUnit : public Unit {
     float fbufnum_;
     SndBuf *buf_;
 
-    template <size_t Order> struct Reconstruct {
+    template <size_t Order, bool Warp> struct Reconstruct;
+    template <size_t Order> struct Reconstruct<Order, false> {
         using aFilter = dsp::AdaptiveFilter<float, Order>;
         using DL      = typename aFilter::DL;
         DL dlout;
     };
+    template <size_t Order> struct Reconstruct<Order, true> {
+        using aFilter = dsp::WarpedIIR<float, Order>;
+        using State   = typename aFilter::State;
+        State state;
+    };
     void *reconstruct_;
 };
 
-static void reconstructCtor(ReconstructUnit *unit);
-
-template <size_t Order>
+template <size_t Order, bool Warp>
 static void reconstructNext(ReconstructUnit *unit, int inNumSamples)
 {
-    using afilter = dsp::AdaptiveFilter<float, Order>;
+    using afilter = typename ReconstructUnit::Reconstruct<Order, Warp>::aFilter;
 
     float fbufnum = IN0(2);
     if (fbufnum != unit->fbufnum_) {
@@ -129,51 +133,60 @@ static void reconstructNext(ReconstructUnit *unit, int inNumSamples)
 
     auto *filter = (afilter *)buf->data;
     auto *reconstruct =
-        (ReconstructUnit::Reconstruct<Order> *)unit->reconstruct_;
+        (ReconstructUnit::Reconstruct<Order, Warp> *)unit->reconstruct_;
 
+    if constexpr (Warp) {
+        filter->setCoeff(IN0(3));
+    }
     for (int n = 0; n < inNumSamples; ++n) {
         auto x = IN(0)[n];
-        filter->reconstruct(dsp::Context(&x), reconstruct->dlout);
+        if constexpr (!Warp)
+            filter->reconstruct(dsp::Context(&x), reconstruct->dlout);
+        else
+            filter->reconstruct(dsp::Context(&x), reconstruct->state);
         OUT(0)[n] = x;
     }
 
     RELEASE_SNDBUF_SHARED(buf);
 }
 
-template <size_t Order> static void reconstructAllocate(ReconstructUnit *unit)
+template <size_t Order, bool Warp>
+static void reconstructAllocate(ReconstructUnit *unit)
 {
-    unit->reconstruct_ =
-        RTAlloc(unit->mWorld, sizeof(ReconstructUnit::Reconstruct<Order>));
-    new (unit->reconstruct_) ReconstructUnit::Reconstruct<Order>();
+    unit->reconstruct_ = RTAlloc(
+        unit->mWorld, sizeof(ReconstructUnit::Reconstruct<Order, Warp>));
+    new (unit->reconstruct_) ReconstructUnit::Reconstruct<Order, Warp>();
 
-    SETCALC(reconstructNext<Order>);
+#define CMA ,
+    SETCALC(reconstructNext<Order CMA Warp>);
+#undef CMA
 }
 
-static void reconstructCtor(ReconstructUnit *unit)
+template <bool Warp = false> static void reconstructCtor(ReconstructUnit *unit)
 {
     unit->fbufnum_ = -1e9f;
     int order      = static_cast<int>(IN0(1));
     switch (order) {
     case 2:
-        reconstructAllocate<2>(unit);
+        reconstructAllocate<2, Warp>(unit);
         break;
     case 3:
-        reconstructAllocate<3>(unit);
+        reconstructAllocate<3, Warp>(unit);
         break;
     case 4:
-        reconstructAllocate<4>(unit);
+        reconstructAllocate<4, Warp>(unit);
         break;
     case 5:
-        reconstructAllocate<5>(unit);
+        reconstructAllocate<5, Warp>(unit);
         break;
     case 6:
-        reconstructAllocate<6>(unit);
+        reconstructAllocate<6, Warp>(unit);
         break;
     case 7:
-        reconstructAllocate<7>(unit);
+        reconstructAllocate<7, Warp>(unit);
         break;
     case 8:
-        reconstructAllocate<8>(unit);
+        reconstructAllocate<8, Warp>(unit);
         break;
     default:
         return;
@@ -192,6 +205,9 @@ void loadAdaptive()
     (*ft->fDefineUnit)("RLSWarped", sizeof(RLSUnit),
                        (UnitCtorFunc)&rlsCtor<true>, (UnitDtorFunc)&rlsDtor, 0);
     (*ft->fDefineUnit)("AdaptiveReconstruct", sizeof(ReconstructUnit),
-                       (UnitCtorFunc)reconstructCtor,
+                       (UnitCtorFunc)reconstructCtor<>,
+                       (UnitDtorFunc)&reconstructDtor, 0);
+    (*ft->fDefineUnit)("AdaptiveReconstructWarped", sizeof(ReconstructUnit),
+                       (UnitCtorFunc)reconstructCtor<true>,
                        (UnitDtorFunc)&reconstructDtor, 0);
 }
