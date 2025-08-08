@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dsp/delay/Delay.hpp>
+#include <dsp/filters/AllPass.hpp>
 #include <dsp/math/LinearAlgebra.hpp>
 
 namespace dsp
@@ -184,6 +185,9 @@ class WarpedIIR : public AdaptiveFilter<T, Order>
         nextAlignedOffset(Order, kUsedSIMDSize<T, Order>);
 
   public:
+    // analyze delay line for FIR
+    using DL = AllPassDelayLine<T, Order>;
+    // state for reconstruct IIR
     using State = std::array<T, Order>;
 
     WarpedIIR() = default;
