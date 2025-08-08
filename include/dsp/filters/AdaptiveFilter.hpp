@@ -195,24 +195,22 @@ class WarpedIIR : public AdaptiveFilter<T, Order>
     {
     }
 
-    void setCoeff(T warp) { warp_ = warp; }
-
-    template <class Ctxt> void reconstruct(Ctxt ctxt, State &state)
+    template <class Ctxt> void reconstruct(Ctxt ctxt, State &state, T warp)
     {
         auto &a = AdaptiveFilter<T, Order>::getCoeffs();
 
         // compute state and gain
-        T in = state[0] - state[0] * warp_;
+        T in = state[0] - state[0] * warp;
         T S  = a.get(Order - 1) * in;
         for (size_t n = 1; n < Order; ++n) {
-            in = state[n] + warp_ * (in - state[n]);
+            in = state[n] + warp * (in - state[n]);
             S += a.get(Order - 1 - n) * in;
         }
 
-        T g = a.get(0) * (warp_);
+        T g = a.get(0) * (warp);
         for (size_t n = 1; n < Order; ++n) {
             g += a.get(n);
-            g *= warp_;
+            g *= warp;
         }
 
         // output
@@ -224,13 +222,10 @@ class WarpedIIR : public AdaptiveFilter<T, Order>
         auto out = y;
         for (size_t n = 0; n < Order; ++n) {
             auto in  = out;
-            auto v   = warp_ * (in - state[n]);
+            auto v   = warp * (in - state[n]);
             out      = v + state[n];
             state[n] = v + in;
         }
     }
-
-  private:
-    T warp_{0};
 };
 }; // namespace dsp
