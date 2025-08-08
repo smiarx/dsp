@@ -12,6 +12,9 @@ template <typename T, size_t Order> class AdaptiveFilter
     static constexpr auto kDelaySize = Order;
     using DL                         = CopyDelayLine<T, Order>;
 
+    AdaptiveFilter() = default;
+    AdaptiveFilter(const linalg::Vector<T, Order> &a) : a_(a) {}
+
     template <class Ctxt, class Delay>
     linalg::Vector<T, Order> analyze(Ctxt ctxt, Delay &delay) const
     {
@@ -168,5 +171,62 @@ template <typename T, size_t Order> class RLSDCD
     T lambda_{0.99};
     linalg::Vector<T, Order> r_{};        // residual solution
     linalg::Matrix<T, Order, Order> R_{}; // covariance matrix;
+};
+
+/////////////////////////////// Warped IIR Filter ////////////////////////
+
+template <class T, size_t Order>
+class WarpedIIR : public AdaptiveFilter<T, Order>
+{
+    // Implementation of frequency-warped recursive filters - Aki Härmä
+
+    static constexpr auto kLength =
+        nextAlignedOffset(Order, kUsedSIMDSize<T, Order>);
+
+  public:
+    using State = std::array<T, Order>;
+
+    WarpedIIR() = default;
+    WarpedIIR(const linalg::Vector<T, Order> &a) : AdaptiveFilter<T, Order>(a)
+    {
+    }
+
+    void setCoeff(T warp) { warp_ = warp; }
+
+    template <class Ctxt> void reconstruct(Ctxt ctxt, State &state)
+    {
+        auto &a = AdaptiveFilter<T, Order>::getCoeffs();
+
+        // compute state and gain
+        T in = state[0] - state[0] * warp_;
+        T S  = a.get(Order - 1) * in;
+        for (size_t n = 1; n < Order; ++n) {
+            in = state[n] + warp_ * (in - state[n]);
+            S += a.get(Order - 1 - n) * in;
+        }
+
+        T g = a.get(0) * (warp_);
+        for (size_t n = 1; n < Order; ++n) {
+            g += a.get(n);
+            g *= warp_;
+        }
+
+        // output
+        auto x = ctxt.getInput();
+        auto y = (x + S) / (1 - g);
+        ctxt.setOutput(y);
+
+        // update state
+        auto out = y;
+        for (size_t n = 0; n < Order; ++n) {
+            auto in  = out;
+            auto v   = warp_ * (in - state[n]);
+            out      = v + state[n];
+            state[n] = v + in;
+        }
+    }
+
+  private:
+    T warp_{0};
 };
 }; // namespace dsp

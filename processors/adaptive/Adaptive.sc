@@ -33,3 +33,9 @@ AdaptiveReconstruct : Filter {
 		^this.multiNew('audio', in, adaptive.order, adaptive.buffer).madd(mul, add)
 	}
 }
+
+AdaptiveReconstructWarped : Filter {
+	*ar { arg in = 0.0, adaptive, warp=0, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, adaptive.order, adaptive.buffer, warp).madd(mul, add)
+	}
+}

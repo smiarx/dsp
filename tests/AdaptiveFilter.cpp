@@ -45,4 +45,27 @@ TEST_CASE("Adaptive Filter", "[dsp][adaptive][filter]")
             SECTION("double") { testSine<dsp::RLSDCD, double>(); }
         }
     }
+
+    SECTION("Warped IIR")
+    {
+        float adata[] = {-0.5, 0.5};
+        dsp::linalg::Vector<float, 1> a(adata);
+        dsp::WarpedIIR wiir(a);
+
+        dsp::CopyDelayLine<float, 1> dl{};
+
+        decltype(wiir)::State wiirState{};
+        float warp = 0.5;
+        wiir.setCoeff(warp);
+        dsp::AdaptiveFilter<float, 1> &iir = wiir;
+
+        for (int i = 0; i < 30; ++i) {
+            float x    = i == 0 ? 1.f : 0.f;
+            float sig  = x;
+            float sig2 = x;
+
+            wiir.reconstruct(dsp::Context(&sig), wiirState);
+            iir.reconstruct(dsp::Context(&sig2), dl);
+        }
+    }
 }
