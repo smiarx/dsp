@@ -12,7 +12,7 @@ struct RLSUnit : public Unit {
         using aFilter = dsp::AdaptiveFilter<float, Order>;
         using DL = std::conditional_t<!Warp, dsp::CopyDelayLine<float, Order>,
                                       dsp::AllPassDelayLine<float, Order>>;
-        dsp::RLS<float, Order> rls_;
+        dsp::RLSDCD<float, Order> rls_;
         DL dlin;
     };
     void *rls_;
@@ -200,6 +200,119 @@ static void reconstructDtor(ReconstructUnit *unit)
     RTFree(unit->mWorld, unit->reconstruct_);
 }
 
+////////////////////////////////////////////////////////
+struct FormantShiftUnit : public Unit {
+    template <size_t Order, bool Warp> struct RLS;
+    template <size_t Order> struct RLS<Order, false> {
+        RLS(float lambda) : rls_(lambda) {}
+        using aFilter = dsp::AdaptiveFilter<double, Order>;
+        using DL      = typename aFilter::DL;
+        aFilter filter_{};
+        dsp::RLS<double, Order> rls_{};
+        DL dlin{};
+        DL dlout{};
+    };
+    template <size_t Order> struct RLS<Order, true> {
+        RLS(float lambda) : rls_(lambda) {}
+        using aFilter = dsp::WarpedIIR<double, Order>;
+        using State   = typename aFilter::State;
+        aFilter filter_{};
+        dsp::RLS<double, Order> rls_{};
+        dsp::AllPassDelayLine<double, Order> dlin{};
+        State state{};
+    };
+    void *rls_;
+    double mem_{};
+};
+
+template <size_t Order, bool Warp>
+static void formantShiftNext(FormantShiftUnit *unit, int inNumSamples)
+{
+    auto *rls = (FormantShiftUnit::RLS<Order, Warp> *)unit->rls_;
+
+    if constexpr (Warp) {
+        rls->dlin.setCoeff(IN0(3));
+    }
+
+    auto *in  = IN(0);
+    auto *out = OUT(0);
+
+    auto warp = IN0(2);
+    rls->rls_.setForgetFactor(warp);
+
+    for (int n = 0; n < inNumSamples; ++n) {
+        auto x       = static_cast<double>(*in);
+        auto afilter = rls->filter_;
+        rls->rls_.process(dsp::Context(&x), rls->dlin, afilter);
+        assert(!std::isnan(x));
+
+        if constexpr (!Warp)
+            rls->filter_.reconstruct(dsp::Context(&x), rls->dlout);
+        else
+            rls->filter_.reconstruct(dsp::Context(&x), rls->state, IN0(4));
+        assert(!std::isnan(x));
+
+        rls->filter_ = afilter;
+        *out         = static_cast<float>(x);
+        ++in;
+        ++out;
+    }
+}
+
+template <size_t Order, bool Warp>
+static void formantShiftAllocate(FormantShiftUnit *unit)
+{
+    unit->rls_ =
+        RTAlloc(unit->mWorld, sizeof(FormantShiftUnit::RLS<Order, Warp>));
+    new (unit->rls_) FormantShiftUnit::RLS<Order, Warp>(IN0(2));
+
+#define CMA ,
+    SETCALC(formantShiftNext<Order CMA Warp>);
+#undef CMA
+}
+
+template <bool Warp = false>
+static void formantShiftCtor(FormantShiftUnit *unit)
+{
+    int order = static_cast<int>(IN0(1));
+    switch (order) {
+    case 2:
+        formantShiftAllocate<2, Warp>(unit);
+        break;
+    case 3:
+        formantShiftAllocate<3, Warp>(unit);
+        break;
+    case 4:
+        formantShiftAllocate<4, Warp>(unit);
+        break;
+    case 5:
+        formantShiftAllocate<5, Warp>(unit);
+        break;
+    case 6:
+        formantShiftAllocate<6, Warp>(unit);
+        break;
+    case 7:
+        formantShiftAllocate<7, Warp>(unit);
+        break;
+    case 8:
+        formantShiftAllocate<8, Warp>(unit);
+        break;
+    case 9:
+        formantShiftAllocate<9, Warp>(unit);
+        break;
+    case 10:
+        formantShiftAllocate<10, Warp>(unit);
+        break;
+    default:
+        return;
+    }
+}
+
+static void formantShiftDtor(FormantShiftUnit *unit)
+{
+    RTFree(unit->mWorld, unit->rls_);
+}
+
 void loadAdaptive()
 {
     (*ft->fDefineUnit)("RLS", sizeof(RLSUnit), (UnitCtorFunc)&rlsCtor<>,
@@ -207,9 +320,12 @@ void loadAdaptive()
     (*ft->fDefineUnit)("RLSWarped", sizeof(RLSUnit),
                        (UnitCtorFunc)&rlsCtor<true>, (UnitDtorFunc)&rlsDtor, 0);
     (*ft->fDefineUnit)("AdaptiveReconstruct", sizeof(ReconstructUnit),
-                       (UnitCtorFunc)reconstructCtor<>,
+                       (UnitCtorFunc)&reconstructCtor<>,
                        (UnitDtorFunc)&reconstructDtor, 0);
     (*ft->fDefineUnit)("AdaptiveReconstructWarped", sizeof(ReconstructUnit),
-                       (UnitCtorFunc)reconstructCtor<true>,
+                       (UnitCtorFunc)&reconstructCtor<true>,
                        (UnitDtorFunc)&reconstructDtor, 0);
+    (*ft->fDefineUnit)("FormantShift", sizeof(ReconstructUnit),
+                       (UnitCtorFunc)&formantShiftCtor<true>,
+                       (UnitDtorFunc)&formantShiftDtor, 0);
 }

@@ -209,9 +209,17 @@ template <class Mat> class AbstractMatrix
         return internal::getSIMD(mat_, i, j);
     }
 
-    template <class M> auto mul(const M &other) { return MatMul(mat_, other); }
+    template <class M> auto mul(const M &other)
+    {
+        auto matmul = MatMul(mat_, other);
+        return AbstractMatrix<decltype(matmul)>(std::move(matmul));
+    }
 
-    template <class M> auto outer(const M &other) { return Outer(mat_, other); }
+    template <class M> auto outer(const M &other)
+    {
+        auto outer = Outer(mat_, other);
+        return AbstractMatrix<decltype(outer)>(std::move(outer));
+    }
 
     template <class M> auto operator+(const M &other) const
     {
