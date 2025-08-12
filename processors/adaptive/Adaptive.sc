@@ -39,3 +39,9 @@ AdaptiveReconstructWarped : Filter {
 		^this.multiNew('audio', in, adaptive.order, adaptive.buffer, warp).madd(mul, add)
 	}
 }
+
+FormantShift : Filter {
+	*ar { arg in = 0.0, order, lambda=0.995, warpin=0, warpout=0, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, order, lambda, warpin,warpout).madd(mul, add)
+	}
+}

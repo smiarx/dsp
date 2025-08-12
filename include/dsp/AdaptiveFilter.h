@@ -83,10 +83,15 @@ template <typename T, size_t Order> class RLS
 
         // update filter
         linalg::Vector<T, Order> phi, g;
-        phi    = P_.mul(x);
-        auto a = T{1} / (lambda_ + phi.dot(x));
-        g      = phi * a;
-        P_     = (P_ - g.outer(x).mul(P_)) * invLambda_;
+        phi = P_.mul(x);
+        g   = phi / (lambda_ + phi.dot(x));
+
+        linalg::Matrix<T, Order, Order> out, outP;
+        out  = g.outer(x);
+        outP = out.mul(P_);
+        P_   = (P_ - outP) * invLambda_;
+        // we need do decompose this, why ?
+        // P_     = (P_ - g.outer(x).mul(P_)) / lambda_;
 
         linalg::Vector<T, Order> deltaA;
         deltaA = g * e;
