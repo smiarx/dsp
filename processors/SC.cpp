@@ -4,6 +4,7 @@
 #include "Springs_SC.h"
 #include "TapeDelay_SC.h"
 #include "adaptive/Adaptive_SC.h"
+#include "voicebox/VoiceBox_SC.h"
 
 extern void loadFilters();
 
@@ -18,6 +19,7 @@ PluginLoad(Processors)
     if (infos.avx2 && infos.fma3_sse42) {
         loadTapeDelayAVX2();
         loadSpringsAVX2();
+        loadVoiceBox();
         loadFilters();
         // loadAdaptive();
         return;
@@ -26,6 +28,7 @@ PluginLoad(Processors)
 
     loadTapeDelay();
     loadSprings();
+    loadVoiceBox();
     loadFilters();
     // loadAdaptive();
 }

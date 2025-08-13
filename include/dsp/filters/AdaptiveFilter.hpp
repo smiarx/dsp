@@ -197,7 +197,7 @@ template <typename T, size_t Order> class RLS
 {
     // recursive least squares
   public:
-    RLS(T lambda = 0.99)
+    RLS(T lambda = T(0.99))
     {
         setForgetFactor(lambda);
 
