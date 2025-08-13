@@ -49,6 +49,7 @@ endif()
 
 add_subdirectory(tapedelay/)
 add_subdirectory(springs/)
+add_subdirectory(voicebox/)
 add_subdirectory(filters/)
 # need modifications
 #add_subdirectory(adaptive/)
