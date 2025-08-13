@@ -141,7 +141,8 @@ template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
         return read(c, kLength);
     }
 
-    template <class Ctxt> [[nodiscard]] auto asVector(Ctxt)
+    template <class Ctxt>
+    [[nodiscard]] auto asVector([[maybe_unused]] const Ctxt)
     {
         return *reinterpret_cast<linalg::Vector<T, L> *>(mem_);
     }

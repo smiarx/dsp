@@ -11,7 +11,8 @@ template <typename T, size_t Order> class AdaptiveFilter
 {
   public:
     static constexpr auto kDelaySize = Order;
-    using DL                         = CopyDelayLine<T, Order>;
+    using AnalyzeState               = CopyDelayLine<T, Order>;
+    using ReconstructState           = CopyDelayLine<T, Order>;
 
     AdaptiveFilter() = default;
     AdaptiveFilter(const linalg::Vector<T, Order> &a) : a_(a) {}
@@ -57,6 +58,141 @@ template <typename T, size_t Order> class AdaptiveFilter
     linalg::Vector<T, Order> a_{}; // filter coefficients
 };
 
+/////////////////////////////// Warped IIR Filter ////////////////////////
+
+template <class T, size_t Order>
+class WarpedAdaptiveFilter : public AdaptiveFilter<T, Order>
+{
+    // Implementation of frequency-warped recursive filters - Aki Härmä
+
+    static constexpr auto kLength =
+        nextAlignedOffset(Order, kUsedSIMDSize<T, Order>);
+
+  public:
+    // analyze delay line for FIR
+    struct AnalyzeState {
+        AllPassDelayLine<T, Order> delay_{};
+        T compensateFilterMem_{};
+    };
+    // state for reconstruct IIR
+    struct ReconstructState {
+        std::array<T, Order> stateIIR{};
+        T compensateFilterMem_{};
+    };
+
+    WarpedAdaptiveFilter() = default;
+    WarpedAdaptiveFilter(const linalg::Vector<T, Order> &a) :
+        AdaptiveFilter<T, Order>(a)
+    {
+    }
+
+    void setWarpIn(T warpIn)
+    {
+        warpIn_     = warpIn;
+        warpInGain_ = T(1) / std::sqrt(1 - warpIn * warpIn);
+    }
+
+    void setWarpOut(T warpOut)
+    {
+        warpOut_     = warpOut;
+        warpOutGain_ = std::sqrt(1 - warpOut * warpOut);
+    }
+
+    template <class Ctxt, class State>
+    void compensateResidualAnalyze(Ctxt ctxt, State &analyzeState) const
+    {
+        auto e = ctxt.getInput();
+
+        // filter compensation of residual
+        auto memE = e;
+        e += warpIn_ * analyzeState.compensateFilterMem_;
+        e *= warpInGain_;
+        analyzeState.compensateFilterMem_ = memE;
+
+        ctxt.setOutput(e);
+    }
+
+    template <class Ctxt, class State>
+    void compensateResidualReconstruct(Ctxt ctxt, State &reconstructState) const
+    {
+        auto e = ctxt.getInput();
+        // filter input with compensation filter
+        e = e * warpOutGain_ - warpOut_ * reconstructState.compensateFilterMem_;
+        reconstructState.compensateFilterMem_ = e;
+
+        ctxt.setOutput(e);
+    }
+
+    template <class Ctxt, class State>
+    linalg::Vector<T, Order> analyze(Ctxt ctxt, State &analyzeState) const
+    {
+        static_assert(!Ctxt::kUseVec);
+
+        auto &a = AdaptiveFilter<T, Order>::getCoeffs();
+
+        // set allpass delayline with warp coeff
+        auto x = analyzeState.delay_.asVector(ctxt, warpIn_);
+
+        // d is desired signal (current input)
+        auto d = ctxt.getInput();
+
+        // error
+        auto e = d - a.dot(x);
+
+        // write error in ouput
+        ctxt.setOutput(e);
+
+        // write new value to input
+        analyzeState.delay_.write(ctxt, d);
+
+        return x;
+    }
+
+    template <class Ctxt, class State>
+    void reconstruct(Ctxt ctxt, State &reconstructState)
+    {
+        auto &a     = AdaptiveFilter<T, Order>::getCoeffs();
+        auto &state = reconstructState.stateIIR;
+
+        auto x = ctxt.getInput();
+
+        // compute state and gain
+        T in = state[0] - state[0] * warpOut_;
+        T S  = a.get(Order - 1) * in;
+        for (size_t n = 1; n < Order; ++n) {
+            in = state[n] + warpOut_ * (in - state[n]);
+            S += a.get(Order - 1 - n) * in;
+        }
+
+        T g = a.get(0) * (warpOut_);
+        for (size_t n = 1; n < Order; ++n) {
+            g += a.get(n);
+            g *= warpOut_;
+        }
+
+        // output
+        auto y = (x + S) / (1 - g);
+        ctxt.setOutput(y);
+
+        // update state
+        auto out = y;
+        for (size_t n = 0; n < Order; ++n) {
+            auto in  = out;
+            auto v   = warpOut_ * (in - state[n]);
+            out      = v + state[n];
+            state[n] = v + in;
+        }
+    }
+
+  private:
+    T warpIn_{};
+    T warpInGain_{};
+    T warpOut_{};
+    T warpOutGain_{};
+};
+
+//////////////////////////// RLS //////////////
+
 template <typename T, size_t Order> class RLS
 {
     // recursive least squares
@@ -74,11 +210,11 @@ template <typename T, size_t Order> class RLS
         invLambda_ = 1 / lambda;
     }
 
-    template <class Ctxt, class Delay>
-    void process(Ctxt ctxt, Delay &delay, AdaptiveFilter<T, Order> &filter)
+    template <class Ctxt, class AFilter, class State>
+    void process(Ctxt ctxt, State &state, AFilter &filter)
     {
         // analyze with filter and write error
-        auto x = filter.analyze(ctxt, delay);
+        auto x = filter.analyze(ctxt, state);
         auto e = ctxt.getInput();
 
         // update filter
@@ -117,8 +253,8 @@ template <typename T, size_t Order> class RLSDCD
     void setForgetFactor(T lambda) { lambda_ = lambda; }
 
     // https://core.ac.uk/download/pdf/1145733.pdf
-    template <class Ctxt, class Delay>
-    void process(Ctxt ctxt, Delay &delay, AdaptiveFilter<T, Order> &filter)
+    template <class Ctxt, class AFilter, class Delay>
+    void process(Ctxt ctxt, Delay &delay, AFilter &filter)
     {
         // analyze with filter and write error
         auto x = filter.analyze(ctxt, delay);
@@ -177,60 +313,5 @@ template <typename T, size_t Order> class RLSDCD
     T lambda_{0.99};
     linalg::Vector<T, Order> r_{};        // residual solution
     linalg::Matrix<T, Order, Order> R_{}; // covariance matrix;
-};
-
-/////////////////////////////// Warped IIR Filter ////////////////////////
-
-template <class T, size_t Order>
-class WarpedIIR : public AdaptiveFilter<T, Order>
-{
-    // Implementation of frequency-warped recursive filters - Aki Härmä
-
-    static constexpr auto kLength =
-        nextAlignedOffset(Order, kUsedSIMDSize<T, Order>);
-
-  public:
-    // analyze delay line for FIR
-    using DL = AllPassDelayLine<T, Order>;
-    // state for reconstruct IIR
-    using State = std::array<T, Order>;
-
-    WarpedIIR() = default;
-    WarpedIIR(const linalg::Vector<T, Order> &a) : AdaptiveFilter<T, Order>(a)
-    {
-    }
-
-    template <class Ctxt> void reconstruct(Ctxt ctxt, State &state, T warp)
-    {
-        auto &a = AdaptiveFilter<T, Order>::getCoeffs();
-
-        // compute state and gain
-        T in = state[0] - state[0] * warp;
-        T S  = a.get(Order - 1) * in;
-        for (size_t n = 1; n < Order; ++n) {
-            in = state[n] + warp * (in - state[n]);
-            S += a.get(Order - 1 - n) * in;
-        }
-
-        T g = a.get(0) * (warp);
-        for (size_t n = 1; n < Order; ++n) {
-            g += a.get(n);
-            g *= warp;
-        }
-
-        // output
-        auto x = ctxt.getInput();
-        auto y = (x + S) / (1 - g);
-        ctxt.setOutput(y);
-
-        // update state
-        auto out = y;
-        for (size_t n = 0; n < Order; ++n) {
-            auto in  = out;
-            auto v   = warp * (in - state[n]);
-            out      = v + state[n];
-            state[n] = v + in;
-        }
-    }
 };
 }; // namespace dsp

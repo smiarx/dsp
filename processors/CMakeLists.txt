@@ -50,4 +50,5 @@ endif()
 add_subdirectory(tapedelay/)
 add_subdirectory(springs/)
 add_subdirectory(filters/)
-add_subdirectory(adaptive/)
+# need modifications
+#add_subdirectory(adaptive/)

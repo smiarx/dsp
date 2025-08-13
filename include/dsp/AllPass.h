@@ -195,15 +195,13 @@ class AllPassDelayLine : public CopyDelayLine<T, L, Off>
     using Parent = CopyDelayLine<T, L, Off>;
 
   public:
-    void setCoeff(T a) { coeff_ = a; }
-
-    template <class Ctxt> auto asVector(Ctxt ctxt)
+    template <class Ctxt> auto asVector(const Ctxt ctxt, T coeff)
     {
         auto prevInput = prevInput_;
         auto input     = ctxt.getInput();
         for (size_t i = 0; i < L; ++i) {
             auto prevOutput = Parent::get(i);
-            auto output     = prevInput + coeff_ * (input - prevOutput);
+            auto output     = prevInput + coeff * (input - prevOutput);
             Parent::set(i, output);
             prevInput = prevOutput;
             input     = output;
@@ -215,7 +213,6 @@ class AllPassDelayLine : public CopyDelayLine<T, L, Off>
     template <class Ctxt> void write(Ctxt, T x) { prevInput_ = x; }
 
   private:
-    T coeff_{};
     T prevInput_{};
 };
 

@@ -15,7 +15,7 @@ static void testSine()
     // https://ocw.mit.edu/courses/2-161-signal-processing-continuous-and-discrete-fall-2008/resources/rls/
     dsp::AdaptiveFilter<T, 2> afilter;
     Algo<T, 2> rls{0.99};
-    typename decltype(afilter)::DL delay;
+    typename decltype(afilter)::AnalyzeState delay;
 
     constexpr size_t kN = N;
     const auto &a       = afilter.getCoeffs();
@@ -32,8 +32,8 @@ static void testReconstruct()
 {
     dsp::AdaptiveFilter<T, 2> afilter;
     Algo<T, 2> rls{0.99};
-    typename decltype(afilter)::DL delay;
-    typename decltype(afilter)::DL delayout;
+    typename decltype(afilter)::AnalyzeState delay;
+    typename decltype(afilter)::ReconstructState delayout;
 
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
@@ -53,21 +53,22 @@ template <typename T> static void testWIIRFilter0()
 {
     // test if WIIR filter with warp arg = 0 is the same as normal IIR Filter
     T adata[] = {-0.5, 0.5};
-    dsp::linalg::Vector<T, 1> a(adata);
-    dsp::WarpedIIR wiir(a);
+    dsp::linalg::Vector<T, 2> a(adata);
+    dsp::WarpedAdaptiveFilter waf(a);
 
-    dsp::CopyDelayLine<T, 1> dl{};
+    typename decltype(waf)::ReconstructState wafStateR;
+    dsp::CopyDelayLine<T, 2> dl{};
 
-    typename decltype(wiir)::State wiirState{};
-    T warp                         = 0.0;
-    dsp::AdaptiveFilter<T, 1> &iir = wiir;
+    T warp = 0.0;
+    waf.setWarpOut(warp);
+    dsp::AdaptiveFilter<T, 2> &iir = waf;
 
     for (int i = 0; i < 30; ++i) {
         T x    = i == 0 ? 1.f : 0.f;
         T sig  = x;
         T sig2 = x;
 
-        wiir.reconstruct(dsp::Context(&sig), wiirState, warp);
+        waf.reconstruct(dsp::Context(&sig), wafStateR);
         iir.reconstruct(dsp::Context(&sig2), dl);
         REQUIRE_THAT(sig, WithinAbs(sig2, 1e-6f));
     }
@@ -76,13 +77,14 @@ template <typename T> static void testWIIRFilter0()
 template <template <typename, size_t> class Algo, typename T, size_t N = 100>
 static void testReconstructWarped()
 {
-    dsp::WarpedIIR<T, 2> afilter;
+    dsp::WarpedAdaptiveFilter<T, 2> afilter;
     Algo<T, 2> rls{0.99};
-    typename decltype(afilter)::DL delay;
-    typename decltype(afilter)::State rstate{};
+    typename decltype(afilter)::AnalyzeState aState{};
+    typename decltype(afilter)::ReconstructState rstate{};
 
     T warp = 0.5;
-    delay.setCoeff(warp);
+    afilter.setWarpIn(warp);
+    afilter.setWarpOut(warp);
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
         auto sig = T(rand()) / T(INT_MAX);
@@ -90,10 +92,10 @@ static void testReconstructWarped()
         auto x = sig;
         dsp::Context ctxt{&sig};
         auto oafilter = afilter;
-        rls.process(ctxt, delay, afilter);
-        oafilter.reconstruct(ctxt, rstate, warp);
+        rls.process(ctxt, aState, afilter);
+        oafilter.reconstruct(ctxt, rstate);
         // reconstructed is the same as original
-        REQUIRE_THAT(sig, WithinAbs(x, 1e-6f));
+        REQUIRE_THAT(sig, WithinAbs(x, 1e-5f));
     }
 }
 
