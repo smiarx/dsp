@@ -19,7 +19,7 @@ PluginLoad(Processors)
         loadTapeDelayAVX2();
         loadSpringsAVX2();
         loadFilters();
-        loadAdaptive();
+        // loadAdaptive();
         return;
     }
 #endif
@@ -27,5 +27,5 @@ PluginLoad(Processors)
     loadTapeDelay();
     loadSprings();
     loadFilters();
-    loadAdaptive();
+    // loadAdaptive();
 }
