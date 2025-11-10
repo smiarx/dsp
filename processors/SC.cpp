@@ -21,7 +21,7 @@ PluginLoad(Processors)
         loadSpringsAVX2();
         loadVoiceBox();
         loadFilters();
-        // loadAdaptive();
+        loadAdaptive();
         return;
     }
 #endif
@@ -30,5 +30,5 @@ PluginLoad(Processors)
     loadSprings();
     loadVoiceBox();
     loadFilters();
-    // loadAdaptive();
+    loadAdaptive();
 }

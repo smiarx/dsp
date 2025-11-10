@@ -9,11 +9,11 @@ struct RLSUnit : public Unit {
 
     template <size_t Order, bool Warp> struct RLS {
         RLS(float lambda = 0.0995) : rls_{lambda} {}
-        using aFilter = dsp::AdaptiveFilter<float, Order>;
-        using DL = std::conditional_t<!Warp, dsp::CopyDelayLine<float, Order>,
-                                      dsp::AllPassDelayLine<float, Order>>;
-        dsp::RLSDCD<float, Order> rls_;
-        DL dlin;
+        using aFilter =
+            std::conditional_t<!Warp, dsp::AdaptiveFilter<float, Order>,
+                               dsp::WarpedAdaptiveFilter<float, Order>>;
+        dsp::RLS<float, Order> rls_;
+        typename aFilter::AnalyzeState state_;
     };
     void *rls_;
 };
@@ -36,19 +36,19 @@ static void rlsNext(RLSUnit *unit, int inNumSamples)
     auto *filter = (typename RLSUnit::RLS<Order, Warp>::aFilter *)buf->data;
     auto *rls    = (RLSUnit::RLS<Order, Warp> *)unit->rls_;
 
-    if constexpr (Warp) {
-        rls->dlin.setCoeff(IN0(4));
-    }
-
     auto *in  = IN(0);
     auto *out = OUT(0);
 
     auto afilter = filter[inNumSamples];
-    filter[0]    = afilter;
+    if constexpr (Warp) {
+        afilter.setWarpIn(IN0(4));
+    }
+
+    filter[0] = afilter;
 
     for (int n = 0; n < inNumSamples; ++n) {
         auto x = *in;
-        rls->rls_.process(dsp::Context(&x), rls->dlin, afilter);
+        rls->rls_.process(dsp::Context(&x), rls->state_, afilter);
         filter[n + 1] = afilter;
         *out          = x;
         ++in;
@@ -94,6 +94,18 @@ template <bool Warp = false> static void rlsCtor(RLSUnit *unit)
     case 8:
         rlsAllocate<8, Warp>(unit);
         break;
+    case 9:
+        rlsAllocate<9, Warp>(unit);
+        break;
+    case 10:
+        rlsAllocate<10, Warp>(unit);
+        break;
+    case 11:
+        rlsAllocate<11, Warp>(unit);
+        break;
+    case 12:
+        rlsAllocate<12, Warp>(unit);
+        break;
     default:
         return;
     }
@@ -105,16 +117,11 @@ struct ReconstructUnit : public Unit {
     float fbufnum_;
     SndBuf *buf_;
 
-    template <size_t Order, bool Warp> struct Reconstruct;
-    template <size_t Order> struct Reconstruct<Order, false> {
-        using aFilter = dsp::AdaptiveFilter<float, Order>;
-        using DL      = typename aFilter::DL;
-        DL dlout;
-    };
-    template <size_t Order> struct Reconstruct<Order, true> {
-        using aFilter = dsp::WarpedIIR<float, Order>;
-        using State   = typename aFilter::State;
-        State state;
+    template <size_t Order, bool Warp> struct Reconstruct {
+        using aFilter =
+            std::conditional_t<!Warp, dsp::AdaptiveFilter<float, Order>,
+                               dsp::WarpedAdaptiveFilter<float, Order>>;
+        typename aFilter::ReconstructState state_;
     };
     void *reconstruct_;
 };
@@ -142,10 +149,10 @@ static void reconstructNext(ReconstructUnit *unit, int inNumSamples)
 
     for (int n = 0; n < inNumSamples; ++n) {
         auto x = IN(0)[n];
-        if constexpr (!Warp)
-            filter[n].reconstruct(dsp::Context(&x), reconstruct->dlout);
-        else
-            filter[n].reconstruct(dsp::Context(&x), reconstruct->state, IN0(3));
+        if constexpr (Warp) {
+            filter[n].setWarpOut(IN0(3));
+        }
+        filter[n].reconstruct(dsp::Context(&x), reconstruct->state_);
         OUT(0)[n] = x;
     }
 
@@ -190,6 +197,18 @@ template <bool Warp = false> static void reconstructCtor(ReconstructUnit *unit)
     case 8:
         reconstructAllocate<8, Warp>(unit);
         break;
+    case 9:
+        reconstructAllocate<9, Warp>(unit);
+        break;
+    case 10:
+        reconstructAllocate<10, Warp>(unit);
+        break;
+    case 11:
+        reconstructAllocate<11, Warp>(unit);
+        break;
+    case 12:
+        reconstructAllocate<12, Warp>(unit);
+        break;
     default:
         return;
     }
@@ -202,27 +221,17 @@ static void reconstructDtor(ReconstructUnit *unit)
 
 ////////////////////////////////////////////////////////
 struct FormantShiftUnit : public Unit {
-    template <size_t Order, bool Warp> struct RLS;
-    template <size_t Order> struct RLS<Order, false> {
+    template <size_t Order, bool Warp> struct RLS {
         RLS(float lambda) : rls_(lambda) {}
-        using aFilter = dsp::AdaptiveFilter<double, Order>;
-        using DL      = typename aFilter::DL;
+        using aFilter =
+            std::conditional_t<!Warp, dsp::AdaptiveFilter<float, Order>,
+                               dsp::WarpedAdaptiveFilter<float, Order>>;
         aFilter filter_{};
-        dsp::RLS<double, Order> rls_{};
-        DL dlin{};
-        DL dlout{};
-    };
-    template <size_t Order> struct RLS<Order, true> {
-        RLS(float lambda) : rls_(lambda) {}
-        using aFilter = dsp::WarpedIIR<double, Order>;
-        using State   = typename aFilter::State;
-        aFilter filter_{};
-        dsp::RLS<double, Order> rls_{};
-        dsp::AllPassDelayLine<double, Order> dlin{};
-        State state{};
+        dsp::RLS<float, Order> rls_{};
+        typename aFilter::AnalyzeState astate_;
+        typename aFilter::ReconstructState rstate_;
     };
     void *rls_;
-    double mem_{};
 };
 
 template <size_t Order, bool Warp>
@@ -231,32 +240,34 @@ static void formantShiftNext(FormantShiftUnit *unit, int inNumSamples)
     auto *rls = (FormantShiftUnit::RLS<Order, Warp> *)unit->rls_;
 
     if constexpr (Warp) {
-        rls->dlin.setCoeff(IN0(3));
+        rls->filter_.setWarpIn(IN0(3));
+        rls->filter_.setWarpIn(IN0(4));
     }
 
     auto *in  = IN(0);
     auto *out = OUT(0);
 
-    auto warp = IN0(2);
-    rls->rls_.setForgetFactor(warp);
+    rls->rls_.setForgetFactor(IN0(2));
 
+    auto afilter = rls->filter_;
     for (int n = 0; n < inNumSamples; ++n) {
-        auto x       = static_cast<double>(*in);
-        auto afilter = rls->filter_;
-        rls->rls_.process(dsp::Context(&x), rls->dlin, afilter);
-        assert(!std::isnan(x));
+        auto x          = *in;
+        auto origFilter = afilter;
+        rls->rls_.process(dsp::Context(&x), rls->astate_, afilter);
 
-        if constexpr (!Warp)
-            rls->filter_.reconstruct(dsp::Context(&x), rls->dlout);
-        else
-            rls->filter_.reconstruct(dsp::Context(&x), rls->state, IN0(4));
-        assert(!std::isnan(x));
+        if constexpr (Warp) {
+            afilter.compensateResidualAnalyze(dsp::Context(&x), rls->astate_);
+            afilter.compensateResidualReconstruct(dsp::Context(&x),
+                                                  rls->rstate_);
+        }
 
-        rls->filter_ = afilter;
-        *out         = static_cast<float>(x);
+        origFilter.reconstruct(dsp::Context(&x), rls->rstate_);
+
+        *out = x;
         ++in;
         ++out;
     }
+    rls->filter_ = afilter;
 }
 
 template <size_t Order, bool Warp>
