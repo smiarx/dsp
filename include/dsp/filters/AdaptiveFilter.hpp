@@ -335,7 +335,7 @@ template <typename T> class AdaptiveNotchFilter
       public:
         friend AdaptiveNotchFilter;
 
-        State(T a = 1.99, T p = 1) : a_(a), p_(p) {}
+        State(T a = T(1.99), T p = T(1)) : a_(a), p_(p) {}
 
         T getFreq() const
         {
@@ -359,8 +359,8 @@ template <typename T> class AdaptiveNotchFilter
         std::array<T, 2> s_{}; // state value
     };
 
-    AdaptiveNotchFilter(T rho = 0.95, T lambda = 0.99) :
-        rho_(rho), rhosq_(rho * rho), lambda_(lambda), invlambda_(1. / lambda)
+    AdaptiveNotchFilter(T rho = T(0.95), T lambda = T(0.99)) :
+        rho_(rho), rhosq_(rho * rho), lambda_(lambda), invlambda_(T(1) / lambda)
     {
     }
 
@@ -375,7 +375,7 @@ template <typename T> class AdaptiveNotchFilter
     void setLambda(T lambda)
     {
         lambda_    = lambda;
-        invlambda_ = 1. / lambda;
+        invlambda_ = T(1) / lambda;
     }
 
     template <class Ctxt> void process(Ctxt ctxt, State &state) const

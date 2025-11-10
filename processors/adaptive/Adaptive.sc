@@ -6,7 +6,7 @@ Adaptive {
         order = order ? 8;
         numFrames = (order + 4 - 1);
         numFrames = numFrames - (numFrames%4);
-        buffer = Buffer.alloc(server, numFrames*(server.options.blockSize+1), completionMessage: {|b| b.zero});
+        buffer = Buffer.alloc(server, 2*numFrames*(server.options.blockSize+1), completionMessage: {|b| b.zero});
 		buffer.zero;
         ^super.newCopyArgs(buffer, order);
     }
