@@ -314,4 +314,94 @@ template <typename T, size_t Order> class RLSDCD
     linalg::Vector<T, Order> r_{};        // residual solution
     linalg::Matrix<T, Order, Order> R_{}; // covariance matrix;
 };
+
+/////////////////// Adaptive Notch Filter //////////////////////////
+template <typename T> class AdaptiveNotchFilter
+{
+    /* adaptive notch filter with recursive least square
+     *
+     * adapted from
+     * https://www.dafx.de/paper-archive/2023/DAFx23_paper_7.pdf
+     *
+     * remove single pure frequency from signal, can also detect pitch
+     * as notch cut frequency
+     */
+
+  public:
+    class State
+    {
+      public:
+        friend AdaptiveNotchFilter;
+
+        State(T a = 1.99, T p = 1) : a_(a), p_(p) {}
+
+        T getFreq()
+        {
+            // get frequency from notch coeff
+            return std::acos(a_ / 2) / dsp::constants<T>::pi;
+        }
+
+      private:
+        T a_{1.99};            // notch parameter
+        T p_{1};               // variance
+        std::array<T, 2> s_{}; // state value
+    };
+
+    AdaptiveNotchFilter(T rho = 0.95, T lambda = 0.99) :
+        rho_(rho), rhosq_(rho * rho), lambda_(lambda), invlambda_(1. / lambda)
+    {
+    }
+
+    T getRho() const { return rho_; }
+    T getLambda() const { return lambda_; }
+
+    void setRho(T rho)
+    {
+        rho_   = rho;
+        rhosq_ = rho * rho;
+    }
+    void setLambda(T lambda)
+    {
+        lambda_    = lambda;
+        invlambda_ = 1. / lambda;
+    }
+
+    template <class Ctxt> void process(Ctxt ctxt, State &state) const
+    {
+        auto x = ctxt.getInput();
+
+        auto &a = state.a_;
+        auto &p = state.p_;
+        auto &s = state.s_;
+
+        // new pole state
+        auto sn = x + rho_ * a * s[0] - rhosq_ * s[1];
+
+        // kalman gain
+        auto ps = p * s[0];
+        auto k  = ps / (s[0] * ps + lambda_);
+
+        // error
+        auto e = sn - a * s[0] + s[1];
+
+        // adjust
+        a += k * e;
+        p = invlambda_ * (p - k * ps);
+
+        if (dsp::abs(a) > 2.0) {
+            a = 1.99;
+        }
+
+        s[1] = s[0];
+        s[0] = sn;
+
+        ctxt.setOutput(e);
+    }
+
+  private:
+    T rho_{0.95}; // pole radius
+    T rhosq_{rho_ * rho_};
+    T lambda_{0.99}; // forgetting factor
+    T invlambda_{1. / lambda_};
+};
 }; // namespace dsp
