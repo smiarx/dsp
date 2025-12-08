@@ -313,6 +313,37 @@ static void formantShiftDtor(FormantShiftUnit *unit)
     RTFree(unit->mWorld, unit->rls_);
 }
 
+//==================================================
+struct ANFUnit : public Unit {
+    dsp::AdaptiveNotchFilter<float> anf_{};
+    decltype(anf_)::State state_{};
+};
+
+static void anfNext(ANFUnit *unit, int inNumSamples)
+{
+    float *in  = IN(0);
+    float *out = OUT(0);
+
+    float rho = IN0(1);
+    if (rho != unit->anf_.getRho()) unit->anf_.setRho(rho);
+
+    float lambda = IN0(2);
+    if (lambda != unit->anf_.getLambda()) unit->anf_.setLambda(lambda);
+
+    for (int n = 0; n < inNumSamples; ++n) {
+        auto x = in[n];
+        unit->anf_.process(dsp::Context(&x), unit->state_);
+        out[n] = unit->state_.getFreq() * static_cast<float>(SAMPLERATE) / 2.f;
+    }
+}
+
+static void anfCtor(ANFUnit *unit)
+{
+    unit->state_ = {1.99, 1};
+    SETCALC(anfNext);
+}
+
+//==================================================
 void loadAdaptive()
 {
     (*ft->fDefineUnit)("RLS", sizeof(RLSUnit), (UnitCtorFunc)&rlsCtor<>,
@@ -328,4 +359,6 @@ void loadAdaptive()
     (*ft->fDefineUnit)("FormantShift", sizeof(ReconstructUnit),
                        (UnitCtorFunc)&formantShiftCtor<true>,
                        (UnitDtorFunc)&formantShiftDtor, 0);
+    (*ft->fDefineUnit)("AdaptiveNotchFilter", sizeof(ANFUnit),
+                       (UnitCtorFunc)anfCtor, nullptr, 0);
 }

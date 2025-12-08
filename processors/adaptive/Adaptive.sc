@@ -45,3 +45,12 @@ FormantShift : Filter {
 		^this.multiNew('audio', in, order, lambda, warpin,warpout).madd(mul, add)
 	}
 }
+
+AdaptiveNotchFilter : UGen {
+	*ar { arg in = 0.0, rho = 0.9, lambda=0.98;
+		^this.multiNew('audio', in, rho, lambda)
+	}
+	*kr { arg in = 0.0, rho = 0.9, lambda=0.98;
+		^this.multiNew('control', in, rho, lambda)
+	}
+}
