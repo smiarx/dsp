@@ -31,6 +31,7 @@ set(test_sources
     RMS.cpp
     LinearAlgebra.cpp
     AdaptiveFilter.cpp
+    OnePole.cpp
 )
 
 add_executable(tests ${test_sources})
