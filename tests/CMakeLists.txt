@@ -33,6 +33,7 @@ set(test_sources
     LinearAlgebra.cpp
     AdaptiveFilter.cpp
     OnePole.cpp
+    ZeroCrossing.cpp
 )
 
 add_executable(tests ${test_sources})
