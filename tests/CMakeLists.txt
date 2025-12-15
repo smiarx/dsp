@@ -32,6 +32,7 @@ set(test_sources
     FastMath.cpp
     Units.cpp
     SampleRate.cpp
+    OnePole.cpp
 )
 
 add_executable(tests ${test_sources})
