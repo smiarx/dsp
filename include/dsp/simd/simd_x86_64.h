@@ -35,18 +35,20 @@ template <typename T, size_t N> struct intrin;
 #if DSP_SSE2
 
 struct floatx2_t {
+    floatx2_t() = default;
     floatx2_t(__m128 v) : v_(v) {}
     always_inline operator __m128() const { return v_; }
 
   private:
-    __m128 v_;
+    __m128 v_{};
 };
 struct intx2_t {
+    intx2_t() = default;
     intx2_t(__m128i v) : v_(v) {}
     always_inline operator __m128i() const { return v_; }
 
   private:
-    __m128i v_;
+    __m128i v_{};
 };
 
 ///////////////// INT32x4 ////////////////

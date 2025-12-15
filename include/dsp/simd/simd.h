@@ -47,6 +47,7 @@ template <typename T, size_t N> struct simdmask {
     using masktype     = typename def::masktype;
 
     always_inline simdmask(masktype value) noexcept : value_(value) {}
+    always_inline simdmask() noexcept : value_{} {}
 
     always_inline operator masktype() const { return value_; }
 
