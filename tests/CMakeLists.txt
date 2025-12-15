@@ -33,6 +33,7 @@ set(test_sources
     Units.cpp
     SampleRate.cpp
     OnePole.cpp
+    ZeroCrossing.cpp
 )
 
 add_executable(tests ${test_sources})
