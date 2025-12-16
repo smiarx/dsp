@@ -33,6 +33,7 @@ set(test_sources
     AdaptiveFilter.cpp
     OnePole.cpp
     ZeroCrossing.cpp
+    PitchShift.cpp
 )
 
 add_executable(tests ${test_sources})
