@@ -5,11 +5,20 @@ namespace processors
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-void VoiceBox::update(float forgetFactor, float warpIn, float warpOut)
+void VoiceBox::prepare(float sampleRate)
+{
+    constexpr auto kAmpDecay = 0.015f;
+    ampFollower_.setRate(0.1f, static_cast<float>(kDecFactor) /
+                                   (kAmpDecay * sampleRate));
+}
+
+void VoiceBox::update(float forgetFactor, float warpIn, float warpOut,
+                      float shift)
 {
     rls_.setForgetFactor(forgetFactor);
     filter_.setWarpIn(warpIn);
     filter_.setWarpOut(warpOut);
+    pitchShift_.setShift(shift);
 }
 
 void VoiceBox::process(const float *const *__restrict in,
@@ -23,16 +32,26 @@ void VoiceBox::process(const float *const *__restrict in,
     }
 
     auto ctxt    = dsp::BufferContext(mout, count, buffer_);
-    auto ctxtDec = dsp::Context(mout);
+    auto ctxtDec = dsp::BufferContext(mout, count, bufferDec_);
 
     decimate_.decimate(ctxt, ctxtDec, decimateDL_, decimateId_);
     auto decBS = ctxtDec.getBlockSize();
 
     CTXTRUN(ctxtDec)
     {
+        auto amp = dsp::abs(ctxtDec.getInput());
+        ampFollower_.process(dsp::Context(&amp), ampFollowerState_);
+
         auto origFilter = filter_;
-        rls_.process(ctxtDec, warpAState_, filter_);
+        if (amp > 0.01f) {
+            pitchTracker_.process(ctxtDec, pitchTrackerState_);
+            auto freq = pitchTrackerState_.getFreq();
+            pitchShift_.setFreq(freq);
+            rls_.process(ctxtDec, warpAState_, filter_);
+        }
         filter_.compensateResidualAnalyze(ctxtDec, warpAState_);
+
+        pitchShift_.process(ctxtDec, pitchShiftDL_);
 
         filter_.compensateResidualReconstruct(ctxtDec, warpRState_);
         origFilter.reconstruct(ctxtDec, warpRState_);
