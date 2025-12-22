@@ -8,7 +8,6 @@
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <iostream>
 
 using namespace Catch::Matchers;
 
@@ -97,6 +96,65 @@ template <typename T> static void testDC()
     };
 }
 
+template <typename T> static void testBandLimited()
+{
+    constexpr auto kN = 25;
+
+    constexpr auto kKernelSize = 4;
+    using ft                   = T;
+    using Kernel = dsp::kernels::Sinc<kKernelSize, dsp::windows::Kaiser<140>>;
+    using Tap    = dsp::TapKernel<ft, Kernel, 256>;
+
+    ft data[kN];
+    dsp::DelayLine<121> delayline;
+
+    dsp::Buffer<ft, nextTo(delayline)> buffer;
+    ft bufferData[decltype(buffer)::kSize]{};
+    buffer.setData(bufferData);
+
+    dsp::BufferContext ctxt(data, kN, buffer);
+
+    Tap tap;
+
+    dsp::baseType<ft> delay = 10.38523;
+
+    tap.setDelay(delay);
+    int n       = 0;
+    float scale = 2;
+    SECTION("Nyquist gain is 0")
+    {
+        CTXTRUN(ctxt)
+        {
+            auto x = tap.read(ctxt, delayline, scale);
+            for (size_t i = 0; i < dsp::kTypeWidth<ft>; ++i)
+                REQUIRE_THAT(dsp::get(x, i), WithinAbs(0.0, 1e-5));
+
+            delayline.write(ctxt, dsp::sin(dsp::constants<T>::pi * n));
+            ++n;
+        };
+    }
+
+    SECTION("Reconstruction")
+    {
+        ft f0 = 0.0191;
+        CTXTRUN(ctxt)
+        {
+            if (n > 2 * kKernelSize + delay) {
+                auto x = tap.read(ctxt, delayline, scale);
+                auto e = dsp::sin(dsp::constants<T>::pi * (n - delay) *
+                                  dsp::load(f0));
+                for (size_t i = 0; i < dsp::kTypeWidth<ft>; ++i)
+                    REQUIRE_THAT(dsp::get(x, i),
+                                 WithinAbs(dsp::get(e, i), 1e-4));
+            }
+
+            delayline.write(
+                ctxt, dsp::sin(dsp::constants<T>::pi * n * dsp::load(f0)));
+            ++n;
+        };
+    }
+}
+
 TEST_CASE("Kernel")
 {
     SECTION("impulse response")
@@ -113,5 +171,13 @@ TEST_CASE("Kernel")
         testDC<dsp::mfloat<2>>();
         testDC<dsp::mdouble<2>>();
         testDC<dsp::mfloat<4>>();
+    }
+
+    SECTION("BandLimited")
+    {
+        testBandLimited<float>();
+        testBandLimited<dsp::mfloat<2>>();
+        testBandLimited<dsp::mdouble<2>>();
+        testBandLimited<dsp::mfloat<4>>();
     }
 }
