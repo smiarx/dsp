@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cassert>
 #include <dsp/core/Context.hpp>
 #include <dsp/math/FastMath.hpp>
+#include <dsp/math/Interpolation.hpp>
 #include <dsp/utils/Utils.hpp>
 
 namespace dsp
@@ -350,7 +350,7 @@ template <SampleType T> class TapCubic : public TapLin<T>
         auto x1  = TapNoInterp<T>{id + 1}.read(c, delayline);
         auto x2  = TapNoInterp<T>{id + 2}.read(c, delayline);
 
-        return hermite(xm1, x0, x1, x2, fd);
+        return interp::Hermite{xm1, x0, x1, x2}(fd);
     }
 };
 
