@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dsp/delay/Delay.hpp>
+#include <dsp/math/FastMath.hpp>
 
 namespace dsp
 {

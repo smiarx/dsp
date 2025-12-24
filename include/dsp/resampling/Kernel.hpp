@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <dsp/delay/Delay.hpp>
+#include <dsp/math/FastMath.hpp>
 #include <dsp/resampling/Lut.hpp>
 
 namespace dsp

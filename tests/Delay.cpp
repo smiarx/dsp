@@ -246,7 +246,7 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                         ft x2     = std::max(ft(0), x1 - 1);
                         ft xm1    = x0 + 1;
                         ft fd     = d - ft(static_cast<int>(d));
-                        ft expect = dsp::hermite(xm1, x0, x1, x2, fd);
+                        ft expect = dsp::interp::Hermite{xm1, x0, x1, x2}(fd);
 
                         REQUIRE_THAT(v, WithinRel(expect));
                     }
@@ -420,7 +420,7 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                             xm1 = xm1 < off ? 0. : xm1;
                         }
                         auto fd     = d[j] - static_cast<int>(d[j]);
-                        auto expect = dsp::hermite(xm1, x0, x1, x2, fd);
+                        auto expect = dsp::interp::Hermite{xm1, x0, x1, x2}(fd);
                         if (j == 1) REQUIRE_THAT(v[j], WithinRel(expect));
                     }
                 }
