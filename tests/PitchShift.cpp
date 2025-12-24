@@ -1,8 +1,8 @@
 #include "dsp/PitchShift.h"
 #include "dsp/Buffer.h"
+#include "dsp/FastMath.h"
 
 #include <catch2/catch_all.hpp>
-#include <iostream>
 
 TEST_CASE("Pitch Shift", "[dsp][pitchshift]")
 {

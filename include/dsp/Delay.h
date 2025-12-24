@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Context.h"
-#include "FastMath.h"
+#include "Interpolation.h"
 #include "LinearAlgebra.h"
 #include "Utils.h"
 #include <cassert>
@@ -355,7 +355,7 @@ template <typename T> class TapCubic : public TapLin<T>
         auto x1  = TapNoInterp<T>{id + 1}.read(c, delayline);
         auto x2  = TapNoInterp<T>{id + 2}.read(c, delayline);
 
-        return hermite(xm1, x0, x1, x2, fd);
+        return interp::Hermite{xm1, x0, x1, x2}(fd);
     }
 };
 } // namespace dsp

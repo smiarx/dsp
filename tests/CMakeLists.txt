@@ -34,6 +34,7 @@ set(test_sources
     OnePole.cpp
     ZeroCrossing.cpp
     PitchShift.cpp
+    Interpolation.cpp
 )
 
 add_executable(tests ${test_sources})

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Delay.h"
+#include "FastMath.h"
 #include "Lut.h"
 #include <cmath>
 

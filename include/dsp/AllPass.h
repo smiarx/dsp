@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Delay.h"
-#include <cmath>
+#include "FastMath.h"
 
 namespace dsp
 {
