@@ -34,6 +34,7 @@ set(test_sources
     OnePole.cpp
     ZeroCrossing.cpp
     PitchShift.cpp
+    Autocorrelation.cpp
     Interpolation.cpp
 )
 
