@@ -35,6 +35,7 @@ set(test_sources
     OnePole.cpp
     ZeroCrossing.cpp
     PitchShift.cpp
+    NSDF.cpp
     Interpolation.cpp
 )
 
