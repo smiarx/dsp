@@ -53,7 +53,7 @@ template <typename T> class Noise : public INoise<T>
   public:
     Noise(int seed) : INoise<T>(seed) {}
     Noise() = default;
-    auto process()
+    auto process() -> T
     {
         using type  = baseType<T>;
         using itype = intType<T>;

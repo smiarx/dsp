@@ -5,6 +5,7 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <dsp/filters/AdaptiveFilter.hpp>
+#include <dsp/generators/Noise.hpp>
 
 using namespace Catch::Matchers;
 
@@ -35,9 +36,11 @@ static void testReconstruct()
     typename decltype(afilter)::AnalyzeState delay;
     typename decltype(afilter)::ReconstructState delayout;
 
+    dsp::Noise<T> noise;
+
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
-        auto sig = T(rand()) / T(INT_MAX);
+        auto sig = noise.process();
         sig += std::sin(dsp::constants<T>::pi * 2 * T(n) / 12.f);
         auto x = sig;
         dsp::Context ctxt{&sig};
@@ -82,12 +85,14 @@ static void testReconstructWarped()
     typename decltype(afilter)::AnalyzeState aState{};
     typename decltype(afilter)::ReconstructState rstate{};
 
+    dsp::Noise<T> noise;
+
     T warp = 0.5;
     afilter.setWarpIn(warp);
     afilter.setWarpOut(warp);
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
-        auto sig = T(rand()) / T(INT_MAX);
+        auto sig = noise.process();
         sig += std::sin(dsp::constants<T>::pi * 2 * T(n) / 12.f);
         auto x = sig;
         dsp::Context ctxt{&sig};
