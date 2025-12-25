@@ -1,4 +1,5 @@
 #include "dsp/AdaptiveFilter.h"
+#include "dsp/Noise.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
@@ -35,9 +36,11 @@ static void testReconstruct()
     typename decltype(afilter)::AnalyzeState delay;
     typename decltype(afilter)::ReconstructState delayout;
 
+    dsp::Noise<T> noise;
+
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
-        auto sig = T(rand()) / T(INT_MAX);
+        auto sig = noise.process();
         sig += std::sin(dsp::constants<T>::pi * 2 * T(n) / 12.f);
         auto x = sig;
         dsp::Context ctxt{&sig};
@@ -82,12 +85,14 @@ static void testReconstructWarped()
     typename decltype(afilter)::AnalyzeState aState{};
     typename decltype(afilter)::ReconstructState rstate{};
 
+    dsp::Noise<T> noise;
+
     T warp = 0.5;
     afilter.setWarpIn(warp);
     afilter.setWarpOut(warp);
     constexpr size_t kN = N;
     for (size_t n = 0; n < kN; ++n) {
-        auto sig = T(rand()) / T(INT_MAX);
+        auto sig = noise.process();
         sig += std::sin(dsp::constants<T>::pi * 2 * T(n) / 12.f);
         auto x = sig;
         dsp::Context ctxt{&sig};
