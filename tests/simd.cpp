@@ -72,8 +72,8 @@ template <typename T, size_t N> class TestSimd
             }
             SECTION("signbit")
             {
-                auto sb = x.signbit();
-                loop(i) { cmp(sb[i], std::signbit(x[i])); }
+                auto sb = y.signbit();
+                loop(i) { cmp(sb[i], std::signbit(y[i])); }
             }
         }
         SECTION("max")

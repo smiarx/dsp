@@ -54,7 +54,7 @@ template <> struct intrin<float, 2> {
 
     static always_inline masktype vectorcall signbit(type x)
     {
-        return (masktype)vshl_n_s32(vreinterpret_s32_f32(x), 31);
+        return (masktype)vshr_n_s32(vreinterpret_s32_f32(x), 31);
     }
 
     static constexpr auto bitAnd = vand_u32;
@@ -159,7 +159,7 @@ template <> struct intrin<float, 4> {
 
     static always_inline masktype vectorcall signbit(type x)
     {
-        return (masktype)vshlq_n_s32(vreinterpretq_s32_f32(x), 31);
+        return (masktype)vshrq_n_s32(vreinterpretq_s32_f32(x), 31);
     }
 
     static constexpr auto bitAnd = vandq_u32;
@@ -277,7 +277,7 @@ template <> struct intrin<double, 2> {
 
     static always_inline masktype vectorcall signbit(type x)
     {
-        return (masktype)vshlq_n_s64(vreinterpretq_s64_f64(x), 31);
+        return (masktype)vshrq_n_s64(vreinterpretq_s64_f64(x), 63);
     }
 
     static constexpr auto bitAnd = vandq_u64;
