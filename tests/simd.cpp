@@ -144,6 +144,24 @@ template <typename T, size_t N> class TestSimd
             }
         }
 
+        SECTION("even")
+        {
+            if constexpr (N > 1) {
+                auto e = dsp::even(x, y);
+                loop(i) { cmp(e[i], i < N / 2 ? x[i * 2] : y[i * 2 - N]); }
+            }
+        }
+        SECTION("odd")
+        {
+            if constexpr (N > 1) {
+                auto o = dsp::odd(x, y);
+                loop(i)
+                {
+                    cmp(o[i], i < N / 2 ? x[i * 2 + 1] : y[i * 2 - N + 1]);
+                }
+            }
+        }
+
         SECTION("blend")
         {
             auto z = x.cmpgt(y).blend(x, y);

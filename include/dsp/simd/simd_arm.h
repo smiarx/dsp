@@ -88,6 +88,10 @@ template <> struct intrin<float, 2> {
         return vrev64_f32(value);
     }
 
+    // get even/odd parts of 2 registers
+    static constexpr auto even = vuzp1_f32;
+    static constexpr auto odd  = vuzp2_f32;
+
     static constexpr auto cmpeq = vceq_f32;
     static constexpr auto cmpgt = vcgt_f32;
     static constexpr auto cmpge = vcge_f32;
@@ -209,6 +213,10 @@ template <> struct intrin<float, 4> {
         return vget_low_f32(add(x, flip2(x)));
     }
 
+    // get even/odd parts of 2 registers
+    static constexpr auto even = vuzp1q_f32;
+    static constexpr auto odd  = vuzp2q_f32;
+
     static constexpr auto cmpeq = vceqq_f32;
     static constexpr auto cmpgt = vcgtq_f32;
     static constexpr auto cmpge = vcgeq_f32;
@@ -306,6 +314,10 @@ template <> struct intrin<double, 2> {
     {
         return vextq_f64(value, value, 1);
     }
+
+    // get even/odd parts of 2 registers
+    static constexpr auto even = vuzp1q_f64;
+    static constexpr auto odd  = vuzp2q_f64;
 
     static constexpr auto cmpeq = vceqq_f64;
     static constexpr auto cmpgt = vcgtq_f64;
@@ -414,6 +426,10 @@ template <> struct intrin<int32_t, 2> {
     {
         return vrev64_s32(value);
     }
+
+    // get even/odd parts of 2 registers
+    static constexpr auto even = vuzp1_s32;
+    static constexpr auto odd  = vuzp2_s32;
 
     static constexpr auto cmpeq = vceq_s32;
     static constexpr auto cmpgt = vcgt_s32;
@@ -543,6 +559,10 @@ template <> struct intrin<int32_t, 4> {
     {
         return vget_low_s32(add(x, flip2(x)));
     }
+
+    // get even/odd parts of 2 registers
+    static constexpr auto even = vuzp1q_s32;
+    static constexpr auto odd  = vuzp2q_s32;
 
     static constexpr auto cmpeq = vceqq_s32;
     static constexpr auto cmpgt = vcgtq_s32;

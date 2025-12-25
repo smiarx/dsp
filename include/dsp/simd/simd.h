@@ -377,6 +377,15 @@ template <typename T, size_t N> struct simd {
         }
     }
 
+    always_inline simd vectorcall even(simd other) const noexcept
+    {
+        return def::even(value_, other);
+    }
+    always_inline simd vectorcall odd(simd other) const noexcept
+    {
+        return def::odd(value_, other);
+    }
+
     always_inline simd vectorcall max(simd other)
     {
         return def::max(value_, other);
