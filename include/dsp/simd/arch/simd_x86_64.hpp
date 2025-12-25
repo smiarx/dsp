@@ -202,6 +202,21 @@ template <> struct intrin<int32_t, 4> {
             _mm_castsi128_ps(v), _mm_castsi128_ps(x), _MM_SHUFFLE(1, 0, 1, 0)));
     }
 
+    // get even parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        return _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(x1),
+                                               _mm_castsi128_ps(x2),
+                                               _MM_SHUFFLE(2, 0, 2, 0)));
+    }
+    // get odd parts of 2 registers
+    static always_inline type odd(type x1, type x2)
+    {
+        return _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(x1),
+                                               _mm_castsi128_ps(x2),
+                                               _MM_SHUFFLE(3, 1, 3, 1)));
+    }
+
     static constexpr auto cmpeq = _mm_cmpeq_epi32;
     static constexpr auto cmpgt = _mm_cmpgt_epi32;
     static constexpr auto cmplt = _mm_cmplt_epi32;
@@ -400,6 +415,17 @@ template <> struct intrin<float, 4> {
         return _mm_shuffle_ps(v, x, _MM_SHUFFLE(1, 0, 1, 0));
     }
 
+    // get even parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        return _mm_shuffle_ps(x1, x2, _MM_SHUFFLE(2, 0, 2, 0));
+    }
+    // get odd parts of 2 registers
+    static always_inline type odd(type x1, type x2)
+    {
+        return _mm_shuffle_ps(x1, x2, _MM_SHUFFLE(3, 1, 3, 1));
+    }
+
     static constexpr auto cmpeq = _mm_cmpeq_ps;
     static constexpr auto cmpgt = _mm_cmpgt_ps;
     static constexpr auto cmplt = _mm_cmplt_ps;
@@ -586,6 +612,16 @@ template <> struct intrin<float, 2> {
         return _mm_move_ss(shift<1>(x), _mm_set_ss(v));
     }
 
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        return _mm_unpacklo_ps(x1, x2);
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        return even(flip1(x1), flip1(x2));
+    }
+
     static always_inline type vectorcall cmpeq(type x1, type x2)
     {
         return base::cmpeq(x1, x2);
@@ -756,6 +792,16 @@ template <> struct intrin<int, 2> {
                         _mm_castsi128_ps(_mm_cvtsi32_si128(v))));
     }
 
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        return _mm_unpacklo_epi32(x1, x2);
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        return even(flip1(x1), flip1(x2));
+    }
+
     static always_inline type vectorcall cmpeq(type x1, type x2)
     {
         return base::cmpeq(x1, x2);
@@ -897,6 +943,16 @@ template <> struct intrin<double, 2> {
     static always_inline type push(type x, basetype v)
     {
         return _mm_move_sd(shift<1>(x), _mm_set_sd(v));
+    }
+
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        return _mm_unpacklo_pd(x1, x2);
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        return _mm_unpackhi_pd(x1, x2);
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_pd;
@@ -1164,6 +1220,24 @@ template <> struct intrin<int32_t, 8> {
         return _mm256_inserti128_si256(sh, v, 0);
     }
 
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        auto a =
+            _mm256_shuffle_ps(_mm256_castsi256_ps(x1), _mm256_castsi256_ps(x2),
+                              _MM_SHUFFLE(2, 0, 2, 0));
+        return _mm256_castpd_si256(_mm256_permute4x64_pd(
+            _mm256_castps_pd(a), 0 + (2 << 2) + (1 << 4) + (3 << 6)));
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        auto a =
+            _mm256_shuffle_ps(_mm256_castsi256_ps(x1), _mm256_castsi256_ps(x2),
+                              _MM_SHUFFLE(3, 1, 3, 1));
+        return _mm256_castpd_si256(_mm256_permute4x64_pd(
+            _mm256_castps_pd(a), 0 + (2 << 2) + (1 << 4) + (3 << 6)));
+    }
+
     static constexpr auto cmpeq = _mm256_cmpeq_epi32;
     static constexpr auto cmpgt = _mm256_cmpgt_epi32;
     static always_inline masktype vectorcall cmpge(type x2, type x1)
@@ -1397,6 +1471,20 @@ template <> struct intrin<float, 8> {
         return _mm256_insertf128_ps(sh, v, 0);
     }
 
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        auto a = _mm256_shuffle_ps(x1, x2, _MM_SHUFFLE(2, 0, 2, 0));
+        return _mm256_castpd_ps(_mm256_permute4x64_pd(
+            _mm256_castps_pd(a), 0 + (2 << 2) + (1 << 4) + (3 << 6)));
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        auto a = _mm256_shuffle_ps(x1, x2, _MM_SHUFFLE(3, 1, 3, 1));
+        return _mm256_castpd_ps(_mm256_permute4x64_pd(
+            _mm256_castps_pd(a), 0 + (2 << 2) + (1 << 4) + (3 << 6)));
+    }
+
     static always_inline type vectorcall cmpeq(type x1, type x2)
     {
         return _mm256_cmp_ps(x1, x2, 0x00);
@@ -1606,6 +1694,18 @@ template <> struct intrin<double, 4> {
     {
         auto sh = shift<2>(x);
         return _mm256_insertf128_pd(sh, v, 0);
+    }
+
+    // get even/odd parts of 2 registers
+    static always_inline type even(type x1, type x2)
+    {
+        auto a = _mm256_unpacklo_pd(x1, x2);
+        return _mm256_permute4x64_pd(a, 0 + (2 << 2) + (1 << 4) + (3 << 6));
+    }
+    static always_inline type odd(type x1, type x2)
+    {
+        auto a = _mm256_unpackhi_pd(x1, x2);
+        return _mm256_permute4x64_pd(a, 0 + (2 << 2) + (1 << 4) + (3 << 6));
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)

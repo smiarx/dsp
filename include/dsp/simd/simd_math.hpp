@@ -148,6 +148,17 @@ template <typename T, size_t N, typename O>
     return x.push(y);
 }
 
+template <typename T, size_t N>
+[[nodiscard]] always_inline auto even(simd<T, N> x, simd<T, N> y)
+{
+    return x.even(y);
+}
+template <typename T, size_t N>
+[[nodiscard]] always_inline auto odd(simd<T, N> x, simd<T, N> y)
+{
+    return x.odd(y);
+}
+
 /////////////////// Logic ////////////////////////////
 
 /////////////////// any ////////////////////////////
