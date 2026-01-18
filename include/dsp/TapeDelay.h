@@ -140,9 +140,19 @@ template <class Tap = TapLin<float>> class TapTape
 
         Tap tap;
         tap.setDelay(delay, fdelay);
-        //(void)fdelay;
-        // tap.setDelay({delay,delay}, {fdelay,fdelay});
-        return tap.read(c, delayline);
+
+        auto totaldelay = static_cast<float>(delay) + fdelay;
+        auto scale      = 1.f - (totaldelay - prevdelay_);
+        prevdelay_      = totaldelay;
+
+        constexpr auto kScaleThresh = 1.15f;
+        if (scale > kScaleThresh) {
+            constexpr auto kScaleGrow = 1.1f;
+            scale = kScaleThresh + kScaleGrow * (scale - kScaleThresh);
+            return tap.read(c, delayline, scale);
+        } else {
+            return tap.read(c, delayline);
+        }
     }
 
     template <class TapePos> void reset(TapePos tapePos)
@@ -173,6 +183,7 @@ template <class Tap = TapLin<float>> class TapTape
 
     // index of last read position
     size_t nread_{0};
+    float prevdelay_{0};
 };
 
 } // namespace dsp
