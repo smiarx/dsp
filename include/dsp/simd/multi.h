@@ -97,7 +97,10 @@ struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
         return simdtype::loadu(data->data());
     }
 
-    always_inline void store(simdtype val) { val.store(this->data()); }
+    always_inline void store(simdtype val)
+    {
+        val.store(reinterpret_cast<basetype *>(this->data()));
+    }
 
     static always_inline void storeu(multi *dest, simdtype val)
     {
