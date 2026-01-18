@@ -353,6 +353,23 @@ template <typename T, size_t N> struct simd {
         return def::sum(value_);
     }
 
+    template <size_t K = 1>
+    always_inline auto vectorcall product() const noexcept
+    {
+        auto product = *this;
+        if constexpr (K == 1 && N > 1) {
+            product *= product.template flip<1>();
+        }
+        if constexpr (K <= 2 && N > 2) {
+            product *= product.template flip<2>();
+        }
+        if constexpr (K <= 4 && N > 4) {
+            product *= product.template flip<4>();
+        }
+
+        return product.template getlane<0, K>();
+    }
+
     template <size_t K>
     always_inline std::conditional_t<K == 1, basetype, simd<T, K>>
         vectorcall reduce() const noexcept

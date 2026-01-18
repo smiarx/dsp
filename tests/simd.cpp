@@ -166,9 +166,34 @@ template <typename T, size_t N> class TestSimd
         SECTION("sum")
         {
             auto s1 = sum(x);
-            auto s2 = 0;
+            T s2    = 0;
             loop(i) { s2 += x[i]; }
             cmp(s1, s2);
+        }
+        SECTION("product")
+        {
+            auto s1 = dsp::product(x);
+            T s2    = 1;
+            loop(i) { s2 *= x[i]; }
+            cmp(s1, s2);
+            if constexpr (N > 2) {
+                constexpr auto kK = 2;
+                auto s1           = dsp::product<kK>(x);
+                T s2[kK]          = {1, 1};
+                loop(i) s2[i % kK] *= x[i];
+                cmp(s1[0], s2[0]);
+                cmp(s1[1], s2[1]);
+            }
+            if constexpr (N > 4) {
+                constexpr auto kK = 4;
+                auto s1           = dsp::product<kK>(x);
+                T s2[kK]          = {1, 1, 1, 1};
+                loop(i) s2[i % kK] *= x[i];
+                cmp(s1[0], s2[0]);
+                cmp(s1[1], s2[1]);
+                cmp(s1[2], s2[2]);
+                cmp(s1[3], s2[3]);
+            }
         }
         SECTION("shift")
         {
