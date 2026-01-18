@@ -35,7 +35,7 @@ static auto xcr0() noexcept
 #error "_MSC_VER < 1400 is not supported"
 #endif /* _MSC_VER && _MSC_VER >= 1400 */
     return xcr0;
-};
+}
 
 static auto cpuid(uint32_t reg[4], unsigned int level,
                   unsigned int count = 0) noexcept
@@ -61,7 +61,7 @@ static auto cpuid(uint32_t reg[4], unsigned int level,
 #else
 #error "Unsupported configuration"
 #endif
-};
+}
 
 } // namespace internal
 
