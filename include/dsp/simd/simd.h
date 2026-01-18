@@ -146,12 +146,12 @@ template <typename T, size_t N> struct simd {
     static always_inline simd load(const T *data) { return def::load(data); }
     static always_inline simd loadu(const T *data) { return def::loadu(data); }
 
-    always_inline void store vectorcall(basetype *dest) const noexcept
+    always_inline void vectorcall store(basetype *dest) const noexcept
     {
         def::store(dest, value_);
     }
 
-    always_inline void storeu vectorcall(basetype *dest) const noexcept
+    always_inline void vectorcall storeu(basetype *dest) const noexcept
     {
         def::storeu(dest, value_);
     }

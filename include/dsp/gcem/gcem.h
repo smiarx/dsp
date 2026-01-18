@@ -7,6 +7,7 @@
 #if __clang__ > 1 || (__clang__ == 1 && __clang_major__ >= 18)
 #pragma clang diagnostic ignored "-Wnan-infinity-disabled"
 #endif
+#endif
 
 #include <gcem.hpp>
 
