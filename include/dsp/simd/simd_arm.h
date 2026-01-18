@@ -83,6 +83,16 @@ template <> struct intrin<float, 2> {
     }
 #endif
 
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float32x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vext_f32(v1, v2, n);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64_f32(value);
@@ -189,6 +199,16 @@ template <> struct intrin<float, 4> {
         return vget_lane_f32(vpadd_f32(sum, sum), 0);
     }
 #endif
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float32x4_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 4 - Shift : -Shift;
+        return vextq_f32(v1, v2, n);
+    }
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -301,6 +321,16 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto abs = vabsq_f64;
 
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float64x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vextq_f64(v1, v2, n);
+    }
+
     static constexpr auto sum = vaddvq_f64;
     static always_inline type vectorcall flip1(type value)
     {
@@ -401,6 +431,17 @@ template <> struct intrin<int32_t, 2> {
     static constexpr auto min = vmin_s32;
 
     static constexpr auto abs = vabs_s32;
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr int32x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vext_s32(v1, v2, n);
+    }
+
 #ifdef DSP_AARCH64
     static constexpr auto sum = vaddv_s32;
 #else
@@ -517,6 +558,16 @@ template <> struct intrin<int32_t, 4> {
     static constexpr auto min = vminq_s32;
 
     static constexpr auto abs = vabsq_s32;
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr int32x4_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 4 - Shift : -Shift;
+        return vextq_s32(v1, v2, n);
+    }
 
 #ifdef DSP_AARCH64
     static constexpr auto sum = vaddvq_s32;

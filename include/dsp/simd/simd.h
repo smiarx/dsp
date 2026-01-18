@@ -382,6 +382,14 @@ template <typename T, size_t N> struct simd {
 
     always_inline simd vectorcall abs() { return def::abs(value_); }
 
+    template <int Shift> always_inline simd vectorcall shift() const noexcept
+    {
+        if constexpr (Shift == 0) return *this;
+        if constexpr ((Shift < 0 ? -Shift : Shift) >= N) return {};
+        else
+            return def::template shift<Shift>(value_);
+    }
+
     always_inline mask vectorcall cmpeq(simd other)
     {
         return def::cmpeq(value_, other);

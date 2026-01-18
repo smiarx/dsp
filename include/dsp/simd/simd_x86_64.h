@@ -120,6 +120,12 @@ template <> struct intrin<int32_t, 4> {
     }
 #endif
 
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0 ? _mm_slli_si128(value, 4 * Shift)
+                         : _mm_srli_si128(value, -4 * Shift);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return _mm_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
@@ -260,6 +266,14 @@ template <> struct intrin<float, 4> {
     static always_inline type vectorcall abs(type value)
     {
         return bitAnd(value, init(floatMask<basetype>::kNotSign.f));
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto r = Shift > 0
+                     ? _mm_slli_si128(_mm_castps_si128(value), 4 * Shift)
+                     : _mm_srli_si128(_mm_castps_si128(value), -4 * Shift);
+        return _mm_castsi128_ps(r);
     }
 
     static always_inline type vectorcall flip1(type value)
@@ -414,6 +428,13 @@ template <> struct intrin<float, 2> {
     }
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
 
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0
+                   ? _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 0, 3))
+                   : _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 3, 1));
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return base::flip1(value);
@@ -538,6 +559,12 @@ template <> struct intrin<int, 2> {
     }
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
 
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0 ? _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 0, 3))
+                         : _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 3, 1));
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return base::flip1(value);
@@ -636,6 +663,14 @@ template <> struct intrin<double, 2> {
     {
         return bitAnd(value, init(*reinterpret_cast<const basetype *>(
                                  &floatMask<basetype>::kNotSign)));
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto r = Shift > 0
+                     ? _mm_slli_si128(_mm_castpd_si128(value), 8 * Shift)
+                     : _mm_srli_si128(_mm_castpd_si128(value), -8 * Shift);
+        return _mm_castsi128_pd(r);
     }
 
     static always_inline type vectorcall flip1(type value)
@@ -770,6 +805,32 @@ template <> struct intrin<int32_t, 8> {
     static constexpr auto max = _mm256_max_epi32;
     static constexpr auto min = _mm256_min_epi32;
     static constexpr auto abs = _mm256_abs_epi32;
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto vp = _mm256_permute2f128_si256(
+            value, value, Shift > 0 ? 1 << 3 : (1) + (1 << 7));
+
+        constexpr auto kShift = Shift > 0 ? Shift : -Shift;
+        if constexpr (kShift == 4) return vp;
+
+        constexpr __m256i kZero{};
+        constexpr auto kShiftAlign = kShift < 4 ? kShift : kShift - 4;
+
+        auto v1 = Shift > 0 ? value : vp;
+        auto v2 = Shift > 0 ? vp : value;
+
+        auto va1 = kShift < 4 ? v1 : v2;
+        auto va2 = kShift < 4 ? v2 : kZero;
+
+        constexpr auto kAlign = Shift > 0 ? (kShiftAlign == 1   ? 12
+                                             : kShiftAlign == 2 ? 8
+                                             : kShiftAlign == 3 ? 4
+                                                                : 0)
+                                          : kShift * 4;
+        return Shift < -4 ? _mm256_alignr_epi8(vp, kZero, kAlign)
+                          : _mm256_alignr_epi8(va1, va2, kAlign);
+    }
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -914,6 +975,12 @@ template <> struct intrin<float, 8> {
     {
         return bitAnd(value, init(*reinterpret_cast<const basetype *>(
                                  &floatMask<basetype>::kNotSign)));
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return _mm256_castsi256_ps(
+            intrin<int, 8>::template shift<Shift>(_mm256_castps_si256(value)));
     }
 
     static always_inline type vectorcall flip1(type value)
@@ -1069,6 +1136,27 @@ template <> struct intrin<double, 4> {
     {
         return bitAnd(value, init(*reinterpret_cast<const basetype *>(
                                  &floatMask<basetype>::kNotSign)));
+    }
+
+    template <int Shift> static type vectorcall shift(type value)
+    {
+        auto iv = _mm256_castpd_si256(value);
+        auto vp = _mm256_permute2f128_si256(
+            iv, iv, Shift > 0 ? (1 << 3) : 1 + (1 << 7));
+
+        constexpr auto kShift = Shift > 0 ? Shift : -Shift;
+        if constexpr (kShift == 2) return _mm256_castsi256_pd(vp);
+
+        __m256i zero{};
+        auto v1  = Shift > 0 ? iv : vp;
+        auto v2  = Shift > 0 ? vp : iv;
+        auto va1 = kShift < 2 ? v1 : v2;
+        auto va2 = kShift < 2 ? v2 : zero;
+
+        auto r = Shift == -3 ? _mm256_alignr_epi8(zero, vp, 8)
+                             : _mm256_alignr_epi8(va1, va2, 8);
+
+        return _mm256_castsi256_pd(r);
     }
 
     static always_inline type vectorcall flip1(type value)

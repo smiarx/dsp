@@ -23,6 +23,22 @@ template <typename T, size_t N> class TestSimd
         }
     }
 
+    template <int Shift> static void testShift(dsp::simd<T, N> x)
+    {
+        auto sx = dsp::shift<Shift>(x);
+
+        loop(i)
+        {
+            auto ii = static_cast<int>(i);
+            if ((Shift > 0 && ii < Shift) ||
+                (Shift < 0 && ii >= static_cast<int>(N + Shift)))
+                cmp(sx[i], 0);
+            else {
+                cmp(sx[i], x[i - Shift]);
+            }
+        }
+    }
+
     static void run()
     {
         constexpr T kArrayX[] = {4, 2, 39, 19, -15, 17, 23, -100},
@@ -97,6 +113,29 @@ template <typename T, size_t N> class TestSimd
             auto s2 = 0;
             loop(i) { s2 += x[i]; }
             cmp(s1, s2);
+        }
+        SECTION("shift")
+        {
+            if constexpr (N > 1) {
+                testShift<1>(x);
+                testShift<-1>(x);
+            }
+            if constexpr (N > 2) {
+                testShift<2>(x);
+                testShift<3>(x);
+                testShift<-2>(x);
+                testShift<-3>(x);
+            }
+            if constexpr (N > 4) {
+                testShift<4>(x);
+                testShift<5>(x);
+                testShift<6>(x);
+                testShift<7>(x);
+                testShift<-4>(x);
+                testShift<-5>(x);
+                testShift<-6>(x);
+                testShift<-7>(x);
+            }
         }
         SECTION("reduce")
         {

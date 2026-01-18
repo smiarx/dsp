@@ -62,6 +62,16 @@ template <typename T, size_t N> always_inline simd<T, N> abs(simd<T, N> x)
     return x.abs();
 }
 
+////////////////////// shift ////////////////////////
+template <int Shift, typename T> always_inline T shift([[maybe_unused]] T x)
+{
+    return Shift == 0 ? x : 0;
+}
+template <int Shift, typename T, size_t N>
+always_inline simd<T, N> shift(simd<T, N> x)
+{
+    return x.template shift<Shift>();
+}
 ////////////////////// sum ////////////////////////
 template <typename T> always_inline T sum(T x) { return x; }
 template <typename T, size_t N> always_inline T sum(simd<T, N> x)
