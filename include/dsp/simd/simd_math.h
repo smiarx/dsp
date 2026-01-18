@@ -95,6 +95,12 @@ template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
     return x.template flip<K>();
 }
 
+template <size_t K = 1, typename T, size_t N>
+always_inline auto prefix(simd<T, N> x)
+{
+    return x.template prefix<K>();
+}
+
 /////////////////// push ////////////////////////////
 template <typename P, typename O>
 [[nodiscard]] always_inline auto push(P /*x*/, O y)

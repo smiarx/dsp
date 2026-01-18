@@ -907,6 +907,36 @@ template <> struct intrin<int32_t, 8> {
         return _mm256_extracti128_si256(sum, 0);
     }
 
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2 || K == 4);
+        if (K == 1) {
+            auto shift1 = _mm256_slli_si256(value, 4);
+            value       = _mm256_add_epi32(value, shift1);
+        }
+        if (K <= 2) {
+            auto shift2 = _mm256_slli_si256(value, 8);
+            value       = _mm256_add_epi32(value, shift2);
+        }
+
+        __m128i sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_epi32(_mm256_extract_epi32(value, 3));
+            break;
+        case 2:
+            sum1block = _mm_shuffle_epi32(_mm256_castsi256_si128(value),
+                                          _MM_SHUFFLE(3, 2, 3, 2));
+            break;
+        case 4:
+            sum1block = _mm256_castsi256_si128(value);
+            break;
+        }
+
+        return _mm256_add_epi32(value, _mm256_setr_m128i(__m128i{}, sum1block));
+    }
+
     static always_inline type push(type x, basetype v)
     {
         auto sh = _mm256_castsi256_ps(shift<1>(x));
@@ -1079,6 +1109,39 @@ template <> struct intrin<float, 8> {
         auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_ps(sum, 0);
+    }
+
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2 || K == 4);
+        if (K == 1) {
+            auto shift1 = _mm256_castsi256_ps(
+                _mm256_slli_si256(_mm256_castps_si256(value), 4));
+            value = _mm256_add_ps(value, shift1);
+        }
+        if (K <= 2) {
+            auto shift2 = _mm256_castsi256_ps(
+                _mm256_slli_si256(_mm256_castps_si256(value), 8));
+            value = _mm256_add_ps(value, shift2);
+        }
+
+        __m128 sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_ps(value[3]);
+            break;
+        case 2:
+            sum1block = _mm_shuffle_ps(_mm256_castps256_ps128(value),
+                                       _mm256_castps256_ps128(value),
+                                       _MM_SHUFFLE(3, 2, 3, 2));
+            break;
+        case 4:
+            sum1block = _mm256_castps256_ps128(value);
+            break;
+        }
+
+        return _mm256_add_ps(value, _mm256_setr_m128(__m128{}, sum1block));
     }
 
     static always_inline type push(type x, basetype v)
@@ -1259,6 +1322,28 @@ template <> struct intrin<double, 4> {
         auto flip = flip2(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_pd(sum, 0);
+    }
+
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2);
+        if (K == 1) {
+            auto shift = _mm256_castsi256_pd(
+                _mm256_slli_si256(_mm256_castpd_si256(value), 8));
+            value = _mm256_add_pd(value, shift);
+        }
+
+        __m128d sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_pd(value[1]);
+            break;
+        case 2:
+            sum1block = _mm256_castpd256_pd128(value);
+            break;
+        }
+        return _mm256_add_pd(value, _mm256_setr_m128d(__m128d{}, sum1block));
     }
 
     static always_inline type push(type x, basetype v)

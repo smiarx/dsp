@@ -370,6 +370,29 @@ template <typename T, size_t N> struct simd {
         }
     }
 
+    template <size_t K = 1> simd vectorcall prefix() const noexcept
+    {
+        static_assert(K == 1 || K == 2 || K == 4 || K == 8);
+#if DSP_AVX
+        // 256 bit avx vector need special function
+        // because shift isn't optimized
+        if constexpr (sizeof(T) * N == 32 && K < N) {
+            return def::template prefix<K>(value_);
+        }
+#endif
+        auto prefix = *this;
+        if constexpr (N > 1 && K == 1) {
+            prefix += prefix.template shift<1>();
+        }
+        if constexpr (N > 2 && K <= 2) {
+            prefix += prefix.template shift<2>();
+        }
+        if constexpr (N > 4 && K <= 4) {
+            prefix += prefix.template shift<4>();
+        }
+        return prefix;
+    }
+
     always_inline simd vectorcall max(simd other)
     {
         return def::max(value_, other);

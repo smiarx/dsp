@@ -39,6 +39,19 @@ template <typename T, size_t N> class TestSimd
         }
     }
 
+    template <size_t K> static void testPrefix(dsp::simd<T, N> x)
+    {
+        auto p = dsp::prefix<K>(x);
+
+        T acc[K] = {};
+        for (size_t i = 0; i < N; i += K) {
+            for (size_t k = 0; k < K; ++k) {
+                acc[k] += x[i + k];
+                cmp(p[i + k], acc[k]);
+            }
+        }
+    }
+
     static void run()
     {
         constexpr T kArrayX[] = {4, 2, 39, 19, -15, 17, 23, -100},
@@ -180,6 +193,18 @@ template <typename T, size_t N> class TestSimd
                 for (size_t i = 0; i < N; ++i) {
                     cmp(f[i], x[i ^ K]);
                 }
+            }
+        }
+        SECTION("prefix")
+        {
+            if constexpr (N > 1) {
+                testPrefix<1>(x);
+            }
+            if constexpr (N > 2) {
+                testPrefix<2>(x);
+            }
+            if constexpr (N > 4) {
+                testPrefix<4>(x);
             }
         }
 
