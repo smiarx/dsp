@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 template <class T, std::size_t MinSize> class Buffer
 {
     /* implements ring buffer */
@@ -37,17 +39,21 @@ template <class T, std::size_t MinSize> class Buffer
             /* copy end to beginning of buffer for vector continuity */
             if (static_cast<size_t>(pos) < V::kWidth) {
                 // copy begining to end
-                storeBatch(data_[kBaseSize], loadBatch(data_[0]));
+                dsp::DSP_ARCH_NAMESPACE::storeBatch(
+                    data_[kBaseSize],
+                    dsp::DSP_ARCH_NAMESPACE::loadBatch(data_[0]));
             } else if (static_cast<size_t>(pos) > kBaseSize - V::kWidth) {
                 // copy end to begining
-                storeBatch(data_[0], loadBatch(data_[kBaseSize]));
+                dsp::DSP_ARCH_NAMESPACE::storeBatch(
+                    data_[0],
+                    dsp::DSP_ARCH_NAMESPACE::loadBatch(data_[kBaseSize]));
             }
         } else {
             store(data_[pos], val);
             // safely write vor vec read even when writing scalars
             if constexpr (Safe && !std::is_same_v<T, batch<T>>) {
                 if (static_cast<size_t>(pos) < kVecOffset) {
-                    store(data_[kBaseSize + pos], val);
+                    dsp::DSP_ARCH_NAMESPACE::store(data_[kBaseSize + pos], val);
                 }
             }
         }
@@ -64,9 +70,9 @@ template <class T, std::size_t MinSize> class Buffer
 
         const auto pos = position(i);
         if constexpr (Vec) {
-            return loadBatch(data_[pos]);
+            return dsp::DSP_ARCH_NAMESPACE::loadBatch(data_[pos]);
         } else {
-            return load(data_[pos]);
+            return dsp::DSP_ARCH_NAMESPACE::load(data_[pos]);
         }
     }
     [[nodiscard]] auto readVec(int i) const { return read<true>(i); }
@@ -80,7 +86,8 @@ template <class T, std::size_t MinSize> class Buffer
 
         if (checkLimits && static_cast<size_t>(id_) < batch<T>::kWidth)
             // copy begining to end
-            storeBatch(data_[kBaseSize], loadBatch(data_[0]));
+            dsp::DSP_ARCH_NAMESPACE::storeBatch(
+                data_[kBaseSize], dsp::DSP_ARCH_NAMESPACE::loadBatch(data_[0]));
     }
 
     [[nodiscard]] int getId() const { return id_; }
@@ -148,4 +155,5 @@ class BufferContext : public Context<T, Vec>
   private:
     BufferT buffer_;
 };
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

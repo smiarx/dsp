@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 template <typename T, bool Vec = false> class Context
 {
   public:
@@ -26,18 +28,18 @@ template <typename T, bool Vec = false> class Context
     [[nodiscard]] auto load(const T &x) const
     {
         if constexpr (Vec) {
-            return dsp::loadBatch(x);
+            return dsp::DSP_ARCH_NAMESPACE::loadBatch(x);
         } else {
-            return dsp::load(x);
+            return dsp::DSP_ARCH_NAMESPACE::load(x);
         }
     }
 
     [[nodiscard]] auto store(T &dest, SigType val) const
     {
         if constexpr (Vec) {
-            return dsp::storeBatch(dest, val);
+            return dsp::DSP_ARCH_NAMESPACE::storeBatch(dest, val);
         } else {
-            return dsp::store(dest, val);
+            return dsp::DSP_ARCH_NAMESPACE::store(dest, val);
         }
     }
 
@@ -192,4 +194,5 @@ template <bool Rev, class Ctxt1, class Ctxt2> class ContextRun2
         CTXTRUN(ctxt) { process(ctxt, state); };     \
     }
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
