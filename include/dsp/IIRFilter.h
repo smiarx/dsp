@@ -162,22 +162,31 @@ class IIRFilter
         typename NextIIR::State sNext;
     };
 
-    template <class Ctxt> void process(Ctxt c, State &state) const
+    template <class Ctxt> void processBlock(Ctxt c, State &state) const
     {
         static_assert(!Ctxt::kUseVec, "IIRFilter cannot be vectorized");
 
         if constexpr (!Normalized) {
-            auto x = c.getInput();
-
-            // set gain
-            x *= load(gain_);
-            c.setOutput(x);
+            CTXTRUNVEC(c)
+            {
+                auto x = c.getInput();
+                x *= gain_;
+                c.setOutput(x);
+            };
         }
 
-        biquad_.process(c, state.s0);
+        CTXTRUN(c) { biquad_.process(c, state.s0); };
+
         if constexpr (Order > kNsos * 2) {
-            NextIIR::process(c, state.sNext);
+            NextIIR::processBlock(c, state.sNext);
         }
+    }
+
+    template <class Ctxt> void process(Ctxt c, State &state) const
+    {
+        // compute one element with block of size = 1
+        c.setBlockSize(1);
+        processBlock(c, state);
     }
 
     // convert from analog scipy sos filter type
