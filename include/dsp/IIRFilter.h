@@ -4,9 +4,15 @@
 #include "FastMath.h"
 #include "Utils.h"
 #include <cmath>
+#include <gcem.hpp>
 
 namespace dsp
 {
+
+// second order section
+template <typename T> struct SOS {
+    T b2, b1, b0, a2, a1, a0;
+};
 
 template <typename T, size_t K> class NormalizedBiquadSeries
 {
@@ -17,13 +23,17 @@ template <typename T, size_t K> class NormalizedBiquadSeries
     static constexpr auto kN  = kTypeWidth<T>;
     static constexpr auto kNK = kN * K;
 
+    using simd1 = simd<bT, kNK>;
+
   public:
     struct State : public std::array<multi<T, K>, 2> {
         State() : std::array<multi<T, K>, 2>{} {}
     };
 
-    // transfert function type
-    using tf = std::array<std::array<bT, 3>, 2>;
+    // second order section type
+    struct SOS {
+        multi<T, K> b2{}, b1{}, b0{}, a2{}, a1{}, a0{};
+    };
 
     template <class Ctxt> void process(Ctxt ctxt, State &state) const
     {
@@ -54,8 +64,7 @@ template <typename T, size_t K> class NormalizedBiquadSeries
         ctxt.setOutput(getlane<K - 1, kN>(y));
     }
 
-    template <size_t Nsos>
-    auto tfAnalog(const tf *bacoeffs, const T &c, const T &csq)
+    auto fromAnalog(const SOS sos, const T &c, const T &csq)
     {
         /* filter params */
         /* we define a filter designed with analog coefficients
@@ -64,39 +73,29 @@ template <typename T, size_t K> class NormalizedBiquadSeries
          *
          * we use second order section filters (sos) for stability
          */
-        auto factor = T(1);
+        auto a1 = load(sos.a1);
+        auto a0 = load(sos.a0);
+        auto b2 = load(sos.b2);
+        auto b1 = load(sos.b1);
+        auto b0 = load(sos.b0);
+        assert(all(load(sos.a2).operator==(bT(1))));
 
-        for (size_t k = 0; k < Nsos; ++k) {
-            auto &ba = *bacoeffs;
-            assert(ba[1][0] == bT(1));
-            auto a0 = ba[1][2];
-            auto a1 = ba[1][1];
-            auto b0 = ba[0][2];
-            auto b1 = ba[0][1];
-            auto b2 = ba[0][0];
+        auto d = bT(1) / (bT(1) + a1 * c + a0 * csq);
 
-            auto vc   = load(c);
-            auto vcsq = load(csq);
+        auto b0d    = (b2 + b1 * c + b0 * csq) * d;
+        auto invb0d = bT(1) / b0d;
 
-            auto d = bT(1) / (bT(1) + a1 * vc + a0 * vcsq);
+        auto b1d = bT(2) * (-b2 + b0 * csq) * d * invb0d;
+        auto b2d = (b2 - b1 * c + b0 * csq) * d * invb0d;
+        auto a1d = bT(2) * (-bT(1) + a0 * csq) * d;
+        auto a2d = (bT(1) - a1 * c + a0 * csq) * d;
 
-            auto b0d    = (b2 + b1 * vc + b0 * vcsq) * d;
-            auto invb0d = bT(1) / b0d;
-            auto b1d    = bT(2) * (-b2 + b0 * vcsq) * d * invb0d;
-            auto b2d    = (b2 - b1 * vc + b0 * vcsq) * d * invb0d;
-            auto a1d    = bT(2) * (-bT(1) + a0 * vcsq) * d;
-            auto a2d    = (bT(1) - a1 * vc + a0 * vcsq) * d;
+        b_[0] = b1d;
+        b_[1] = b2d;
+        a_[0] = a1d;
+        a_[1] = a2d;
 
-            b_[0][k] = b1d;
-            b_[1][k] = b2d;
-            a_[0][k] = a1d;
-            a_[1][k] = a2d;
-            factor *= b0d;
-
-            ++bacoeffs;
-        }
-
-        return factor;
+        return product<kN>(b0d);
     }
 
   private:
@@ -126,13 +125,37 @@ class IIRFilter
     static constexpr auto kThisOrder = std::min(Order, 2 * kNsos);
     using NextIIR                    = IIRFilter<T, Order - kThisOrder, true>;
 
+    // biquad type
+    using Biquad = NormalizedBiquadSeries<T, kNsos>;
+
   public:
     static constexpr auto kTotalNsos = Order / 2;
     IIRFilter() { static_assert(Order % 2 == 0, "only pair order iirfilter"); }
 
-    // transfert function type
-    using tf1 = std::array<std::array<bT, 3>, 2>;
-    using tf  = std::array<tf1, kTotalNsos>;
+    // second order section type
+    // similar to scipy.signal sos type
+    struct SOS {
+        constexpr SOS(std::array<dsp::SOS<bT>, Order / 2> sos) : SOS(sos.data())
+        {
+        }
+        constexpr SOS(dsp::SOS<bT> *sos) : sosNext(sos + kThisOrder / 2)
+        {
+            for (size_t k = 0; k < kThisOrder / 2; ++k) {
+                sos0.b2[k] = sos[k].b2;
+                sos0.b1[k] = sos[k].b1;
+                sos0.b0[k] = sos[k].b0;
+                sos0.a2[k] = sos[k].a2;
+                sos0.a1[k] = sos[k].a1;
+                sos0.a0[k] = sos[k].a0;
+            }
+            for (size_t k = kThisOrder / 2; k < kNsos; ++k) {
+                sos0.a2[k] = 1;
+                sos0.b2[k] = 1;
+            }
+        }
+        typename Biquad::SOS sos0{};
+        typename NextIIR::SOS sosNext;
+    };
 
     struct State {
         typename NormalizedBiquadSeries<T, kNsos>::State s0;
@@ -147,7 +170,7 @@ class IIRFilter
             auto x = c.getInput();
 
             // set gain
-            x *= load(b0_);
+            x *= load(gain_);
             c.setOutput(x);
         }
 
@@ -157,7 +180,8 @@ class IIRFilter
         }
     }
 
-    void tfAnalog(const tf &ba, const T &freq)
+    // convert from analog scipy sos filter type
+    void fromAnalog(const SOS &sos, const T &freq)
     {
         static_assert(!Normalized);
 
@@ -165,71 +189,73 @@ class IIRFilter
         auto c   = tan(dsp::constants<T>::pi * bT(0.5) * load(freq));
         auto csq = c * c;
 
-        auto factor =
-            biquad_.template tfAnalog<kThisOrder / 2>(ba.data(), c, csq);
+        auto factor = biquad_.fromAnalog(sos.sos0, c, csq);
 
         if constexpr (Order > kThisOrder) {
-            factor *= NextIIR::tfAnalog(&ba[kNsos], c, csq);
+            factor *= NextIIR::fromAnalog(sos.sosNext, c, csq);
         }
 
         if constexpr (!Normalized) {
-            b0_ = factor;
+            gain_ = factor;
         } else {
             assert(all(factor == T(1)));
         }
     }
 
   protected:
-    auto tfAnalog(const tf1 *ba, const T &c, const T &csq)
+    auto fromAnalog(const SOS &sos, const T &c, const T &csq)
     {
         static_assert(Normalized);
-        auto factor = biquad_.template tfAnalog<kThisOrder / 2>(ba, c, csq);
+        auto factor = biquad_.fromAnalog(sos.sos0, c, csq);
         auto b0     = load(factor);
         if constexpr (Order > kNsos * 2) {
-            b0 *= NextIIR::tfAnalog(&ba[kNsos], c, csq);
+            b0 *= NextIIR::fromAnalog(sos.sosNext, c, csq);
         }
         return b0;
     }
 
   private:
-    template <bool highpass> static constexpr void butterworthTF(tf &ba)
+    template <bool highpass> static constexpr SOS butterworthTF()
     {
+        std::array<dsp::SOS<bT>, Order / 2> tf{};
         for (size_t nsos = 0; nsos < Order / 2; ++nsos) {
-            ba[nsos][0][0] = highpass ? 1 : 0;
-            ba[nsos][0][1] = 0;
-            ba[nsos][0][2] = highpass ? 0 : 1;
-            ba[nsos][1][0] = 1;
-            ba[nsos][1][1] =
-                -2 * std::cos(dsp::constants<bT>::pi * (2 * nsos + Order + 1) /
-                              (2 * Order));
-            ba[nsos][1][2] = 1;
+            tf[nsos].b2 = highpass ? 1 : 0;
+            tf[nsos].b1 = 0;
+            tf[nsos].b0 = highpass ? 0 : 1;
+            tf[nsos].a2 = 1;
+            tf[nsos].a1 = -2 * gcem::cos(dsp::constants<bT>::pi *
+                                         (2 * nsos + Order + 1) / (2 * Order));
+            tf[nsos].a0 = 1;
         }
+        return tf;
     }
 
   public:
     void butterworthLP(const T &freq)
     {
-        tf ba;
-        butterworthTF<false>(ba);
-        tfAnalog(ba, freq);
+        constexpr SOS kSos = butterworthTF<false>();
+        fromAnalog(kSos, freq);
     }
     void butterworthHP(const T &freq)
     {
-        tf ba;
-        butterworthTF<true>(ba);
-        tfAnalog(ba, freq);
+        constexpr SOS kSos = butterworthTF<true>();
+        fromAnalog(kSos, freq);
     }
 
   private:
     struct Empty {
     };
-    std::conditional_t<Normalized, Empty, T> b0_;
-    NormalizedBiquadSeries<T, kNsos> biquad_;
+    std::conditional_t<Normalized, Empty, T> gain_;
+    Biquad biquad_;
 };
 
 template <typename T> class IIRFilter<T, 0, true>
 {
   protected:
+    struct SOS {
+        SOS() = default;
+        constexpr SOS(dsp::SOS<baseType<T>> *) {}
+    };
     struct State {
     };
 };
