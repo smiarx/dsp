@@ -72,14 +72,17 @@ void Springs::setFreq(float freq, int blockSize)
     allpass_.setFreq(freqsAP);
 
     /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
-    decltype(lowpass_)::tf kTfAnalog = {{
-        {{{0., 0., 0.00255383}, {1., 0.21436212, 0.0362477}}},
-        {{{0., 0., 1.}, {1., 0.19337886, 0.21788333}}},
-        {{{0., 0., 1.}, {1., 0.15346633, 0.51177596}}},
-        {{{0., 0., 1.}, {1., 0.09853145, 0.80566858}}},
-        {{{0., 0., 1.}, {1., 0.03395162, 0.98730422}}},
-    }};
-    lowpass_.tfAnalog(kTfAnalog, freqs);
+    decltype(lowpass_)::SOS kSosAnalog = {{{
+        {0., 0., 0.00255383, 1., 0.21436212, 0.0362477},
+        {0., 0., 1., 1., 0.19337886, 0.21788333},
+        {0., 0., 1., 1., 0.15346633, 0.51177596},
+        {0., 0., 1., 1., 0.09853145, 0.80566858},
+        {0., 0., 1., 1., 0.03395162, 0.98730422},
+    }}};
+
+    // if downsampling factor change we reset lowpassState to avoid clicks
+    if (rateFactor != rateFactor_) lowpassState_ = {};
+    lowpass_.fromAnalog(kSosAnalog, freqs);
 
     decimateId_ = 0;
 
@@ -343,7 +346,7 @@ void Springs::process(const float *const *__restrict in,
 
         CTXTRUN(ctxtdec) { eq_.process(ctxtdec, eqState_); };
 
-        CTXTRUN(ctxtdec) { lowpass_.process(ctxtdec, lowpassState_); };
+        lowpass_.processBlock(ctxtdec, lowpassState_);
 
 #ifdef SPRINGS_RMS
         rms_.processBlock(ctxtdec, rmsStack_);

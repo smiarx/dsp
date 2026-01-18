@@ -156,6 +156,15 @@ template <typename T, size_t N> struct simd {
         def::storeu(dest, value_);
     }
 
+    template <size_t Id, size_t K = 1>
+    always_inline auto vectorcall getlane()
+        -> std::conditional_t<K == 1, basetype, simd<basetype, K>>
+    {
+        static_assert(K <= N);
+        static_assert(Id < N / K);
+        return def::template getlane<Id, K>(value_);
+    }
+
     always_inline basetype vectorcall get(size_t index) const noexcept
     {
         simdunion u{value_};
@@ -344,6 +353,23 @@ template <typename T, size_t N> struct simd {
         return def::sum(value_);
     }
 
+    template <size_t K = 1>
+    always_inline auto vectorcall product() const noexcept
+    {
+        auto product = *this;
+        if constexpr (K == 1 && N > 1) {
+            product *= product.template flip<1>();
+        }
+        if constexpr (K <= 2 && N > 2) {
+            product *= product.template flip<2>();
+        }
+        if constexpr (K <= 4 && N > 4) {
+            product *= product.template flip<4>();
+        }
+
+        return product.template getlane<0, K>();
+    }
+
     template <size_t K>
     always_inline std::conditional_t<K == 1, basetype, simd<T, K>>
         vectorcall reduce() const noexcept
@@ -358,6 +384,15 @@ template <typename T, size_t N> struct simd {
             return def::reduce4(value_);
         }
     }
+
+    template <size_t K>
+    always_inline simd<T, N * K> vectorcall duplicate() const noexcept
+    {
+        if constexpr (K == 1) return *this;
+        else
+            return def::template duplicate<K>(value_);
+    }
+
     template <size_t K> always_inline simd vectorcall flip() const noexcept
     {
         static_assert(K >= 1 && K <= N);
@@ -368,6 +403,29 @@ template <typename T, size_t N> struct simd {
         } else if constexpr (K == 4) {
             return def::flip4(value_);
         }
+    }
+
+    template <size_t K = 1> simd vectorcall prefix() const noexcept
+    {
+        static_assert(K == 1 || K == 2 || K == 4 || K == 8);
+#if DSP_AVX
+        // 256 bit avx vector need special function
+        // because shift isn't optimized
+        if constexpr (sizeof(T) * N == 32 && K < N) {
+            return def::template prefix<K>(value_);
+        }
+#endif
+        auto prefix = *this;
+        if constexpr (N > 1 && K == 1) {
+            prefix += prefix.template shift<1>();
+        }
+        if constexpr (N > 2 && K <= 2) {
+            prefix += prefix.template shift<2>();
+        }
+        if constexpr (N > 4 && K <= 4) {
+            prefix += prefix.template shift<4>();
+        }
+        return prefix;
     }
 
     always_inline simd vectorcall max(simd other)
@@ -381,6 +439,22 @@ template <typename T, size_t N> struct simd {
     }
 
     always_inline simd vectorcall abs() { return def::abs(value_); }
+
+    template <int Shift> always_inline simd vectorcall shift() const noexcept
+    {
+        if constexpr (Shift == 0) return *this;
+        if constexpr ((Shift < 0 ? -Shift : Shift) >= N) return {};
+        else
+            return def::template shift<Shift>(value_);
+    }
+
+    template <typename O>
+    always_inline simd vectorcall push(O other) const noexcept
+    {
+        if constexpr (std::is_same_v<O, simd>) return other;
+        else
+            return def::push(value_, other);
+    }
 
     always_inline mask vectorcall cmpeq(simd other)
     {

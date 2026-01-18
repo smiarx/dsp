@@ -56,14 +56,14 @@ TEST_CASE("IIR Filter")
         {
             // python scipy:
             // signal.ellip(4, 1, 100, 1, 'lowpass', output='sos', analog=True)
-            decltype(filter)::tf sosba = {{
-                {{{1.00000000e-05, 0.00000000e+00, 3.78886514e-03},
-                  {1.00000000e+00, 6.75607262e-01, 2.81793736e-01}}},
-                {{{1.00000000e+00, 0.00000000e+00, 6.54222638e+01},
-                  {1.00000000e+00, 2.76709389e-01, 9.86968702e-01}}},
-            }};
+            decltype(filter)::SOS sosba = {{{
+                {1.00000000e-05, 0.00000000e+00, 3.78886514e-03, 1.00000000e+00,
+                 6.75607262e-01, 2.81793736e-01},
+                {1.00000000e+00, 0.00000000e+00, 6.54222638e+01, 1.00000000e+00,
+                 2.76709389e-01, 9.86968702e-01},
+            }}};
 
-            filter.tfAnalog(sosba, 0.1282);
+            filter.fromAnalog(sosba, 0.1282);
             // python scipy:
             // signal.sosfilt(signal.ellip(4, 1, 100, 0.1282, 'lowpass',
             // output='sos'),x)
@@ -82,6 +82,58 @@ TEST_CASE("IIR Filter")
             filter.process(dsp::Context(&x), state);
 
             REQUIRE_THAT(x, WithinAbs(expect[i], 1e-8));
+        }
+
+        // test block
+        double xblock[kN]{};
+        xblock[0] = 1;
+        state     = {};
+        filter.processBlock(dsp::Context(xblock, kN), state);
+        for (int i = 0; i < kN; ++i) {
+            REQUIRE_THAT(xblock[i], WithinAbs(expect[i], 1e-8));
+        }
+    }
+
+    SECTION("float ellip")
+    {
+        using ft = float;
+        dsp::IIRFilter<ft, 10> filter;
+        decltype(filter)::State state;
+
+        std::array<float, kN> expect;
+        // python scipy:
+        // signal.ellip(10, 1, 100, 1, 'lowpass', output='sos', analog=True)
+        decltype(filter)::SOS sosba = {
+            {{{1.00000000e-05, 0.00000000e+00, 3.84406309e-04, 1.00000000e+00,
+               3.57215979e-01, 7.37902179e-02},
+              {1.00000000e+00, 0.00000000e+00, 5.04724777e+00, 1.00000000e+00,
+               2.74662297e-01, 3.34179961e-01},
+              {1.00000000e+00, 0.00000000e+00, 2.42118600e+00, 1.00000000e+00,
+               1.69857878e-01, 6.55051188e-01},
+              {1.00000000e+00, 0.00000000e+00, 1.75338708e+00, 1.00000000e+00,
+               8.56632296e-02, 8.87002581e-01},
+              {1.00000000e+00, 0.00000000e+00, 1.54738183e+00, 1.00000000e+00,
+               2.54903201e-02, 9.98088979e-01}}}};
+        filter.fromAnalog(sosba, 0.1);
+
+        // python scipy:
+        // x = np.zeros(30);
+        // x[0] = 1;
+        // signal.sosfilt(signal.ellip(10,1,100,0.1,output="sos"),x)
+        expect = {
+            {2.05608354e-05, 4.93433037e-05, 1.21421398e-04, 2.39444886e-04,
+             4.34077971e-04, 7.39962287e-04, 1.19779767e-03, 1.85519911e-03,
+             2.76637162e-03, 3.99064173e-03, 5.58989312e-03, 7.62497891e-03,
+             1.01512276e-02, 1.32132214e-02, 1.68390992e-02, 2.10347181e-02,
+             2.57780807e-02, 3.10144954e-02, 3.66529732e-02, 4.25643587e-02,
+             4.85816525e-02, 5.45028877e-02, 6.00967881e-02, 6.51112549e-02,
+             6.92845204e-02, 7.23585769e-02, 7.40942617e-02, 7.42871684e-02,
+             7.27833832e-02, 6.94939356e-02}};
+
+        for (int i = 0; i < kN; ++i) {
+            ft x = i == 0 ? 1.f : 0.f;
+            filter.process(dsp::Context(&x), state);
+            REQUIRE_THAT(x, WithinAbs(expect[i], 1e-5f));
         }
     }
 
@@ -148,17 +200,19 @@ TEST_CASE("IIR Filter")
         SECTION("sos transfert function")
         {
             // python scipy:
-            // signal.cheby1(10,2,1,analog=True,output='sos')
-            decltype(filter)::tf sosba = {
-                {{{{0., 0., 0.01021531}, {1., 0.26637237, 0.05650064}}},
-                 {{{0., 0., 1.}, {1., 0.22581959, 0.32709869}}},
-                 {{{0., 0., 1.}, {1., 0.15088783, 0.70978212}}},
-                 {{{0., 0., 1.}, {1., 0.05298476, 0.98038017}}}}};
+            // signal.cheby1(8,2,1,analog=True,output='sos')
+            decltype(filter)::SOS sosba = {
+                {{{0., 0., 0.01021531, 1., 0.26637237, 0.05650064},
+                  {0., 0., 1., 1., 0.22581959, 0.32709869},
+                  {0., 0., 1., 1., 0.15088783, 0.70978212},
+                  {0., 0., 1., 1., 0.05298476, 0.98038017}}}};
 
-            filter.tfAnalog(sosba, {0.232, 0.1291, 0.348, 0.0123});
+            filter.fromAnalog(sosba, {0.232, 0.1291, 0.348, 0.0123});
             // python scipy:
-            // signal.sosfilt(signal.ellip(4, 1, 100, 0.1282, 'lowpass',
-            // output='sos'),x)
+            // signal.sosfilt(signal.cheby1(8, 2, 0.232, output='sos'),x)
+            // signal.sosfilt(signal.cheby1(8, 2, 0.1291, output='sos'),x)
+            // signal.sosfilt(signal.cheby1(8, 2, 0.348, output='sos'),x)
+            // signal.sosfilt(signal.cheby1(8, 2, 0.0123, output='sos'),x)
             expect = {{{2.69647025e-06,  3.90633161e-05,  2.76906564e-04,
                         1.28619284e-03,  4.42149346e-03,  1.20373096e-02,
                         2.70866812e-02,  5.18342254e-02,  8.59671891e-02,
@@ -207,6 +261,17 @@ TEST_CASE("IIR Filter")
 
             for (int j = 0; j < 4; ++j) {
                 REQUIRE_THAT(x[j], WithinAbs(expect[j][i], 1e-5f));
+            }
+        }
+
+        // test block
+        ft xblock[kN]{};
+        xblock[0] = 1;
+        state     = {};
+        filter.processBlock(dsp::Context(xblock, kN), state);
+        for (int i = 0; i < kN; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                REQUIRE_THAT(xblock[i][j], WithinAbs(expect[j][i], 1e-5f));
             }
         }
     }

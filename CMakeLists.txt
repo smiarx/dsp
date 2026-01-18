@@ -22,6 +22,8 @@ endif()
 add_library(dsp_include INTERFACE)
 target_include_directories(dsp_include INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+#add gcem library (directly because CMAKE version isn't up to date)
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/submodules/gcem/include/>
 )
 
 add_library(dsp_compile_options INTERFACE)

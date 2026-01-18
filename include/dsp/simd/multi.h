@@ -9,12 +9,58 @@ namespace dsp
 inline namespace DSP_ARCH_NAMESPACE
 {
 
+template <typename T, size_t N> struct alignas(sizeof(T) * N) multi;
+
+//=============================================================
+
+// ismulti
+template <typename T> struct IsMulti {
+    static constexpr bool value = false;
+};
+template <typename T, size_t N> struct IsMulti<multi<T, N>> {
+    static constexpr bool value = true;
+};
+template <typename T> constexpr bool kIsMulti = IsMulti<T>::value;
+
+//=============================================================
+
+// base type
+template <typename T> struct BaseType {
+    using type = T;
+};
+template <typename T, size_t N> struct BaseType<simd<T, N>> {
+    using type = T;
+};
+template <typename T, size_t N> struct BaseType<multi<T, N>> {
+    using type = T;
+};
+template <typename T> using baseType = typename BaseType<T>::type;
+
+//=============================================================
+
+// type Width
+template <typename T> struct TypeWidth {
+    static constexpr auto kWidth = 1;
+};
+template <typename T, size_t N> struct TypeWidth<simd<T, N>> {
+    static constexpr auto kWidth = N;
+};
+template <typename T, size_t N> struct TypeWidth<multi<T, N>> {
+    static constexpr auto kWidth = N;
+};
+template <typename T> constexpr auto kTypeWidth = TypeWidth<T>::kWidth;
+
+//=============================================================
+
+// multi
 template <typename T, size_t N>
 struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
 
   public:
-    static constexpr auto kWidth = N;
-    using simdtype               = simd<T, N>;
+    // multi of mutli should use correct simd
+    using basetype = std::conditional_t<kIsMulti<T>, baseType<T>, T>;
+    static constexpr auto kWidth = kIsMulti<T> ? N * kTypeWidth<T> : N;
+    using simdtype               = simd<basetype, kWidth>;
 
     always_inline multi()           = default;
     multi(multi &)                  = default;
@@ -22,7 +68,10 @@ struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
     multi(multi &&)                 = default;
     multi &operator=(const multi &) = default;
 
-    always_inline multi(simdtype value) { value.store((T *)this->data()); }
+    always_inline multi(simdtype value)
+    {
+        value.store(reinterpret_cast<basetype *>(this->data()));
+    }
 
     template <typename E> constexpr multi(E value) : std::array<T, N>{}
     {
@@ -40,7 +89,7 @@ struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
 
     [[nodiscard]] always_inline simdtype load() const
     {
-        return simdtype::load((T *)this->data());
+        return simdtype::load(reinterpret_cast<const basetype *>(this->data()));
     }
 
     [[nodiscard]] static always_inline simdtype loadu(const multi *data)
@@ -48,7 +97,10 @@ struct alignas(sizeof(T) * N) multi : public std::array<T, N> {
         return simdtype::loadu(data->data());
     }
 
-    always_inline void store(simdtype val) { val.store(this->data()); }
+    always_inline void store(simdtype val)
+    {
+        val.store(reinterpret_cast<basetype *>(this->data()));
+    }
 
     static always_inline void storeu(multi *dest, simdtype val)
     {
@@ -227,20 +279,6 @@ template <typename T, typename V> void storeBatch(T &dest, V x)
 
 //=============================================================
 
-// type Width
-template <typename T> struct TypeWidth {
-    static constexpr auto kWidth = 1;
-};
-template <typename T, size_t N> struct TypeWidth<simd<T, N>> {
-    static constexpr auto kWidth = N;
-};
-template <typename T, size_t N> struct TypeWidth<multi<T, N>> {
-    static constexpr auto kWidth = N;
-};
-template <typename T> constexpr auto kTypeWidth = TypeWidth<T>::kWidth;
-
-//=============================================================
-
 // int type
 template <typename T> struct IntType {
     using type = int32_t;
@@ -252,20 +290,6 @@ template <typename T, size_t N> struct IntType<simd<T, N>> {
     using type = simd<int32_t, N>;
 };
 template <typename T> using intType = typename IntType<T>::type;
-
-//=============================================================
-
-// base type
-template <typename T> struct BaseType {
-    using type = T;
-};
-template <typename T, size_t N> struct BaseType<simd<T, N>> {
-    using type = T;
-};
-template <typename T, size_t N> struct BaseType<multi<T, N>> {
-    using type = T;
-};
-template <typename T> using baseType = typename BaseType<T>::type;
 
 //=============================================================
 
