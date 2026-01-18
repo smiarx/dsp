@@ -79,6 +79,9 @@ void Springs::setFreq(float freq, int blockSize)
         {0., 0., 1., 1., 0.09853145, 0.80566858},
         {0., 0., 1., 1., 0.03395162, 0.98730422},
     }}};
+
+    // if downsampling factor change we reset lowpassState to avoid clicks
+    if (rateFactor != rateFactor_) lowpassState_ = {};
     lowpass_.fromAnalog(kSosAnalog, freqs);
 
     decimateId_ = 0;
