@@ -7,7 +7,7 @@ namespace dsp
 static constexpr int nextAlignedOffset(int off, int align)
 {
     off += align - 1;
-    return off - (off & align) + align;
+    return off - (off & (align - 1));
 }
 
 static constexpr std::size_t nextPow2(std::size_t size)
