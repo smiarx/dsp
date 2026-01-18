@@ -618,7 +618,7 @@ template <> struct intrin<double, 2> {
     static always_inline masktype vectorcall signbit(type x)
     {
         auto shift = _mm_srai_epi32((__m128i)x, 31);
-        return (masktype)_mm_shuffle_epi32(shift, _MM_SHUFFLE(2, 2, 0, 0));
+        return (masktype)_mm_shuffle_epi32(shift, _MM_SHUFFLE(3, 3, 1, 1));
     }
 
     static constexpr auto bitAnd    = _mm_and_pd;
@@ -1052,7 +1052,7 @@ template <> struct intrin<double, 4> {
     static always_inline masktype vectorcall signbit(type x)
     {
         auto shift = _mm256_srai_epi32((__m256i)x, 31);
-        return (masktype)_mm256_shuffle_epi32(shift, _MM_SHUFFLE(2, 2, 0, 0));
+        return (masktype)_mm256_shuffle_epi32(shift, _MM_SHUFFLE(3, 3, 1, 1));
     }
 
     static constexpr auto bitAnd = _mm256_and_pd;
