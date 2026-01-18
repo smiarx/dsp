@@ -214,6 +214,33 @@ template <typename T, size_t N> class TestSimd
                 for (size_t i = 0; i < K; ++i) cmp(s1[i], s2[i]);
             }
         }
+        SECTION("duplicate")
+        {
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 2) {
+                constexpr size_t kK = 2;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
+            }
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 4) {
+                constexpr size_t kK = 4;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
+            }
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 8) {
+                constexpr size_t kK = 8;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
+            }
+        }
         SECTION("flip")
         {
             if constexpr (N > 1) {

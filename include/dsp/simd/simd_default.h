@@ -268,6 +268,11 @@ template <typename T> struct intrin<T, 1> {
 
     static always_inline basetype vectorcall sum(type x) { return x; }
 
+    template <size_t K> static always_inline auto vectorcall duplicate(type x)
+    {
+        return intrin<T, K>::init(x);
+    }
+
     static always_inline type vectorcall push(type /*x*/, type other)
     {
         return other;

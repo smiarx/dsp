@@ -144,6 +144,19 @@ template <> struct intrin<int32_t, 4> {
     }
 #endif
 
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 0, 0));
+            auto vhi = _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 3, 2, 2));
+            return _mm256_set_m128i(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
+
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
         return Shift > 0 ? _mm_slli_si128(value, 4 * Shift)
@@ -336,6 +349,19 @@ template <> struct intrin<float, 4> {
         return _mm_castsi128_ps(r);
     }
 
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 0, 0));
+            auto vhi = _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 3, 2, 2));
+            return _mm256_set_m128(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
+
     static always_inline type vectorcall flip1(type value)
     {
         return _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1));
@@ -517,6 +543,23 @@ template <> struct intrin<float, 2> {
                    : _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 3, 1));
     }
 
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            return _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 0, 0));
+        }
+#if DSP_AVX
+        else if constexpr (K == 4) {
+            auto vlo = _mm_shuffle_ps(value, value, _MM_SHUFFLE(0, 0, 0, 0));
+            auto vhi = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 1, 1));
+            return _mm256_set_m128(vhi, vlo);
+        }
+#endif
+        else
+            static_assert(false, "wrong duplicate");
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return base::flip1(value);
@@ -665,6 +708,23 @@ template <> struct intrin<int, 2> {
                          : _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 3, 1));
     }
 
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            return _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 0, 0));
+        }
+#if DSP_AVX
+        else if constexpr (K == 4) {
+            auto vlo = _mm_shuffle_epi32(value, _MM_SHUFFLE(0, 0, 0, 0));
+            auto vhi = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 1, 1));
+            return _mm256_set_m128i(vhi, vlo);
+        }
+#endif
+        else
+            static_assert(false, "wrong duplicate");
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return base::flip1(value);
@@ -783,6 +843,19 @@ template <> struct intrin<double, 2> {
         return bitAnd(value, init(*reinterpret_cast<const basetype *>(
                                  &floatMask<basetype>::kNotSign)));
     }
+
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(0, 0));
+            auto vhi = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(1, 1));
+            return _mm256_set_m128d(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
