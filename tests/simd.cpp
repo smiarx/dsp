@@ -183,6 +183,42 @@ template <typename T, size_t N> class TestSimd
             }
         }
 
+        SECTION("push")
+        {
+            if constexpr (N > 1) {
+                auto pval = T(3);
+                auto r    = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i == 0) cmp(r[i], pval);
+                    else
+                        cmp(r[i], x[i - 1]);
+                }
+            }
+            if constexpr (N > 2) {
+                T pvalArr[] = {17, -2};
+                auto pval   = dsp::simd<T, 2>::load(pvalArr);
+                auto r      = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i < 2) cmp(r[i], pval[i]);
+                    else
+                        cmp(r[i], x[i - 2]);
+                }
+            }
+            if constexpr (N > 4) {
+                T pvalArr[] = {3, 5, 8, -6};
+                auto pval   = dsp::simd<T, 4>::load(pvalArr);
+                auto r      = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i < 4) cmp(r[i], pval[i]);
+                    else
+                        cmp(r[i], x[i - 4]);
+                }
+            }
+        }
+
         SECTION("blend")
         {
             auto z = x.cmpgt(y).blend(x, y);

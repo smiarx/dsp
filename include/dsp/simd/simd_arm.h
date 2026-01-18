@@ -98,6 +98,11 @@ template <> struct intrin<float, 2> {
         return vrev64_f32(value);
     }
 
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vext_f32(vmov_n_f32(v), x, 1);
+    }
+
     static constexpr auto cmpeq = vceq_f32;
     static constexpr auto cmpgt = vcgt_f32;
     static constexpr auto cmpge = vcge_f32;
@@ -229,6 +234,16 @@ template <> struct intrin<float, 4> {
         return vget_low_f32(add(x, flip2(x)));
     }
 
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vextq_f32(vmovq_n_f32(v), x, 3);
+    }
+
+    static always_inline type vectorcall push(type x, float32x2_t v)
+    {
+        return vcombine_f32(v, vget_low_f32(x));
+    }
+
     static constexpr auto cmpeq = vceqq_f32;
     static constexpr auto cmpgt = vcgtq_f32;
     static constexpr auto cmpge = vcgeq_f32;
@@ -335,6 +350,11 @@ template <> struct intrin<double, 2> {
     static always_inline type vectorcall flip1(type value)
     {
         return vextq_f64(value, value, 1);
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vcombine_f64(vdup_n_f64(v), vget_low_f64(x));
     }
 
     static constexpr auto cmpeq = vceqq_f64;
@@ -454,6 +474,11 @@ template <> struct intrin<int32_t, 2> {
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64_s32(value);
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vext_s32(vmov_n_s32(v), x, 1);
     }
 
     static constexpr auto cmpeq = vceq_s32;
@@ -593,6 +618,16 @@ template <> struct intrin<int32_t, 4> {
     static always_inline auto vectorcall reduce2(type x)
     {
         return vget_low_s32(add(x, flip2(x)));
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vextq_s32(vmovq_n_s32(v), x, 3);
+    }
+
+    static always_inline type vectorcall push(type x, int32x2_t v)
+    {
+        return vcombine_s32(v, vget_low_s32(x));
     }
 
     static constexpr auto cmpeq = vceqq_s32;

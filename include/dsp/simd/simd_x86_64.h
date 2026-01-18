@@ -148,6 +148,18 @@ template <> struct intrin<int32_t, 4> {
         return add(value, flip);
     }
 
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_castps_si128(
+            _mm_move_ss(_mm_castsi128_ps(shift<1>(x)),
+                        _mm_castsi128_ps(_mm_cvtsi32_si128(v))));
+    }
+    static always_inline type push(type x, intx2_t v)
+    {
+        return _mm_castps_si128(_mm_shuffle_ps(
+            _mm_castsi128_ps(v), _mm_castsi128_ps(x), _MM_SHUFFLE(1, 0, 1, 0)));
+    }
+
     static constexpr auto cmpeq = _mm_cmpeq_epi32;
     static constexpr auto cmpgt = _mm_cmpgt_epi32;
     static constexpr auto cmplt = _mm_cmplt_epi32;
@@ -295,6 +307,15 @@ template <> struct intrin<float, 4> {
     {
         type flip = flip2(value);
         return add(value, flip);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_ss(shift<1>(x), _mm_set_ss(v));
+    }
+    static always_inline type push(type x, floatx2_t v)
+    {
+        return _mm_shuffle_ps(v, x, _MM_SHUFFLE(1, 0, 1, 0));
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_ps;
@@ -446,6 +467,11 @@ template <> struct intrin<float, 2> {
         return _mm_cvtss_f32(sum);
     }
 
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_ss(shift<1>(x), _mm_set_ss(v));
+    }
+
     static always_inline type vectorcall cmpeq(type x1, type x2)
     {
         return base::cmpeq(x1, x2);
@@ -576,6 +602,13 @@ template <> struct intrin<int, 2> {
         return _mm_cvtsi128_si32(sum);
     }
 
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_castps_si128(
+            _mm_move_ss(_mm_castsi128_ps(shift<1>(x)),
+                        _mm_castsi128_ps(_mm_cvtsi32_si128(v))));
+    }
+
     static always_inline type vectorcall cmpeq(type x1, type x2)
     {
         return base::cmpeq(x1, x2);
@@ -681,6 +714,11 @@ template <> struct intrin<double, 2> {
     {
         type flip = flip1(value);
         return _mm_cvtsd_f64(add(value, flip));
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_sd(shift<1>(x), _mm_set_sd(v));
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_pd;
@@ -869,6 +907,27 @@ template <> struct intrin<int32_t, 8> {
         return _mm256_extracti128_si256(sum, 0);
     }
 
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = _mm256_castsi256_ps(shift<1>(x));
+        auto lo = _mm_move_ss(_mm256_castps256_ps128(sh),
+                              _mm_castsi128_ps(_mm_cvtsi32_si128(v)));
+        return _mm256_castps_si256(_mm256_insertf128_ps(sh, lo, 0));
+    }
+    static always_inline type push(type x, intx2_t v)
+    {
+        auto sh = _mm256_castsi256_ps(shift<2>(x));
+        auto lo =
+            _mm_shuffle_ps(_mm_castsi128_ps(v), _mm256_castps256_ps128(sh),
+                           _MM_SHUFFLE(3, 2, 1, 0));
+        return _mm256_castps_si256(_mm256_insertf128_ps(sh, lo, 0));
+    }
+    static always_inline type push(type x, __m128i v)
+    {
+        auto sh = shift<4>(x);
+        return _mm256_inserti128_si256(sh, v, 0);
+    }
+
     static constexpr auto cmpeq = _mm256_cmpeq_epi32;
     static constexpr auto cmpgt = _mm256_cmpgt_epi32;
     static always_inline masktype vectorcall cmpge(type x2, type x1)
@@ -1020,6 +1079,25 @@ template <> struct intrin<float, 8> {
         auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_ps(sum, 0);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = shift<1>(x);
+        auto lo = _mm_move_ss(_mm256_castps256_ps128(sh), _mm_set_ss(v));
+        return _mm256_insertf128_ps(sh, lo, 0);
+    }
+    static always_inline type push(type x, floatx2_t v)
+    {
+        auto sh = shift<2>(x);
+        auto lo = _mm_shuffle_ps(v, _mm256_castps256_ps128(sh),
+                                 _MM_SHUFFLE(3, 2, 1, 0));
+        return _mm256_insertf128_ps(sh, lo, 0);
+    }
+    static always_inline type push(type x, __m128 v)
+    {
+        auto sh = shift<4>(x);
+        return _mm256_insertf128_ps(sh, v, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
@@ -1181,6 +1259,18 @@ template <> struct intrin<double, 4> {
         auto flip = flip2(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_pd(sum, 0);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = shift<1>(x);
+        auto lo = _mm_move_sd(_mm256_castpd256_pd128(sh), _mm_set_sd(v));
+        return _mm256_insertf128_pd(sh, lo, 0);
+    }
+    static always_inline type push(type x, __m128d v)
+    {
+        auto sh = shift<2>(x);
+        return _mm256_insertf128_pd(sh, v, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)

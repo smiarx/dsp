@@ -95,6 +95,18 @@ template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
     return x.template flip<K>();
 }
 
+/////////////////// push ////////////////////////////
+template <typename P, typename O>
+[[nodiscard]] always_inline auto push(P /*x*/, O y)
+{
+    return y;
+}
+template <typename T, size_t N, typename O>
+[[nodiscard]] always_inline auto push(simd<T, N> x, O y)
+{
+    return x.push(y);
+}
+
 /////////////////// Logic ////////////////////////////
 
 /////////////////// any ////////////////////////////

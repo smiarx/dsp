@@ -261,6 +261,11 @@ template <typename T> struct intrin<T, 1> {
     static always_inline type vectorcall abs(type x) { return std::abs(x); }
     static always_inline basetype vectorcall sum(type x) { return x; }
 
+    static always_inline type vectorcall push(type /*x*/, type other)
+    {
+        return other;
+    }
+
     static always_inline masktype vectorcall cmpeq(type x1, type x2)
     {
         return x1 == x2;

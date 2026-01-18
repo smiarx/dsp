@@ -390,6 +390,14 @@ template <typename T, size_t N> struct simd {
             return def::template shift<Shift>(value_);
     }
 
+    template <typename O>
+    always_inline simd vectorcall push(O other) const noexcept
+    {
+        if constexpr (std::is_same_v<O, simd>) return other;
+        else
+            return def::push(value_, other);
+    }
+
     always_inline mask vectorcall cmpeq(simd other)
     {
         return def::cmpeq(value_, other);
