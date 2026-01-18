@@ -83,6 +83,14 @@ template <> struct intrin<float, 2> {
     }
 #endif
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vget_lane_f32(value, Id);
+        else
+            return value;
+    }
+
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
         constexpr float32x2_t zero{};
@@ -204,6 +212,16 @@ template <> struct intrin<float, 4> {
         return vget_lane_f32(vpadd_f32(sum, sum), 0);
     }
 #endif
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_f32(value, Id);
+        else if constexpr (K == 2) {
+            return Id == 1 ? vget_high_f32(value) : vget_low_f32(value);
+        } else
+            return value;
+    }
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
@@ -336,6 +354,14 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto abs = vabsq_f64;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_f64(value, Id);
+        else
+            return value;
+    }
+
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
         constexpr float64x2_t zero{};
@@ -451,6 +477,14 @@ template <> struct intrin<int32_t, 2> {
     static constexpr auto min = vmin_s32;
 
     static constexpr auto abs = vabs_s32;
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vget_lane_s32(value, Id);
+        else
+            return value;
+    }
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
@@ -583,6 +617,16 @@ template <> struct intrin<int32_t, 4> {
     static constexpr auto min = vminq_s32;
 
     static constexpr auto abs = vabsq_s32;
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_s32(value, Id);
+        else if constexpr (K == 2) {
+            return Id == 1 ? vget_high_s32(value) : vget_low_s32(value);
+        } else
+            return value;
+    }
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {

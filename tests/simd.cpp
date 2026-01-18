@@ -59,6 +59,49 @@ template <typename T, size_t N> class TestSimd
         auto x                = dsp::simd<T, N>::load(kArrayX);
         auto y                = dsp::simd<T, N>::load(kArrayY);
 
+        SECTION("getlane")
+        {
+            cmp(dsp::getlane<0>(x), x[0]);
+
+            if constexpr (N > 1) {
+                cmp(dsp::getlane<1>(x), x[1]);
+            }
+            if constexpr (N > 2) {
+                cmp(dsp::getlane<2>(x), x[2]);
+                cmp(dsp::getlane<3>(x), x[3]);
+
+                auto lane02 = dsp::getlane<0, 2>(x);
+                cmp(lane02[0], x[0]);
+                cmp(lane02[1], x[1]);
+                auto lane12 = dsp::getlane<1, 2>(x);
+                cmp(lane12[0], x[2]);
+                cmp(lane12[1], x[3]);
+            }
+            if constexpr (N > 4) {
+                cmp(dsp::getlane<4>(x), x[4]);
+                cmp(dsp::getlane<5>(x), x[5]);
+                cmp(dsp::getlane<6>(x), x[6]);
+                cmp(dsp::getlane<7>(x), x[7]);
+
+                auto lane22 = dsp::getlane<2, 2>(x);
+                cmp(lane22[0], x[4]);
+                cmp(lane22[1], x[5]);
+                auto lane32 = dsp::getlane<3, 2>(x);
+                cmp(lane32[0], x[6]);
+                cmp(lane32[1], x[7]);
+
+                auto lane04 = dsp::getlane<0, 4>(x);
+                cmp(lane04[0], x[0]);
+                cmp(lane04[1], x[1]);
+                cmp(lane04[2], x[2]);
+                cmp(lane04[3], x[3]);
+                auto lane14 = dsp::getlane<1, 4>(x);
+                cmp(lane14[0], x[4]);
+                cmp(lane14[1], x[5]);
+                cmp(lane14[2], x[6]);
+                cmp(lane14[3], x[7]);
+            }
+        }
         SECTION("init")
         {
             T scalar = 1;

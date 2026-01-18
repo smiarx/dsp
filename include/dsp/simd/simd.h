@@ -156,6 +156,15 @@ template <typename T, size_t N> struct simd {
         def::storeu(dest, value_);
     }
 
+    template <size_t Id, size_t K = 1>
+    always_inline auto vectorcall getlane()
+        -> std::conditional_t<K == 1, basetype, simd<basetype, K>>
+    {
+        static_assert(K <= N);
+        static_assert(Id < N / K);
+        return def::template getlane<Id, K>(value_);
+    }
+
     always_inline basetype vectorcall get(size_t index) const noexcept
     {
         simdunion u{value_};

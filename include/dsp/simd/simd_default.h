@@ -259,6 +259,13 @@ template <typename T> struct intrin<T, 1> {
         return std::min(x1, x2);
     }
     static always_inline type vectorcall abs(type x) { return std::abs(x); }
+
+    template <size_t Id, size_t K>
+    static always_inline type vectorcall getlane(type x)
+    {
+        return x;
+    }
+
     static always_inline basetype vectorcall sum(type x) { return x; }
 
     static always_inline type vectorcall push(type /*x*/, type other)

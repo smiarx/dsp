@@ -39,6 +39,16 @@ template <typename T, size_t N> always_inline auto get(simd<T, N> x, size_t i)
     return x.get(i);
 }
 
+template <size_t Id, size_t K = 1, typename T> always_inline auto getlane(T x)
+{
+    return x;
+}
+template <size_t Id, size_t K = 1, typename T, size_t N>
+always_inline auto getlane(simd<T, N> x)
+{
+    return x.template getlane<Id, K>();
+}
+
 ////////////////////// max ////////////////////////
 template <typename T> always_inline T max(T x, T y) { return std::max(x, y); }
 template <typename T, size_t N>
