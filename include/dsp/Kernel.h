@@ -73,10 +73,15 @@ class TapKernel : public TapLin<baseType<T>>
                 } else if (std::fabs(x - 1.f) < 1e-7) {
                     kernels[idFromKernel(-1)] = bt(1);
                 } else {
+                    T sum{};
                     for (size_t id = 0; id < kFilterWidth; ++id) {
                         auto k      = static_cast<bt>(kernelFromId(id));
                         auto value  = Kernel::generate(-k - x);
                         kernels[id] = value;
+                        sum += value;
+                    }
+                    for (size_t id = 0; id < kFilterWidth; ++id) {
+                        kernels[id] /= sum;
                     }
                 }
 
