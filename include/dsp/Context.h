@@ -24,6 +24,8 @@ template <typename T, bool Vec = false> class Context
     using SigType = std::conditional_t<Vec, decltype(dsp::loadBatch(T{})),
                                        decltype(dsp::load(T{}))>;
 
+    static constexpr auto getIncrSize() { return kIncrSize; }
+
     void load(T &&) const { static_assert(false, "do not load rvalue"); }
     [[nodiscard]] auto load(const T &x) const
     {
