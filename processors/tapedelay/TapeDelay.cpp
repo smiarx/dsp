@@ -150,6 +150,8 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
     auto &tapTape = tapTape_[tapId];
     decltype(ctxt.getInput()) x;
 
+    bool continueBlock = true;
+
     if constexpr (M == kNormal) {
         x = tapTape.read(ctxt, delayline_, tapePos_);
     } else if constexpr (M == kBackForth || M == kReverse) {
@@ -181,13 +183,17 @@ bool TapeDelay::read(Ctxt ctxt, int tapId,
                 switchTap(M);
                 reverseDist_[tapId_] =
                     reverseDist - kLimit + speed * kKernelSize * 2;
-                return false;
+
+                // write new tape read value
+                ctxt.setOutput(x);
+                continueBlock = false;
             }
         }
     }
 
     ctxt.setOutput(x);
-    return true;
+
+    return continueBlock;
 }
 
 template <class Ctxt>
