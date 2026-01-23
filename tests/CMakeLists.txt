@@ -29,6 +29,7 @@ set(test_sources
     IIRFilter.cpp
     #Enveloppe.cpp
     RMS.cpp
+    FastMath.cpp
 )
 
 add_executable(tests ${test_sources})
