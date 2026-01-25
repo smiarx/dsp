@@ -9,7 +9,8 @@ namespace dsp
 
 template <typename T> class INoise
 {
-    using iT                              = multi<int32_t, kTypeWidth<T>>;
+    using iT = std::conditional_t<kTypeWidth<T> == 1, int32_t,
+                                  multi<int32_t, kTypeWidth<T>>>;
     static constexpr int32_t kGenerator[] = {1296462733, 1487623987, 848278349,
                                              1987647829, 1837654627, 963782763,
                                              1492758273, 1746273223};
@@ -19,15 +20,24 @@ template <typename T> class INoise
     INoise(int seed)
     {
         auto rnd = seed;
-        for (size_t i = 0; i < kTypeWidth<iT>; ++i) {
-            seed_[i] = rnd;
-            rnd      = (rnd + seed) * 1103515245;
+        if constexpr (kTypeWidth<T> == 1) seed_ = rnd;
+        else {
+            for (size_t i = 0; i < kTypeWidth<iT>; ++i) {
+                seed_[i] = rnd;
+                rnd      = (rnd + seed) * 1103515245;
+            }
         }
     }
 
     auto process()
     {
-        state_ = seed_ + state_ * iT::load(kGenerator);
+        iT generator;
+        if constexpr (kTypeWidth<T> == 1) {
+            generator = kGenerator[0];
+        } else {
+            generator = iT::load(kGenerator);
+        }
+        state_ = seed_ + state_ * generator;
         return load(state_);
     }
 

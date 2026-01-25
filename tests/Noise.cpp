@@ -5,7 +5,6 @@
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <iostream>
 
 using namespace Catch::Matchers;
 

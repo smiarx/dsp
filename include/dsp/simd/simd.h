@@ -94,11 +94,8 @@ template <typename T, size_t N> struct simdmask {
     template <typename T2>
     always_inline simd<T2, N> vectorcall blend(simd<T2, N> x2, simd<T2, N> x1)
     {
-        union {
-            masktype t1;
-            simdmask<T2, N> t2;
-        } value{value_};
-        return intrin<T2, N>::blend(value.t2, x2, x1);
+        return intrin<T2, N>::blend(*reinterpret_cast<simdmask<T2, N> *>(this),
+                                    x2, x1);
     }
 
   private:
