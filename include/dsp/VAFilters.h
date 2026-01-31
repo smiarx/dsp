@@ -268,4 +268,90 @@ template <typename T, FilterType FT = kLowPass> class Ladder
     T denominator_;
     OP onepole_;
 };
+
+template <typename T, FilterType FT = kLowPass> class MoogLadder
+{
+  public:
+    using State = struct State {
+        T s_[4]{};
+        T u_[4]{};
+        T tanhu_[4]{};
+    };
+
+    MoogLadder() = default;
+    MoogLadder(const T &freq, const T &res) { setFreq(freq, res); }
+
+    void setFreq(const T &freq, const T &res = 0.f)
+    {
+        gain_ = warpGain(freq);
+        setRes(res);
+    }
+    void setRes(const T &res) { res_ = res; }
+
+    template <class Ctxt> void solve(Ctxt ctxt, State &state) const
+    {
+        auto x = ctxt.getInput();
+
+        // derivation of // g*tanh(u) + s
+        T R[4];
+        for (int i = 0; i < 4; ++i)
+            R[i] = gain_ * (1 - state.tanhu_[i] * state.tanhu_[i]);
+
+        // jacobian matrix coefficient
+        auto a = 1 + R[0], b = 1 + R[1], c = 1 + R[2], d = 1 + R[3];
+        auto ap = R[0], bp = R[1], cp = R[2], dp = -res_ * R[3];
+
+        // compute the value of u - f(u)
+        T gtanhus[4];
+        T fu[4];
+        for (int i = 0; i < 4; ++i) {
+            gtanhus[i] = gain_ * state.tanhu_[i] + state.s_[i];
+            fu[i]      = +state.u_[i] + gtanhus[i];
+        }
+        fu[0] -= x - res_ * gtanhus[3];
+        fu[1] -= gtanhus[0];
+        fu[2] -= gtanhus[1];
+        fu[3] -= gtanhus[2];
+
+        // solve the newton value by computing direct invert matrix
+        // multiplication
+        // should be able to use fewer multiplications
+        T solve[4];
+        solve[0] = b * (c * (d * fu[0] + dp * fu[3]) + cp * dp * fu[2]) +
+                   bp * cp * dp * fu[1];
+        solve[1] = c * (d * (a * fu[1] + ap * fu[0]) + dp * ap * fu[3]) +
+                   cp * ap * dp * fu[2];
+        solve[2] = d * (a * (b * fu[2] + bp * fu[1]) + ap * bp * fu[0]) +
+                   dp * ap * bp * fu[3];
+        solve[3] = a * (b * (c * fu[3] + cp * fu[2]) + bp * cp * fu[1]) +
+                   ap * bp * cp * fu[4];
+
+        auto div = a * b * c * d - ap * bp * cp * dp;
+        for (int i = 0; i < 4; ++i) {
+            state.u_[i] -= solve[i] / div;
+            state.tanhu_[i] = dsp::fasttanh(state.u_[i]);
+        }
+    }
+
+    template <class Ctxt> void process(Ctxt ctxt, State &state) const
+    {
+
+        solve(ctxt, state);
+
+        T y;
+        for (int i = 0; i < 4; ++i) {
+            auto v      = gain_ * state.tanhu_[i];
+            y           = v + state.s_[i];
+            state.s_[i] = y + v;
+        }
+
+        ctxt.setOutput(y);
+    }
+
+    PROCESSBLOCK_
+
+  private:
+    T gain_;
+    T res_;
+};
 } // namespace dsp::va
