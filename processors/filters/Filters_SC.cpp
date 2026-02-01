@@ -143,5 +143,7 @@ void loadFilters()
     DefineFilterUnit(LadderAP, dsp::va::Ladder<float CMA dsp::va::kAllPass>,
                      true);
     DefineFilterUnit(MoogLadderLP,
-                     dsp::va::MoogLadder<float CMA dsp::va::kAllPass>, true);
+                     dsp::va::LadderOTA<float CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(MoogLadderHP,
+                     dsp::va::LadderOTA<float CMA dsp::va::kHighPass>, true);
 }
