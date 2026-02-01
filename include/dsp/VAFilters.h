@@ -269,42 +269,47 @@ template <typename T, FilterType FT = kLowPass> class Ladder
     OP onepole_;
 };
 
-template <typename T>
-struct SparseJacobian
-{
-    T a,b,c,d,ap,bp,cp,dp;
+template <typename T> struct SparseJacobian {
+    T a, b, c, d, ap, bp, cp, dp;
 };
 
 template <typename T>
-static inline auto solveNewton4Stages(SparseJacobian<T>& j, T*x, T *fx)
+static inline auto solveNewton4Stages(T *x, const SparseJacobian<T> &j,
+                                      const T *fx)
 {
-    auto a = j.a;
-    auto b = j.b;
-    auto c = j.c;
-    auto d = j.d;
+    // jacobian of x - f(x)
+    auto a = 1 - j.a;
+    auto b = 1 - j.b;
+    auto c = 1 - j.c;
+    auto d = 1 - j.d;
+    // should be ap = -j.ap but computation is easier like that
     auto ap = j.ap;
     auto bp = j.bp;
     auto cp = j.cp;
     auto dp = j.dp;
 
-    T xmfx[4], solve[4];
-    for (int i = 0; i < 4; ++i)
-        xmfx[i] = x[i] - fx[i];
+    T solve[4];
 
-    T* v = xmfx;
+    // v = x - f(x)
+    T v[4];
+    for (int i = 0; i < 4; ++i) v[i] = x[i] - fx[i];
 
+    // solve the newton value by computing direct invert matrix
+    // multiplication
+    // should be able to use fewer multiplications
     auto div = a * b * c * d - ap * bp * cp * dp;
-    solve[0] = b * (c * (d * v[0] + dp * v[3]) + cp * dp * v[2]) +
-               bp * cp * dp * v[1];
-    solve[1] = c * (d * (a * v[1] + ap * v[0]) + dp * ap * v[3]) +
-               cp * ap * dp * v[2];
-    solve[2] = d * (a * (b * v[2] + bp * v[1]) + ap * bp * v[0]) +
-               dp * ap * bp * v[3];
-    solve[3] = a * (b * (c * v[3] + cp * v[2]) + bp * cp * v[1]) +
-               ap * bp * cp * v[4];
+    solve[0] =
+        b * (c * (d * v[0] + dp * v[3]) + cp * dp * v[2]) + bp * cp * dp * v[1];
+    solve[1] =
+        c * (d * (a * v[1] + ap * v[0]) + dp * ap * v[3]) + cp * ap * dp * v[2];
+    solve[2] =
+        d * (a * (b * v[2] + bp * v[1]) + ap * bp * v[0]) + dp * ap * bp * v[3];
+    solve[3] =
+        a * (b * (c * v[3] + cp * v[2]) + bp * cp * v[1]) + ap * bp * cp * v[0];
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i) {
         x[i] -= solve[i] / div;
+    }
 }
 
 template <typename T, FilterType FT = kLowPass> class LadderOTA
@@ -366,42 +371,47 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
 
     template <class Ctxt> void solveLP(Ctxt ctxt, State &state) const
     {
-        auto x = ctxt.getInput();
+        auto x      = ctxt.getInput();
+        auto &u     = state.u_;
+        auto &tanhu = state.tanhu_;
+        auto &s     = state.s_;
 
-        T gtanhu[4];
-        for (int i = 0; i < 4; ++i) {
-            gtanhu[i] = gain_ * state.tanhu_[i];
-        }
-
-        // derivation of // g*tanh(u) + s
         T deriv[4];
-        for (int i = 0; i < 4; ++i)
-            deriv[i] = gain_ - gtanhu[i] * state.tanhu_[i];
-
-        // jacobian matrix coefficient
-        auto a = 1 + deriv[0], b = 1 + deriv[1], c = 1 + deriv[2],
-             d  = 1 + deriv[3];
-        auto ap = deriv[0], bp = deriv[1], cp = deriv[2], dp = -res_ * deriv[3];
-
-        // compute the value of u - f(u)
         T gtanhus[4];
         for (int i = 0; i < 4; ++i) {
-            gtanhus[i] = gtanhu[i] + state.s_[i];
+            auto gtanhu = gain_ * state.tanhu_[i];
+            // derivation of g*tanh(u) + s
+            deriv[i]   = gain_ - gtanhu * state.tanhu_[i];
+            gtanhus[i] = gtanhu + s[i];
         }
+
         T fu[4];
         for (int i = 0; i < 4; ++i) {
-            auto input = i == 0 ? x - res_ * gtanhus[3] : gtanhus[i - 1];
-            fu[i]      = input - gtanhus[i];
+            T input;
+            if constexpr (FT == kLowPass) {
+                input = i == 0 ? x - res_ * gtanhus[3] : gtanhus[i - 1];
+            } else if (FT == kHighPass) {
+                input = i == 0 ? x - res_ * u[3] : u[i - 1];
+            }
+            fu[i] = input - gtanhus[i];
         }
 
-        // solve the newton value by computing direct invert matrix
-        // multiplication
-        // should be able to use fewer multiplications
-        SparseJacobian<T> jacobian = {a,b,c,d,ap,bp,cp,dp};
-        solveNewton4Stages(jacobian,state.u_,fu);
+        // jacobian matrix coefficient
+        SparseJacobian<T> jacobian;
+        if constexpr (FT == kLowPass) {
+            jacobian = {
+                -deriv[0], -deriv[1], -deriv[2], -deriv[3],
+                deriv[0],  deriv[1],  deriv[2],  -res_ * deriv[3],
+            };
+        } else if (FT == kHighPass) {
+            jacobian = {
+                -deriv[0], -deriv[1], -deriv[2], -deriv[3], 1, 1, 1, -res_,
+            };
+        }
+        solveNewton4Stages(u, jacobian, fu);
 
         for (int i = 0; i < 4; ++i) {
-            state.tanhu_[i] = dsp::fasttanh(state.u_[i]);
+            tanhu[i] = dsp::fasttanh(u[i]);
         }
     }
 
@@ -468,10 +478,10 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
         //     ctxt.setOutput(y[3]);
         // }
 
-        if constexpr (FT == kLowPass) {
-            solveLP(ctxt, state);
-        } else if constexpr (FT == kHighPass)
-            solveHP(ctxt, state);
+        // if constexpr (FT == kLowPass) {
+        solveLP(ctxt, state);
+        //} else if constexpr (FT == kHighPass)
+        //    solveHP(ctxt, state);
 
         T y;
         for (int i = 0; i < 4; ++i) {
@@ -510,7 +520,7 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
     }
     void setRes(const T &res) { res_ = res; }
 
-    template <class Ctxt> void solveLP(Ctxt ctxt, State &state) const
+    template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
         auto x  = ctxt.getInput();
         auto &u = state.u_;
@@ -521,7 +531,7 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
             tanhus[i] = dsp::fasttanh(gain_ * u[i] + s[i]);
         }
         T tanhinput;
-        if constexpr (FT == kLowPass)
+        if constexpr (FT == kLowPass || FT == kBandPass)
             tanhinput = dsp::fasttanh(x - res_ * (gain_ * u[3] + s[3]));
         else if (FT == kHighPass)
             tanhinput = dsp::fasttanh(x - res_ * u[3]);
@@ -532,17 +542,16 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
             deriv[i] = gain_ * (1 - tanhus[i] * tanhus[i]);
         // derivation of  tanh(x - k*(g*u+s))
         T derivinput;
-        if constexpr (FT == kLowPass)
+        if constexpr (FT == kLowPass || FT == kBandPass)
             derivinput = -res_ * gain_ * (1 - tanhinput * tanhinput);
         else if (FT == kHighPass)
             derivinput = -res_ * (1 - tanhinput * tanhinput);
 
-        // jacobian matrix coefficient
-        auto a = 1 + deriv[0], b = 1 + deriv[1], c = 1 + deriv[2],
-             d  = 1 + deriv[3];
-        auto ap = deriv[0], bp = deriv[1], cp = deriv[2], dp = derivinput;
-        if constexpr (FT == kHighPass) {
-            ap = bp = cp = 1;
+        [[maybe_unused]] T tanhu[4];
+        if (FT == kHighPass || FT == kBandPass) {
+            for (int i = 0; i < 4; ++i) {
+                tanhu[i] = dsp::fasttanh(u[i]);
+            }
         }
 
         // compute the value of u - f(u)
@@ -552,44 +561,60 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
             if constexpr (FT == kLowPass)
                 input = i == 0 ? tanhinput : tanhus[i - 1];
             else if constexpr (FT == kHighPass)
-                input = i == 0 ? tanhinput : u[i - 1];
-            fu[i] = state.u_[i] - (input - tanhus[i]);
+                input = i == 0 ? tanhinput : tanhu[i - 1];
+            else if constexpr (FT == kBandPass)
+                input = i == 0       ? tanhinput
+                        : i % 2 == 1 ? tanhu[i - 1]
+                                     : tanhus[i - 1];
+            fu[i] = input - tanhus[i];
         }
 
-        // solve the newton value by computing direct invert matrix
-        // multiplication
-        // should be able to use fewer multiplications
-        T solve[4];
-        solve[0] = b * (c * (d * fu[0] + dp * fu[3]) + cp * dp * fu[2]) +
-                   bp * cp * dp * fu[1];
-        solve[1] = c * (d * (a * fu[1] + ap * fu[0]) + dp * ap * fu[3]) +
-                   cp * ap * dp * fu[2];
-        solve[2] = d * (a * (b * fu[2] + bp * fu[1]) + ap * bp * fu[0]) +
-                   dp * ap * bp * fu[3];
-        solve[3] = a * (b * (c * fu[3] + cp * fu[2]) + bp * cp * fu[1]) +
-                   ap * bp * cp * fu[4];
-
-        auto div = a * b * c * d - ap * bp * cp * dp;
-        for (int i = 0; i < 4; ++i) {
-            state.u_[i] -= solve[i] / div;
+        // jacobian matrix coefficient
+        SparseJacobian<T> jacobian;
+        if (FT == kLowPass) {
+            jacobian = {
+                -deriv[0], -deriv[1], -deriv[2], -deriv[3],
+                deriv[0],  deriv[1],  deriv[2],  derivinput,
+            };
+        } else if constexpr (FT == kHighPass) {
+            jacobian = {
+                -deriv[0],
+                -deriv[1],
+                -deriv[2],
+                -deriv[3],
+                1 - tanhu[0] * tanhu[0],
+                1 - tanhu[1] * tanhu[1],
+                1 - tanhu[2] * tanhu[2],
+                derivinput,
+            };
+        } else if constexpr (FT == kBandPass) {
+            jacobian = {
+                -deriv[0],
+                -deriv[1],
+                -deriv[2],
+                -deriv[3],
+                1 - tanhu[0] * tanhu[0],
+                deriv[1],
+                1 - tanhu[2] * tanhu[2],
+                derivinput,
+            };
         }
+        solveNewton4Stages(u, jacobian, fu);
     }
 
     template <class Ctxt> void process(Ctxt ctxt, State &state) const
     {
-        solveLP(ctxt, state);
+        solve(ctxt, state);
 
-        T y;
+        T y[4];
         for (int i = 0; i < 4; ++i) {
             auto v      = gain_ * state.u_[i];
-            y           = v + state.s_[i];
-            state.s_[i] = y + v;
+            y[i]        = v + state.s_[i];
+            state.s_[i] = y[i] + v;
         }
 
-        ctxt.setOutput(y);
-
-        if constexpr (FT == kLowPass) ctxt.setOutput(y);
-        else
+        if constexpr (FT == kLowPass || FT == kBandPass) ctxt.setOutput(y[3]);
+        else if (FT == kHighPass)
             ctxt.setOutput(state.u_[3]);
     }
 

@@ -86,3 +86,10 @@ MoogLadderHP : Filter {
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
 	}
 }
+
+MoogLadderBP : Filter {
+
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
