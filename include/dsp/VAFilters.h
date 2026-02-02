@@ -322,6 +322,37 @@ static inline auto solveNewton4Stages(T *x, const SparseJacobian<T> &j,
 
 template <typename T, FilterType FT = kLowPass> class LadderOTA
 {
+    /*
+     * implements 4 stage ladder using newton method
+     *
+     *                   hp1
+     *  x ───>┤+├───>│+├───>┤tanh├──>┤g⋅+s1├─┬──> lp1
+     *         ^-     ^-                     │
+     *         │      │                      │
+     *         │      ├<─────────────────────┘
+     *         │      │
+     *         │      v  hp2
+     *         │     │+├───>┤tanh├──>┤g⋅+s2├─┬──> lp2
+     *         │      ^-                     │
+     *         │      │                      │
+     *         △*res  ├<─────────────────────┘
+     *         │      │
+     *         │      v  hp3
+     *         │     │+├───>┤tanh├──>┤g⋅+s3├─┬──> lp3
+     *         │      ^-                     │
+     *         │      │                      │
+     *         │      ├<─────────────────────┘
+     *         │      │
+     *         │      v  hp4
+     *         │     │+├───>┤tanh├──>┤g⋅+s4├─┬──> lp4
+     *         │      ^-                     │
+     *         │      │                      │
+     *         └──────┴<─────────────────────┘
+     *
+     * highpass and bandpass are computed reordering the the inputs of the
+     * stages (hp->hp->hp->hp and lp->hp->lp->hp)
+     *
+     */
   public:
     using State = struct State {
         T s_[4]{};
@@ -339,44 +370,6 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
     }
     void setRes(const T &res) { res_ = res; }
 
-    template <class Ctxt> void solveHP(Ctxt ctxt, State &state) const
-    {
-        auto x = ctxt.getInput();
-
-        T R[4];
-        for (int i = 0; i < 4; ++i)
-            R[i] = 1 + gain_ * (1 - state.tanhhp_[i] * state.tanhhp_[i]);
-
-        auto a = R[0], b = R[1], c = R[2], d = R[3];
-        auto e = -res_;
-
-        T gtanhus[4];
-        T fu[4];
-        for (int i = 0; i < 4; ++i) {
-            gtanhus[i] = gain_ * state.tanhhp_[i] + state.s_[i];
-            fu[i]      = +state.hp_[i] + gtanhus[i];
-        }
-        fu[0] -= x - res_ * state.hp_[3];
-        fu[1] -= state.hp_[0];
-        fu[2] -= state.hp_[1];
-        fu[3] -= state.hp_[2];
-
-        T efu[4];
-        for (int i = 0; i < 4; ++i) efu[i] = e * fu[i];
-
-        T solve[4];
-        solve[0] = efu[1] + b * (efu[2] + c * (efu[3] + d * fu[0]));
-        solve[1] = efu[2] + c * (efu[3] + d * (fu[0] + a * fu[1]));
-        solve[2] = efu[3] + d * (fu[0] + a * (fu[1] + b * fu[2]));
-        solve[3] = fu[0] + a * (fu[1] + b * (fu[2] + c * fu[3]));
-
-        auto div = a * b * c * d - e;
-        for (int i = 0; i < 4; ++i) {
-            state.hp_[i] -= solve[i] / div;
-            state.tanhhp_[i] = dsp::tanh(state.hp_[i]);
-        }
-    }
-
     template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
         auto x       = ctxt.getInput();
@@ -388,8 +381,8 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
         T lp[4];
         for (int i = 0; i < 4; ++i) {
             auto gtanhhp = gain_ * tanhhp[i];
-            // derivation of g*tanh(u) + s
-            derivlp[i] = gain_ - gtanhhp * state.tanhhp_[i];
+            // derivation lp = of g*tanh(hp) + s
+            derivlp[i] = gain_ - gtanhhp * tanhhp[i];
             lp[i]      = gtanhhp + s[i];
         }
 
@@ -420,7 +413,7 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
                 -derivlp[0], -derivlp[1], -derivlp[2], -derivlp[3],
                 1,           1,           1,           -res_,
             };
-        } else if (FT == kHighPass) {
+        } else if (FT == kBandPass) {
             jacobian = {
                 -derivlp[0], -derivlp[1], -derivlp[2], -derivlp[3],
                 1,           derivlp[1],  1,           res_ * derivlp[3],
@@ -433,73 +426,9 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
         }
     }
 
-    // template <class Ctxt> void solveLP2(Ctxt ctxt, State &state) const
-    //{
-    //     auto x = ctxt.getInput();
-    //     auto& y = state.u_;
-
-    //    T tanhy[4];
-    //    for (int i = 0; i < 4; ++i) {
-    //        auto input = i == 0 ? x - res_*y[3] : y[i-1];
-    //        tanhy[i] = dsp::fasttanh(input-y[i]);
-    //    }
-
-    //    // derivation of // g*tanh(u) + s
-    //    T deriv[4];
-    //    for (int i = 0; i < 4; ++i)
-    //        deriv[i] = gain_*(1 - tanhy[i]*tanhy[i]);
-
-    //    // jacobian matrix coefficient
-    //    auto a = 1 + deriv[0], b = 1 + deriv[1], c = 1 + deriv[2],
-    //         d  = 1 + deriv[3];
-    //    auto ap = deriv[0], bp = deriv[1], cp = deriv[2], dp = -res_ *
-    //    deriv[3];
-
-    //    // compute the value of u - f(u)
-    //    T gtanhys[4];
-    //    for (int i = 0; i < 4; ++i) {
-    //        gtanhys[i] = gain_*tanhy[i] + state.s_[i];
-    //    }
-    //    T fy[4];
-    //    for (int i = 0; i < 4; ++i) {
-    //        fy[i]      = y[i] - gtanhys[i];
-    //    }
-
-    //    // solve the newton value by computing direct invert matrix
-    //    // multiplication
-    //    // should be able to use fewer multiplications
-    //    T solve[4];
-    //    solve[0] = b * (c * (d * fy[0] + dp * fy[3]) + cp * dp * fy[2]) +
-    //               bp * cp * dp * fy[1];
-    //    solve[1] = c * (d * (a * fy[1] + ap * fy[0]) + dp * ap * fy[3]) +
-    //               cp * ap * dp * fy[2];
-    //    solve[2] = d * (a * (b * fy[2] + bp * fy[1]) + ap * bp * fy[0]) +
-    //               dp * ap * bp * fy[3];
-    //    solve[3] = a * (b * (c * fy[3] + cp * fy[2]) + bp * cp * fy[1]) +
-    //               ap * bp * cp * fy[4];
-
-    //    auto div = a * b * c * d - ap * bp * cp * dp;
-    //    for (int i = 0; i < 4; ++i) {
-    //        y[i] -= solve[i] / div;
-    //    }
-    //}
-
     template <class Ctxt> void process(Ctxt ctxt, State &state) const
     {
-        // if constexpr (FT == kLowPass)
-        //{
-        //     auto& y = state.u_;
-        //     solveLP2(ctxt, state);
-        //     for (int i = 0; i < 4; ++i) {
-        //         state.s_[i] = y[i]+y[i] - state.s_[i];
-        //     }
-        //     ctxt.setOutput(y[3]);
-        // }
-
-        // if constexpr (FT == kLowPass) {
         solve(ctxt, state);
-        //} else if constexpr (FT == kHighPass)
-        //    solveHP(ctxt, state);
 
         T lp[4];
         for (int i = 0; i < 4; ++i) {
@@ -508,8 +437,8 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
             state.s_[i] = lp[i] + v;
         }
 
-        if constexpr (FT == kLowPass || FT == kBandPass) ctxt.setOutput(lp[3]);
-        else if (FT == kHighPass)
+        if constexpr (FT == kLowPass) ctxt.setOutput(lp[3]);
+        else if (FT == kHighPass || FT == kBandPass)
             ctxt.setOutput(state.hp_[3]);
     }
 
@@ -522,6 +451,40 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
 
 template <typename T, FilterType FT = kLowPass> class LadderTransistor
 {
+    /*
+     * implements 4 stage ladder using newton method
+     *
+     *                             hp1
+     *  x ───>┤+├───>┤tanh├───>┤+├───>┤g⋅+s1├───┬───> lp1
+     *         ^-               ^-              │
+     *         │                │               │
+     *         │                ├<────┤tanh├<───┘
+     *         │                │
+     *         │                v  hp2
+     *         │               │+├───>┤g⋅+s2├───┬───> lp2
+     *         │                ^-              │
+     *         │                │               │
+     *         △*res            ├<────┤tanh├<───┘
+     *         │                │
+     *         │                v  hp3
+     *         │               │+├───>┤g⋅+s3├───┬───> lp3
+     *         │                ^-              │
+     *         │                │               │
+     *         │                ├<────┤tanh├<───┘
+     *         │                │
+     *         │                v  hp3
+     *         │               │+├───>┤g⋅+s4├───┬───> lp4
+     *         │                ^-              │
+     *         │                │               v
+     *         │                └<────┤tanh├<───┤
+     *         │                                │
+     *         └────────────────────────────────┘
+     *
+     * highpass and bandpass are computed reordering the the inputs of the
+     * stages (hp->hp->hp->hp and lp->hp->lp->hp, in these case a tanh need to
+     * be added for the input, becaused it has been removed in the lowpass graph
+     * because of redundancy between loop and input)
+     */
   public:
     using State = struct State {
         T s_[4]{};
@@ -544,12 +507,20 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
         auto &hp = state.hp_;
         auto &s  = state.s_;
 
+        // lowpass output & loopback value
         T lp[4];
-        T tanhlp[4];
+        T loop[4];
         for (int i = 0; i < 4; ++i) {
-            lp[i]     = gain_ * hp[i] + s[i];
-            tanhlp[i] = dsp::fasttanh(lp[i]);
+            lp[i]   = gain_ * hp[i] + s[i];
+            loop[i] = dsp::fasttanh(lp[i]);
         }
+
+        // derivation d/dhp of loopbackvalue (tanh' = 1-tanh²)
+        T derivloop[4];
+        for (int i = 0; i < 4; ++i)
+            derivloop[i] = gain_ * (1 - loop[i] * loop[i]);
+
+        // filter input
         T tanhinput;
         if constexpr (FT == kLowPass)
             tanhinput = dsp::fasttanh(x - res_ * lp[3]);
@@ -558,11 +529,7 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
         else if (FT == kBandPass)
             tanhinput = dsp::fasttanh(x + res_ * hp[3]);
 
-        // derivation of tanh(g*u+s)
-        T derivlp[4];
-        for (int i = 0; i < 4; ++i)
-            derivlp[i] = gain_ * (1 - tanhlp[i] * tanhlp[i]);
-        // derivation of  tanh(x - k*(g*u+s))
+        // derivation of filter input
         T derivinput;
         if constexpr (FT == kLowPass)
             derivinput = -res_ * gain_ * (1 - tanhinput * tanhinput);
@@ -583,29 +550,29 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
         for (int i = 0; i < 4; ++i) {
             T input;
             if constexpr (FT == kLowPass)
-                input = i == 0 ? tanhinput : tanhlp[i - 1];
+                input = i == 0 ? tanhinput : loop[i - 1];
             else if constexpr (FT == kHighPass)
                 input = i == 0 ? tanhinput : tanhhp[i - 1];
             else if constexpr (FT == kBandPass)
                 input = i == 0             ? tanhinput
-                        : (i - 1) % 2 == 0 ? tanhlp[i - 1]
+                        : (i - 1) % 2 == 0 ? loop[i - 1]
                                            : tanhhp[i - 1];
-            fhp[i] = input - tanhlp[i];
+            fhp[i] = input - loop[i];
         }
 
         // jacobian matrix coefficient
         SparseJacobian<T> jacobian;
         if (FT == kLowPass) {
             jacobian = {
-                -derivlp[0], -derivlp[1], -derivlp[2], -derivlp[3],
-                derivlp[0],  derivlp[1],  derivlp[2],  derivinput,
+                -derivloop[0], -derivloop[1], -derivloop[2], -derivloop[3],
+                derivloop[0],  derivloop[1],  derivloop[2],  derivinput,
             };
         } else if constexpr (FT == kHighPass) {
             jacobian = {
-                -derivlp[0],
-                -derivlp[1],
-                -derivlp[2],
-                -derivlp[3],
+                -derivloop[0],
+                -derivloop[1],
+                -derivloop[2],
+                -derivloop[3],
                 1 - tanhhp[0] * tanhhp[0],
                 1 - tanhhp[1] * tanhhp[1],
                 1 - tanhhp[2] * tanhhp[2],
@@ -613,9 +580,9 @@ template <typename T, FilterType FT = kLowPass> class LadderTransistor
             };
         } else if constexpr (FT == kBandPass) {
             jacobian = {
-                -derivlp[0], -derivlp[1], -derivlp[2],
-                -derivlp[3], derivlp[0],  1 - tanhhp[1] * tanhhp[1],
-                derivlp[2],  derivinput,
+                -derivloop[0], -derivloop[1], -derivloop[2],
+                -derivloop[3], derivloop[0],  1 - tanhhp[1] * tanhhp[1],
+                derivloop[2],  derivinput,
             };
         }
         solveNewton4Stages(hp, jacobian, fhp);
