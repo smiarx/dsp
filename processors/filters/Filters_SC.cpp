@@ -142,10 +142,16 @@ void loadFilters()
                      true);
     DefineFilterUnit(LadderAP, dsp::va::Ladder<float CMA dsp::va::kAllPass>,
                      true);
-    DefineFilterUnit(MoogLadderLP,
+    DefineFilterUnit(LadderTransistorLP,
                      dsp::va::LadderTransistor<float CMA dsp::va::kLowPass>, true);
-    DefineFilterUnit(MoogLadderHP,
+    DefineFilterUnit(LadderTransistorHP,
                      dsp::va::LadderTransistor<float CMA dsp::va::kHighPass>, true);
-    DefineFilterUnit(MoogLadderBP,
+    DefineFilterUnit(LadderTransistorBP,
                      dsp::va::LadderTransistor<float CMA dsp::va::kBandPass>, true);
+    DefineFilterUnit(LadderOTALP,
+                     dsp::va::LadderOTA<float CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(LadderOTAHP,
+                     dsp::va::LadderOTA<float CMA dsp::va::kHighPass>, true);
+    DefineFilterUnit(LadderOTABP,
+                     dsp::va::LadderOTA<float CMA dsp::va::kBandPass>, true);
 }

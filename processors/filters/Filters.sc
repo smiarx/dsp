@@ -73,22 +73,37 @@ LadderAP : Filter {
 	}
 }
 
-MoogLadderLP : Filter {
-
+LadderTransistorLP : Filter {
 	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
 	}
 }
 
-MoogLadderHP : Filter {
-
+LadderTransistorHP : Filter {
 	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
 	}
 }
 
-MoogLadderBP : Filter {
+LadderTransistorBP : Filter {
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
 
+LadderOTALP : Filter {
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
+LadderOTAHP : Filter {
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
+LadderOTABP : Filter {
 	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
 	}
