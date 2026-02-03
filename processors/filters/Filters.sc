@@ -73,6 +73,27 @@ LadderAP : Filter {
 	}
 }
 
+SallenKeyLP : Filter {
+
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
+SallenKeyHP : Filter {
+
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
+SallenKeyBP : Filter {
+
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
 LadderTransistorLP : Filter {
 	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
@@ -104,6 +125,13 @@ LadderOTAHP : Filter {
 }
 
 LadderOTABP : Filter {
+	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
+		^this.multiNew('audio', in, freq, res).madd(mul, add)
+	}
+}
+
+SallenKeyTransistorLP : Filter {
+
 	*ar { arg in = 0.0, freq = 800, res=0, mul = 1.0, add = 0.0;
 		^this.multiNew('audio', in, freq, res).madd(mul, add)
 	}

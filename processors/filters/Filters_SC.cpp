@@ -142,6 +142,12 @@ void loadFilters()
                      true);
     DefineFilterUnit(LadderAP, dsp::va::Ladder<float CMA dsp::va::kAllPass>,
                      true);
+    DefineFilterUnit(SallenKeyLP, dsp::va::SallenKey<float CMA dsp::va::kLowPass>,
+                     true);
+    DefineFilterUnit(SallenKeyHP, dsp::va::SallenKey<float CMA dsp::va::kHighPass>,
+                     true);
+    DefineFilterUnit(SallenKeyBP, dsp::va::SallenKey<float CMA dsp::va::kBandPass>,
+                     true);
     DefineFilterUnit(LadderTransistorLP,
                      dsp::va::LadderTransistor<float CMA dsp::va::kLowPass>, true);
     DefineFilterUnit(LadderTransistorHP,
@@ -154,4 +160,6 @@ void loadFilters()
                      dsp::va::LadderOTA<float CMA dsp::va::kHighPass>, true);
     DefineFilterUnit(LadderOTABP,
                      dsp::va::LadderOTA<float CMA dsp::va::kBandPass>, true);
+    DefineFilterUnit(SallenKeyTransistorLP,
+                     dsp::va::SallenKeyTransistor<float CMA dsp::va::kLowPass>, true);
 }
