@@ -162,4 +162,6 @@ void loadFilters()
                      dsp::va::LadderOTA<float CMA dsp::va::kBandPass>, true);
     DefineFilterUnit(SallenKeyTransistorLP,
                      dsp::va::SallenKeyTransistor<float CMA dsp::va::kLowPass>, true);
+    DefineFilterUnit(SallenKeyDiodeLP,
+                     dsp::va::SallenKeyDiode<float CMA dsp::va::kLowPass>, true);
 }

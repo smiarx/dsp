@@ -21,7 +21,6 @@
 
 constexpr size_t kK     = 2;
 constexpr size_t kN     = 512;
-constexpr size_t kOrder = 26;
 using ft                = dsp::mfloat<kK>;
 static ft x[kN];
 TEST_CASE("VA Filters", "[dsp][vafilters]")
@@ -50,5 +49,6 @@ TEST_CASE("VA Filters", "[dsp][vafilters]")
     {
         BENCHMARK_FILTER(Ladder, LowPass);
         BENCHMARK_FILTER(Ladder, HighPass);
+        BENCHMARK_FILTER(LadderTransistor, LowPass);
     }
 }
