@@ -182,107 +182,116 @@ TEST_CASE("SparseJacobian4x4")
     SECTION("Identity")
     {
         J = {
-        0, 0, 0, 0, // diag
-        0, 0, 0,    // lower
-        0           // wrap
-    };
+            0, 0, 0, 0, // diag
+            0, 0, 0,    // lower
+            0           // wrap
+        };
 
-    std::array<T,4> x = {1, 2, 3, 4};
-    std::array<T,4> fx = {0.5, 1.5, 2.5, 3.5};
-    J.newtonStep(x, fx);
-    for (int i = 0; i < 4; ++i)
-        REQUIRE_THAT(x[i], Catch::Matchers::WithinAbs(fx[i],1e-6));
+        std::array<T, 4> x  = {1, 2, 3, 4};
+        std::array<T, 4> fx = {0.5, 1.5, 2.5, 3.5};
+        J.newtonStep(x, fx);
+        for (int i = 0; i < 4; ++i)
+            REQUIRE_THAT(x[i], Catch::Matchers::WithinAbs(fx[i], 1e-6));
     }
 
     SECTION("Diagonal")
     {
-    // --- Diagonal Jacobian ---
-    J = {
-        -1, -2, -3, -4,   // diag
-        0, 0, 0,          // lower
-        0                  // wrap
-    };
+        // --- Diagonal Jacobian ---
+        J = {
+            -1, -2, -3, -4, // diag
+            0,  0,  0,      // lower
+            0               // wrap
+        };
 
-    std::array<T,4> x  = {2, 3, 4, 5};
-    std::array<T,4> fx = {0, 0, 0, 0};
-    J.newtonStep(x, fx);
+        std::array<T, 4> x  = {2, 3, 4, 5};
+        std::array<T, 4> fx = {0, 0, 0, 0};
+        J.newtonStep(x, fx);
 
-    REQUIRE_THAT(x[0], Catch::Matchers::WithinAbs(2 - 2.0 / 2.0, 1e-6));
-    REQUIRE_THAT(x[1], Catch::Matchers::WithinAbs(3 - 3.0 / 3.0, 1e-6));
-    REQUIRE_THAT(x[2], Catch::Matchers::WithinAbs(4 - 4.0 / 4.0, 1e-6));
-    REQUIRE_THAT(x[3], Catch::Matchers::WithinAbs(5 - 5.0 / 5.0, 1e-6));
+        REQUIRE_THAT(x[0], Catch::Matchers::WithinAbs(2 - 2.0 / 2.0, 1e-6));
+        REQUIRE_THAT(x[1], Catch::Matchers::WithinAbs(3 - 3.0 / 3.0, 1e-6));
+        REQUIRE_THAT(x[2], Catch::Matchers::WithinAbs(4 - 4.0 / 4.0, 1e-6));
+        REQUIRE_THAT(x[3], Catch::Matchers::WithinAbs(5 - 5.0 / 5.0, 1e-6));
     }
 }
 
-//TEST_CASE("Ladder NL")
-template <template<typename,dsp::va::FilterType> class Filter, typename T, dsp::va::FilterType FT>
-static void testFilterNL()
+// TEST_CASE("Ladder NL")
+template <template <typename, dsp::va::FilterType> class Filter, typename T,
+          dsp::va::FilterType FT>
+static void testFilterNL(int nsteps = 6)
 {
     Filter<T, FT> filter;
     typename decltype(filter)::State state;
 
-    constexpr auto kOrder = sizeof(state.hp_)/sizeof(state.hp_[0]);
+    constexpr auto kOrder = sizeof(state.y_) / sizeof(state.y_[0]);
 
-    //T freqs[] = {200/kNyquist, 1000/kNyquist, 9000/kNyquist};
-    //T ress[] = {0.,kOrder*0.5,kOrder*1,kOrder*1.5};
+    T freqs[] = {200 / kNyquist, 1000 / kNyquist, 8000 / kNyquist};
+    T ress[]  = {0., kOrder * 0.5, kOrder * 1, kOrder * 1.1};
 
-    T freqs[] = {9000/kNyquist};
-    T ress[] = {kOrder*1.5};
+    for (auto freq : freqs) {
+        for (auto res : ress) {
+            filter.setFreq(freq, res);
 
-    for(auto freq : freqs)
-    {
-        for(auto res : ress)
-        {
-        filter.setFreq(freq,res);
+            // run filter for a few frames
+            for (int i = 0; i < 32; ++i) {
+                T x = GENERATE(take(1, random(-1., 1.)));
+                filter.process(dsp::Context(&x), state);
+            }
 
-        // run filter for a few frames
-        for(int i = 0; i < 32; ++i)
-        {
+            // test newton solver convergence
             T x = GENERATE(take(1, random(-1., 1.)));
-            filter.process(dsp::Context(&x), state);
-        }
+            for (int i = 0; i < nsteps; ++i)
+                filter.solve(dsp::Context(&x), state);
+            // newton should have converged by now
 
-        // test newton solver convergence
-        T x = GENERATE(take(1, random(-1., 1.)));
-        for(int i = 0; i < 5; ++i)
+            // save state
+            auto y = state.y_;
+
+            // solving once again shouldn't really change the state
             filter.solve(dsp::Context(&x), state);
-        // newton should have converged by now
-
-        // save state
-        auto hp = state.hp_;
-
-        // solving once again shouldn't really change the state
-        filter.solve(dsp::Context(&x), state);
-        for(size_t i = 0; i < kOrder; ++i)
-        {
-            for(size_t j = 0; j < dsp::kTypeWidth<T>; ++j)
-                REQUIRE_THAT(dsp::get(hp[i],j), Catch::Matchers::WithinAbs(dsp::get(state.hp_[i],j), 1e-5));
+            for (size_t i = 0; i < kOrder; ++i) {
+                for (size_t j = 0; j < dsp::kTypeWidth<T>; ++j)
+                    REQUIRE_THAT(dsp::get(y[i], j),
+                                 Catch::Matchers::WithinAbs(
+                                     dsp::get(state.y_[i], j), 1e-5));
+            }
         }
-        }
-}
+    }
 }
 
 TEST_CASE("VA Filters NL")
 {
-    //testFilterNL<dsp::va::LadderTransistor,float,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderTransistor,float,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderTransistor,float,dsp::va::kBandPass>();
-    //testFilterNL<dsp::va::LadderTransistor,double,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderTransistor,double,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderTransistor,double,dsp::va::kBandPass>();
-    //testFilterNL<dsp::va::LadderTransistor,dsp::mfloat<4>,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderTransistor,dsp::mfloat<4>,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderTransistor,dsp::mfloat<4>,dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderTransistor, float, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderTransistor, float, dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderTransistor, float, dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderTransistor, double, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderTransistor, double, dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderTransistor, double, dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderTransistor, dsp::mfloat<4>,
+                 dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderTransistor, dsp::mfloat<4>,
+                 dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderTransistor, dsp::mfloat<4>,
+                 dsp::va::kBandPass>();
 
-    //testFilterNL<dsp::va::LadderOTA,float,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderOTA,float,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderOTA,float,dsp::va::kBandPass>();
-    //testFilterNL<dsp::va::LadderOTA,double,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderOTA,double,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderOTA,double,dsp::va::kBandPass>();
-    //testFilterNL<dsp::va::LadderOTA,dsp::mfloat<4>,dsp::va::kLowPass>();
-    //testFilterNL<dsp::va::LadderOTA,dsp::mfloat<4>,dsp::va::kHighPass>();
-    //testFilterNL<dsp::va::LadderOTA,dsp::mfloat<4>,dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderOTA, float, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderOTA, float, dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderOTA, float, dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderOTA, double, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderOTA, double, dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderOTA, double, dsp::va::kBandPass>();
+    testFilterNL<dsp::va::LadderOTA, dsp::mfloat<4>, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::LadderOTA, dsp::mfloat<4>, dsp::va::kHighPass>();
+    testFilterNL<dsp::va::LadderOTA, dsp::mfloat<4>, dsp::va::kBandPass>();
 
-    testFilterNL<dsp::va::SallenKeyTransistor,float,dsp::va::kLowPass>();
+    testFilterNL<dsp::va::SallenKeyDiode, float, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::SallenKeyDiode, double, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::SallenKeyDiode, dsp::mfloat<4>, dsp::va::kLowPass>();
+    testFilterNL<dsp::va::SallenKeyDiode, float, dsp::va::kHighPass>(24);
+    testFilterNL<dsp::va::SallenKeyDiode, double, dsp::va::kHighPass>(24);
+    testFilterNL<dsp::va::SallenKeyDiode, dsp::mfloat<4>, dsp::va::kHighPass>(
+        24);
+    testFilterNL<dsp::va::SallenKeyDiode, float, dsp::va::kBandPass>(24);
+    testFilterNL<dsp::va::SallenKeyDiode, double, dsp::va::kBandPass>(24);
+    testFilterNL<dsp::va::SallenKeyDiode, dsp::mfloat<4>, dsp::va::kBandPass>(
+        24);
 }

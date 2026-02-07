@@ -386,8 +386,7 @@ template <typename T> struct Jacobian2x2 {
      */
     T a_, b_, c_, d_;
 
-    template <typename T2>
-    inline auto solveNewton(std::array<T2, 2> &x, const std::array<T2, 2> &fx)
+    inline auto newtonStep(std::array<T, 2> &x, const std::array<T, 2> &fx)
     {
         /*
          * 1 step newton method for a 4 stage filter given function values and
@@ -395,8 +394,8 @@ template <typename T> struct Jacobian2x2 {
          */
 
         // jacobian of x - f(x)
-        auto a = 1 - a_;
-        auto b = 1 - b_;
+        auto a = T(1) - a_;
+        auto b = T(1) - b_;
         // should be c = -j.c but computation is easier like that
         auto c = c_;
         auto d = d_;
@@ -409,15 +408,16 @@ template <typename T> struct Jacobian2x2 {
         // multiplication
         // should be able to use fewer multiplications
 
-        T solve[2];
-        auto div = a * b - d * c;
-        solve[0] = b * v[0] + d * v[1];
-        solve[1] = c * v[0] + a * v[1];
+        T delta[2];
+        // determinant
+        auto det = a * b - d * c;
+        delta[0] = b * v[0] + d * v[1];
+        delta[1] = c * v[0] + a * v[1];
 
-        assert(std::abs(div) > 1e-5);
+        assert(all(abs(det) > 1e-5));
 
         for (int i = 0; i < 2; ++i) {
-            x[i] -= solve[i] / div;
+            x[i] -= delta[i] / det;
         }
     }
 };
@@ -487,6 +487,7 @@ template <typename T> struct SparseJacobian4x4 {
         delta[3] =
             a * b * (c * v[3] + cp * v[2]) + bp * cp * (a * v[1] + ap * v[0]);
 
+        assert(all(abs(det) > 1e-5));
         const T invDet = T(1) / det;
         for (int i = 0; i < 4; ++i) x[i] -= delta[i] * invDet;
     }
@@ -528,8 +529,8 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
   public:
     using State = struct State {
         std::array<T, 4> s_{};
-        std::array<T, 4> hp_{};
-        std::array<T, 4> tanhhp_{};
+        std::array<T, 4> y_{};
+        std::array<T, 4> tanhy_{};
     };
 
     LadderOTA() = default;
@@ -545,8 +546,8 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
     template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
         auto x       = ctxt.getInput();
-        auto &hp     = state.hp_;
-        auto &tanhhp = state.tanhhp_;
+        auto &hp     = state.y_;
+        auto &tanhhp = state.tanhy_;
         auto &s      = state.s_;
 
         std::array<T, 4> derivlp;
@@ -686,14 +687,14 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
 
         std::array<T, 4> lp;
         for (int i = 0; i < 4; ++i) {
-            auto v      = gain_ * state.tanhhp_[i];
+            auto v      = gain_ * state.tanhy_[i];
             lp[i]       = v + state.s_[i];
             state.s_[i] = lp[i] + v;
         }
 
         if constexpr (FT == kLowPass) ctxt.setOutput(lp[3]);
         else if (FT == kHighPass || FT == kBandPass)
-            ctxt.setOutput(state.hp_[3]);
+            ctxt.setOutput(state.y_[3]);
     }
 
     PROCESSBLOCK_
@@ -703,8 +704,7 @@ template <typename T, FilterType FT = kLowPass> class LadderOTA
     T res_;
 };
 
-template <typename T, FilterType FT = kLowPass, int NSteps = 2>
-class LadderTransistor
+template <typename T, FilterType FT = kLowPass> class LadderTransistor
 {
     /*
      * implements 4 stage ladder using newton method
@@ -743,7 +743,12 @@ class LadderTransistor
   public:
     using State = struct State {
         std::array<T, 4> s_{};
-        std::array<T, 4> hp_{};
+        // newton resolve unknown
+        std::array<T, 4> y_{};
+
+        struct Empty {
+        };
+        std::conditional_t<FT == kLowPass, std::array<T, 4>, Empty> tanhy_{};
     };
 
     LadderTransistor() = default;
@@ -758,99 +763,130 @@ class LadderTransistor
 
     template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
-        auto x   = ctxt.getInput();
-        auto &hp = state.hp_;
-        auto &s  = state.s_;
+        auto x  = ctxt.getInput();
+        auto &s = state.s_;
 
-        // lowpass output & loopback value
-        std::array<T, 4> lp;
-        std::array<T, 4> loop;
-        for (int i = 0; i < 4; ++i) {
-            lp[i]   = gain_ * hp[i] + s[i];
-            loop[i] = dsp::fasttanh(lp[i]);
+        // jacobian matrix coefficient
+        SparseJacobian4x4<T> jacobian;
+
+        if constexpr (FT == kLowPass) {
+            // unknown y is the lp outputs
+            auto &lp     = state.y_;
+            auto &tanhlp = state.tanhy_;
+
+            // lowpass output & loopback value
+            std::array<T, 4> loop;
+            for (int i = 0; i < 4; ++i) {
+                loop[i] = gain_ * tanhlp[i];
+            }
+
+            // derivation d/dx of loopbackvalue (tanh' = 1-tanh²)
+            std::array<T, 4> derivloop;
+            for (int i = 0; i < 4; ++i) {
+                auto derivtanhlp = T(1) - tanhlp[i] * tanhlp[i];
+                derivloop[i]     = gain_ * derivtanhlp;
+            }
+
+            // updated lp
+            std::array<T, 4> flp;
+            if constexpr (FT == kLowPass) {
+                auto tanhinput = dsp::fasttanh(x - res_ * lp[3]);
+                auto derivinput =
+                    T(0) - gain_ * res_ * (T(1) - tanhinput * tanhinput);
+                flp[0] = gain_ * tanhinput - loop[0] + s[0];
+                flp[1] = loop[0] - loop[1] + s[1];
+                flp[2] = loop[1] - loop[2] + s[2];
+                flp[3] = loop[2] - loop[3] + s[3];
+
+                jacobian = {
+                    T(0) - derivloop[0], T(0) - derivloop[1],
+                    T(0) - derivloop[2], T(0) - derivloop[3],
+                    derivloop[0],        derivloop[1],
+                    derivloop[2],        derivinput,
+                };
+            }
+
+            jacobian.newtonStep(lp, flp);
+
+            for (int i = 0; i < 4; ++i) tanhlp[i] = dsp::fasttanh(lp[i]);
         }
 
-        // derivation d/dhp of loopbackvalue (tanh' = 1-tanh²)
-        std::array<T, 4> derivloop;
-        for (int i = 0; i < 4; ++i)
-            derivloop[i] = gain_ * (T(1) - loop[i] * loop[i]);
+        else if (FT == kHighPass || FT == kBandPass) {
+            auto &hp = state.y_;
 
-        [[maybe_unused]] std::array<T, 4> tanhhp;
-        if (FT == kHighPass || FT == kBandPass) {
+            // lowpass output & loopback value
+            std::array<T, 4> lp;
+            std::array<T, 4> loop;
+            for (int i = 0; i < 4; ++i) {
+                lp[i]   = gain_ * hp[i] + s[i];
+                loop[i] = dsp::fasttanh(lp[i]);
+            }
+
+            // derivation d/dhp of loopbackvalue (tanh' = 1-tanh²)
+            std::array<T, 4> derivloop;
+            for (int i = 0; i < 4; ++i)
+                derivloop[i] = gain_ * (T(1) - loop[i] * loop[i]);
+
+            std::array<T, 4> tanhhp;
             for (int i = 0; i < 4; ++i) {
                 tanhhp[i] = dsp::fasttanh(hp[i]);
             }
+
+            // updated hp
+            std::array<T, 4> fhp;
+            // jacobian matrix coefficient
+            if (FT == kHighPass) {
+                auto tanhinput  = dsp::fasttanh(x - res_ * hp[3]);
+                auto derivinput = T(0) - res_ * (T(1) - tanhinput * tanhinput);
+                fhp[0]          = tanhinput - loop[0];
+                fhp[1]          = tanhhp[0] - loop[1];
+                fhp[2]          = tanhhp[1] - loop[2];
+                fhp[3]          = tanhhp[2] - loop[3];
+
+                jacobian = {
+                    T(0) - derivloop[0],          T(0) - derivloop[1],
+                    T(0) - derivloop[2],          T(0) - derivloop[3],
+                    T(1) - tanhhp[0] * tanhhp[0], T(1) - tanhhp[1] * tanhhp[1],
+                    T(1) - tanhhp[2] * tanhhp[2], derivinput,
+                };
+            }
+
+            else if (FT == kBandPass) {
+                auto tanhinput  = dsp::fasttanh(x + res_ * hp[3]);
+                auto derivinput = res_ * (T(1) - tanhinput * tanhinput);
+                fhp[0]          = tanhinput - loop[0];
+                fhp[1]          = loop[0] - loop[1];
+                fhp[2]          = tanhhp[1] - loop[2];
+                fhp[3]          = loop[2] - loop[3];
+
+                jacobian = {
+                    T(0) - derivloop[0], T(0) - derivloop[1],
+                    T(0) - derivloop[2], T(0) - derivloop[3],
+                    derivloop[0],        T(1) - tanhhp[1] * tanhhp[1],
+                    derivloop[2],        derivinput,
+                };
+            }
+
+            jacobian.newtonStep(hp, fhp);
         }
-
-        // updated hp
-        std::array<T, 4> fhp;
-        // jacobian matrix coefficient
-        SparseJacobian4x4<T> jacobian;
-        if constexpr (FT == kLowPass) {
-            auto tanhinput = dsp::fasttanh(x - res_ * lp[3]);
-            auto derivinput =
-                T(0) - res_ * gain_ * (T(1) - tanhinput * tanhinput);
-            fhp[0] = tanhinput - loop[0];
-            fhp[1] = loop[0] - loop[1];
-            fhp[2] = loop[1] - loop[2];
-            fhp[3] = loop[2] - loop[3];
-
-            jacobian = {
-                T(0) - derivloop[0], T(0) - derivloop[1], T(0) - derivloop[2],
-                T(0) - derivloop[3], derivloop[0],        derivloop[1],
-                derivloop[2],        derivinput,
-            };
-        }
-
-        else if (FT == kHighPass) {
-            auto tanhinput  = dsp::fasttanh(x - res_ * hp[3]);
-            auto derivinput = T(0) - res_ * (T(1) - tanhinput * tanhinput);
-            fhp[0]          = tanhinput - loop[0];
-            fhp[1]          = tanhhp[0] - loop[1];
-            fhp[2]          = tanhhp[1] - loop[2];
-            fhp[3]          = tanhhp[2] - loop[3];
-
-            jacobian = {
-                T(0) - derivloop[0],          T(0) - derivloop[1],
-                T(0) - derivloop[2],          T(0) - derivloop[3],
-                T(1) - tanhhp[0] * tanhhp[0], T(1) - tanhhp[1] * tanhhp[1],
-                T(1) - tanhhp[2] * tanhhp[2], derivinput,
-            };
-        }
-
-        else if (FT == kBandPass) {
-            auto tanhinput  = dsp::fasttanh(x + res_ * hp[3]);
-            auto derivinput = res_ * (T(1) - tanhinput * tanhinput);
-            fhp[0]          = tanhinput - loop[0];
-            fhp[1]          = loop[0] - loop[1];
-            fhp[2]          = tanhhp[1] - loop[2];
-            fhp[3]          = loop[2] - loop[3];
-
-            jacobian = {
-                T(0) - derivloop[0], T(0) - derivloop[1],
-                T(0) - derivloop[2], T(0) - derivloop[3],
-                derivloop[0],        T(1) - tanhhp[1] * tanhhp[1],
-                derivloop[2],        derivinput,
-            };
-        }
-
-        jacobian.newtonStep(hp, fhp);
     }
 
-    template <class Ctxt> void process(Ctxt ctxt, State &state) const
+    template <class Ctxt>
+    void process(Ctxt ctxt, State &state, int nsteps = 2) const
     {
-        for (int i = 0; i < NSteps; ++i) solve(ctxt, state);
+        for (int i = 0; i < nsteps; ++i) solve(ctxt, state);
 
-        std::array<T, 4> lp;
         for (int i = 0; i < 4; ++i) {
-            auto v      = gain_ * state.hp_[i];
-            lp[i]       = v + state.s_[i];
-            state.s_[i] = lp[i] + v;
+            if constexpr (FT == kLowPass) {
+                state.s_[i] = T(2) * state.y_[i] - state.s_[i];
+            } else if (FT == kHighPass || FT == kBandPass) {
+                auto v      = gain_ * state.y_[i];
+                auto lp     = v + state.s_[i];
+                state.s_[i] = lp + v;
+            }
         }
 
-        if constexpr (FT == kLowPass) ctxt.setOutput(lp[3]);
-        else if (FT == kHighPass || FT == kBandPass)
-            ctxt.setOutput(state.hp_[3]);
+        ctxt.setOutput(state.y_[3]);
     }
 
     PROCESSBLOCK_
@@ -884,7 +920,7 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyTransistor
   public:
     using State = struct State {
         std::array<T, 2> s_{};
-        std::array<T, 2> hp_{};
+        std::array<T, 2> y_{};
     };
 
     SallenKeyTransistor() = default;
@@ -900,7 +936,7 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyTransistor
     template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
         auto x   = ctxt.getInput();
-        auto &hp = state.hp_;
+        auto &hp = state.y_;
         auto &s  = state.s_;
 
         auto input = dsp::fasttanh(x);
@@ -921,7 +957,7 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyTransistor
         jacobian = {-derivloop00, derivloop01 - derivloop1, derivloop00,
                     -derivloop01};
 
-        jacobian.solveNewton(hp, fhp);
+        jacobian.newtonStep(hp, fhp);
 
         //// lowpass output & loopback value
         // T lp[2];
@@ -997,14 +1033,14 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyTransistor
 
         T y[2];
         for (int i = 0; i < 2; ++i) {
-            auto v      = gain_ * state.hp_[i];
+            auto v      = gain_ * state.y_[i];
             y[i]        = v + state.s_[i];
             state.s_[i] = y[i] + v;
         }
 
         if constexpr (FT == kLowPass) ctxt.setOutput(y[1]);
         // else if (FT == kHighPass || FT == kBandPass)
-        //     ctxt.setOutput(state.hp_[3]);
+        //     ctxt.setOutput(state.y_[3]);
     }
 
     PROCESSBLOCK_
@@ -1018,14 +1054,14 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyDiode
 {
     /*
      * implements 4 stage ladder using newton method
-     *                         ┌─────┤tanh├────┐
+     *                         ┌───────────────┐
      *             hp1         v               │
      *  x ────>┤+├───>┤g⋅+s1├─|+|──┬───> lp1   │
      *          ^-                 │           │
-     *          │                  v           │
+     *          │                  v           △⋅res
      *          └<────┤sinh├<──────┤           │
-     *                             │           │
-     *          ┌──────────────────┘           △⋅res
+     *                             │         │tanh│
+     *          ┌──────────────────┘           ^
      *          │                              │
      *          │                              │
      *          │               ┌──────────────┘
@@ -1035,27 +1071,28 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyDiode
      *          │               v
      *          └─────┤sinh├<───┘
      *
-     *   hp1 = x - sinh(g⋅hp1+s1 + res⋅tanh(g⋅hp2+s2))
-     *   hp2 = g⋅hp1+s1 + res⋅(g⋅hp2+s2) - sinh(g⋅hp2+s2)
+     *   lp1 = g⋅(x - sinh(lp1))  + s + res⋅tanh(lp2))
+     *   lp2 = g⋅(lp1 - sinh(lp2)) + s
      */
   public:
     using State = struct State {
         std::array<T, 2> s_{};
-        std::array<T, 2> hp_{};
+        std::array<T, 2> y_{};
+        std::array<T, 2> sinhy_{};
     };
 
     static T fsinh(T x)
     {
         auto x2 = x * x;
-        return x * (1 + x2 * (T(.16666666666666666) +
-                              x2 * (T(0.008333333333333333) +
-                                    x2 * T(0.001851851851851852))));
+        return x * (T(1) + x2 * (T(.16666666666666666) +
+                                 x2 * (T(0.008333333333333333) +
+                                       x2 * T(0.001851851851851852))));
     }
     static T dfsinh_dx(T x)
     {
         auto x2 = x * x;
-        return 1 + x2 * (T(.5) + x2 * (T(0.041666666666666664) +
-                                       x2 * T(0.001388888888888889)));
+        return T(1) + x2 * (T(.5) + x2 * (T(0.041666666666666664) +
+                                          x2 * T(0.001388888888888889)));
     }
 
     SallenKeyDiode() = default;
@@ -1066,42 +1103,38 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyDiode
         gain_ = warpGain(freq);
         setRes(res);
     }
-    void setRes(const T &res)
-    {
-        // protection agains explosion but this needs to be changed
-        if (res * gain_ > T(0.5))
-            res_ = ((res * gain_ - 0.5) * 0.45 + 0.5) / gain_;
-        else
-            res_ = res;
-    }
+    void setRes(const T &res) { res_ = res; }
 
     template <class Ctxt> void solve(Ctxt ctxt, State &state) const
     {
-        auto x   = ctxt.getInput();
-        auto &hp = state.hp_;
-        auto &s  = state.s_;
+        auto x       = ctxt.getInput();
+        auto &lp     = state.y_;
+        auto &sinhlp = state.sinhy_;
+        auto &s      = state.s_;
 
-        auto input = x;
-        auto gain0 = gain_ * hp[0] + s[0];
-        auto gain1 = gain_ * hp[1] + s[1];
-        // auto lp0   = gain0+res_*gain1;
-        auto loop  = fasttanh(res_ * gain1);
-        auto lp0   = gain0 + loop;
-        auto loop0 = fsinh(lp0);
-        auto loop1 = fsinh(gain1);
+        auto loop = fasttanh(lp[1]);
 
-        auto derivloop0  = dfsinh_dx(lp0);
-        auto derivloop00 = gain_ * derivloop0;
-        // auto derivloop01 = res_*derivloop00;
-        auto derivloop01 = res_ * (1 - loop * loop) * derivloop00;
-        auto derivloop1  = gain_ * dfsinh_dx(gain1);
+        auto derivloop0 = gain_ * dfsinh_dx(lp[0]);
+        auto derivloop1 = gain_ * dfsinh_dx(lp[1]);
+        auto derivloop  = res_ * (T(1) - loop * loop);
 
-        std::array<T, 2> fhp = {input - loop0, lp0 - loop1};
+        T xlp, xhp;
+        if constexpr (FT == kLowPass) {
+            xlp = x, xhp = 0;
+        } else if constexpr (FT == kBandPass || FT == kHighPass) {
+            xlp = 0, xhp = x;
+        }
+
+        std::array<T, 2> flp = {gain_ * (xlp - sinhlp[0]) + s[0] +
+                                    res_ * (xhp + loop),
+                                gain_ * (lp[0] - sinhlp[1]) + s[1]};
         Jacobian2x2<T> jacobian;
-        jacobian = {-derivloop00, res_ * gain_ - derivloop1, gain_,
-                    -derivloop01};
+        jacobian = {-derivloop0, -derivloop1, gain_, derivloop};
 
-        jacobian.solveNewton(hp, fhp);
+        jacobian.newtonStep(lp, flp);
+
+        sinhlp[0] = fsinh(lp[0]);
+        sinhlp[1] = fsinh(lp[1]);
     }
 
     template <class Ctxt> void process(Ctxt ctxt, State &state) const
@@ -1109,20 +1142,109 @@ template <typename T, FilterType FT = kLowPass> class SallenKeyDiode
         solve(ctxt, state);
         solve(ctxt, state);
 
-        T y[2];
-        for (int i = 0; i < 2; ++i) {
-            auto v      = gain_ * state.hp_[i];
-            y[i]        = v + state.s_[i];
-            state.s_[i] = y[i] + v;
-        }
+        auto x = ctxt.getInput();
+        if constexpr (FT == kLowPass)
+            state.s_[0] += T(2) * gain_ * (x - state.sinhy_[0]);
+        else if (FT == kHighPass || FT == kBandPass)
+            state.s_[0] -= T(2) * gain_ * (state.sinhy_[0]);
 
-        if constexpr (FT == kLowPass) ctxt.setOutput(y[1]);
+        state.s_[1] = T(2) * state.y_[1] - state.s_[1];
+
+        if constexpr (FT == kLowPass || FT == kBandPass)
+            ctxt.setOutput(state.y_[1]);
+        else if constexpr (FT == kHighPass)
+            ctxt.setOutput(state.y_[0] - state.y_[1]);
     }
 
     PROCESSBLOCK_
 
   private:
     T gain_;
+    T res_;
+};
+
+template <typename T, FilterType FT = kLowPass> class SallenKeyDiode2
+{
+    /*
+     * implements 4 stage ladder using newton method
+     *                         ┌───────────────┐
+     *             hp1         v               │
+     *  x ────>┤+├───>┤g⋅+s1├─|+|──┬───> lp1   │
+     *          ^-                 │           │
+     *          │                  v           △⋅res
+     *          └<───┤tanh⁻¹├<─────┤           │
+     *                             │           │
+     *          ┌──────────────────┘           ^
+     *          │                              │
+     *          │                              │
+     *          │               ┌──────────────┘
+     *          v  hp2          │
+     *         ┤+├───>┤g⋅+s2├──>┼───> lp2
+     *          ^-              │
+     *          │               v
+     *          └───┤tanh⁻¹├<───┘
+     *
+     * lp1 = tanh(x-(lp1-res⋅lp2-s1)/g)
+     * lp2 = tanh(lp1 - (lp2-s2)/g)
+     */
+  public:
+    using State = struct State {
+        std::array<T, 2> s_{};
+        std::array<T, 2> y_{};
+    };
+
+    SallenKeyDiode2() = default;
+    SallenKeyDiode2(const T &freq, const T &res) { setFreq(freq, res); }
+
+    void setFreq(const T &freq, const T &res = 0.f)
+    {
+        invgain_ = T(1) / warpGain(freq);
+        setRes(res);
+    }
+    void setRes(const T &res) { res_ = res; }
+
+    template <class Ctxt> void solve(Ctxt ctxt, State &state) const
+    {
+        auto x   = ctxt.getInput();
+        auto &lp = state.y_;
+        auto &s  = state.s_;
+
+        /*
+         * lp1 = tanh(x-(lp1-res⋅lp2-s1)/g)
+         * lp2 = tanh(lp1 - (lp2-s2)/g)
+         */
+        auto flp0 = dsp::tanh(x - (lp[0] - res_ * lp[1] - s[0]) * invgain_);
+        auto flp1 = dsp::tanh(lp[0] - (lp[1] - s[1]) * invgain_);
+
+        auto d0 = (T(1) - flp0 * flp0);
+        auto d1 = (T(1) - flp1 * flp1);
+
+        std::array<T, 2> flp = {flp0, flp1};
+        Jacobian2x2<T> jacobian;
+        jacobian = {-invgain_ * d0, -invgain_ * d1, d0, res_ * invgain_ * d1};
+
+        jacobian.newtonStep(lp, flp);
+    }
+
+    template <class Ctxt> void process(Ctxt ctxt, State &state) const
+    {
+        solve(ctxt, state);
+        solve(ctxt, state);
+        solve(ctxt, state);
+        solve(ctxt, state);
+        solve(ctxt, state);
+        solve(ctxt, state);
+
+        state.s_[0] = T(2) * (state.y_[0] - res_ * state.y_[1]) - state.s_[0];
+        state.s_[1] = T(2) * state.y_[1] - state.s_[1];
+
+        ctxt.setOutput(state.y_[1]);
+    }
+
+    PROCESSBLOCK_
+
+  private:
+    T invgain_;
     T res_;
 };
 } // namespace dsp::va
