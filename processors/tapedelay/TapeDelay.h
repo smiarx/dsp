@@ -78,7 +78,7 @@ class TapeDelay
     [[nodiscard]] float getCutHiPass() const { return cuthighpass_; }
     [[nodiscard]] float getSaturation() const
     {
-        return saturation_.getTarget()[0];
+        return dsp::getlane<0>(saturation_.getTarget());
     }
     [[nodiscard]] float getFeedback() const { return feedback_; }
     [[nodiscard]] float getDryWet() const { return drywet_; }

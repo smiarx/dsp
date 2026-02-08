@@ -159,8 +159,11 @@ template <> struct intrin<int32_t, 4> {
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
-        return Shift > 0 ? _mm_slli_si128(value, 4 * Shift)
-                         : _mm_srli_si128(value, -4 * Shift);
+        if constexpr (Shift > 0) {
+            return _mm_slli_si128(value, 4 * Shift);
+        } else {
+            return _mm_srli_si128(value, -4 * Shift);
+        }
     }
 
     static always_inline type vectorcall flip1(type value)
@@ -343,9 +346,12 @@ template <> struct intrin<float, 4> {
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
-        auto r = Shift > 0
-                     ? _mm_slli_si128(_mm_castps_si128(value), 4 * Shift)
-                     : _mm_srli_si128(_mm_castps_si128(value), -4 * Shift);
+        __m128i r;
+        if constexpr (Shift > 0) {
+            r = _mm_slli_si128(_mm_castps_si128(value), 4 * Shift);
+        } else {
+            r = _mm_srli_si128(_mm_castps_si128(value), -4 * Shift);
+        }
         return _mm_castsi128_ps(r);
     }
 
@@ -538,9 +544,11 @@ template <> struct intrin<float, 2> {
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
-        return Shift > 0
-                   ? _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 0, 3))
-                   : _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 3, 1));
+        if constexpr (Shift > 0) {
+            return _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 0, 3));
+        } else {
+            return _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 3, 1));
+        }
     }
 
     template <size_t K>
@@ -704,8 +712,11 @@ template <> struct intrin<int, 2> {
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
-        return Shift > 0 ? _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 0, 3))
-                         : _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 3, 1));
+        if constexpr (Shift > 0) {
+            return _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 0, 3));
+        } else {
+            return _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 3, 1));
+        }
     }
 
     template <size_t K>
@@ -859,9 +870,12 @@ template <> struct intrin<double, 2> {
 
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
-        auto r = Shift > 0
-                     ? _mm_slli_si128(_mm_castpd_si128(value), 8 * Shift)
-                     : _mm_srli_si128(_mm_castpd_si128(value), -8 * Shift);
+        __m128i r;
+        if constexpr (Shift > 0) {
+            r = _mm_slli_si128(_mm_castpd_si128(value), 8 * Shift);
+        } else {
+            r = _mm_srli_si128(_mm_castpd_si128(value), -8 * Shift);
+        }
         return _mm_castsi128_pd(r);
     }
 

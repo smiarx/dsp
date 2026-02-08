@@ -41,7 +41,7 @@ static auto cpuid(uint32_t reg[4], unsigned int level,
                   unsigned int count = 0) noexcept
 {
 #if defined(_MSC_VER)
-    __cpuidex(reg, level, count);
+    __cpuidex((int *)reg, (int)level, (int)count);
 #elif defined(__INTEL_COMPILER)
     __cpuid(reg, level);
 #elif defined(__GNUC__) || defined(__clang__)
