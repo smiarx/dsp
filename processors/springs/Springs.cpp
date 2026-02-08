@@ -240,10 +240,12 @@ void Springs::process(const float *const *__restrict in,
             dsp::Context(reinterpret_cast<dsp::mfloat<2> *>(x_), blockSize);
         auto ctxtdec = dsp::BufferContext(x_, blockSize, bufferDec_);
 
-        CTXTRUN(ctxtIn)
+        CTXTRUNVEC(ctxtIn)
         {
-            auto mix = (*(inl++) + *(inr++)) * 0.5f;
+            auto mix = (ctxtIn.load(*inl) + ctxtIn.load(*inr)) * 0.5f;
             ctxtIn.setOutput(mix);
+            inl += ctxtIn.getIncrSize();
+            inr += ctxtIn.getIncrSize();
         };
 
 #ifdef SPRINGS_SHAKE
