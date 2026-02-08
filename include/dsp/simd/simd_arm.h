@@ -23,15 +23,21 @@ template <typename T, size_t N> struct intrin;
 
 ///////////////// FLOAT x 2 ////////////////
 template <> struct intrin<float, 2> {
-    using basetype               = float;
-    using type                   = float32x2_t;
-    using maskbasetype           = uint32_t;
-    using masktype               = uint32x2_t;
-    static constexpr auto init   = vdup_n_f32;
-    static constexpr auto load   = vld1_f32;
-    static constexpr auto loadu  = vld1_f32;
-    static constexpr auto store  = vst1_f32;
-    static constexpr auto storeu = vst1_f32;
+    using basetype             = float;
+    using type                 = float32x2_t;
+    using maskbasetype         = uint32_t;
+    using masktype             = uint32x2_t;
+    static constexpr auto init = vdup_n_f32;
+    static always_inline type vectorcall load(const basetype *data)
+    {
+        return vld1_f32(data);
+    }
+    static constexpr auto loadu = load;
+    static always_inline void vectorcall store(basetype *dest, type value)
+    {
+        vst1_f32(dest, value);
+    }
+    static constexpr auto storeu = store;
     static constexpr auto add    = vadd_f32;
     static constexpr auto sub    = vsub_f32;
     static constexpr auto neg    = vneg_f32;
@@ -161,15 +167,21 @@ template <> struct intrin<float, 2> {
 
 ///////////////// FLOAT x 4 ////////////////
 template <> struct intrin<float, 4> {
-    using basetype               = float;
-    using type                   = float32x4_t;
-    using maskbasetype           = uint32_t;
-    using masktype               = uint32x4_t;
-    static constexpr auto init   = vdupq_n_f32;
-    static constexpr auto load   = vld1q_f32;
-    static constexpr auto loadu  = vld1q_f32;
-    static constexpr auto store  = vst1q_f32;
-    static constexpr auto storeu = vst1q_f32;
+    using basetype             = float;
+    using type                 = float32x4_t;
+    using maskbasetype         = uint32_t;
+    using masktype             = uint32x4_t;
+    static constexpr auto init = vdupq_n_f32;
+    static always_inline type vectorcall load(const basetype *data)
+    {
+        return vld1q_f32(data);
+    }
+    static constexpr auto loadu = load;
+    static always_inline void vectorcall store(basetype *dest, type value)
+    {
+        vst1q_f32(dest, value);
+    }
+    static constexpr auto storeu = store;
     static constexpr auto add    = vaddq_f32;
     static constexpr auto sub    = vsubq_f32;
     static constexpr auto neg    = vnegq_f32;
@@ -322,15 +334,21 @@ template <> struct intrin<float, 4> {
 #ifdef DSP_AARCH64
 ///////////////// DOUBLE x 2 ////////////////
 template <> struct intrin<double, 2> {
-    using basetype               = double;
-    using type                   = float64x2_t;
-    using maskbasetype           = uint64_t;
-    using masktype               = uint64x2_t;
-    static constexpr auto init   = vdupq_n_f64;
-    static constexpr auto load   = vld1q_f64;
-    static constexpr auto loadu  = vld1q_f64;
-    static constexpr auto store  = vst1q_f64;
-    static constexpr auto storeu = vst1q_f64;
+    using basetype             = double;
+    using type                 = float64x2_t;
+    using maskbasetype         = uint64_t;
+    using masktype             = uint64x2_t;
+    static constexpr auto init = vdupq_n_f64;
+    static always_inline type vectorcall load(const basetype *data)
+    {
+        return vld1q_f64(data);
+    }
+    static constexpr auto loadu = load;
+    static always_inline void vectorcall store(basetype *dest, type value)
+    {
+        vst1q_f64(dest, value);
+    }
+    static constexpr auto storeu = store;
     static constexpr auto add    = vaddq_f64;
     static constexpr auto sub    = vsubq_f64;
     static constexpr auto neg    = vnegq_f64;
@@ -435,15 +453,21 @@ template <> struct intrin<double, 2> {
 
 ///////////////// INT x 2 ////////////////
 template <> struct intrin<int32_t, 2> {
-    using basetype               = int32_t;
-    using type                   = int32x2_t;
-    using maskbasetype           = uint32_t;
-    using masktype               = uint32x2_t;
-    static constexpr auto init   = vdup_n_s32;
-    static constexpr auto load   = vld1_s32;
-    static constexpr auto loadu  = vld1_s32;
-    static constexpr auto store  = vst1_s32;
-    static constexpr auto storeu = vst1_s32;
+    using basetype             = int32_t;
+    using type                 = int32x2_t;
+    using maskbasetype         = uint32_t;
+    using masktype             = uint32x2_t;
+    static constexpr auto init = vdup_n_s32;
+    static always_inline type vectorcall load(const basetype *data)
+    {
+        return vld1_s32(data);
+    }
+    static constexpr auto loadu = load;
+    static always_inline void vectorcall store(basetype *dest, type value)
+    {
+        vst1_s32(dest, value);
+    }
+    static constexpr auto storeu = store;
     static constexpr auto add    = vadd_s32;
     static constexpr auto sub    = vsub_s32;
     static constexpr auto neg    = vneg_s32;
@@ -480,8 +504,14 @@ template <> struct intrin<int32_t, 2> {
     }
     static always_inline auto vectorcall bitNeg(type x) { return vmvn_s32(x); }
 
-    static constexpr auto bitShiftLeft  = vshl_n_s32;
-    static constexpr auto bitShiftRight = vshr_n_s32;
+    static always_inline type vectorcall bitShiftLeft(type value, int sh)
+    {
+        return vshl_s32(value, init(sh));
+    }
+    static always_inline type vectorcall bitShiftRight(type value, int sh)
+    {
+        return bitShiftLeft(value, -sh);
+    }
 
     static constexpr auto max = vmax_s32;
     static constexpr auto min = vmin_s32;
@@ -585,15 +615,21 @@ template <> struct intrin<int32_t, 2> {
 
 ///////////////// INT x 4 ////////////////
 template <> struct intrin<int32_t, 4> {
-    using basetype               = int32_t;
-    using type                   = int32x4_t;
-    using maskbasetype           = uint32_t;
-    using masktype               = uint32x4_t;
-    static constexpr auto init   = vdupq_n_s32;
-    static constexpr auto load   = vld1q_s32;
-    static constexpr auto loadu  = vld1q_s32;
-    static constexpr auto store  = vst1q_s32;
-    static constexpr auto storeu = vst1q_s32;
+    using basetype             = int32_t;
+    using type                 = int32x4_t;
+    using maskbasetype         = uint32_t;
+    using masktype             = uint32x4_t;
+    static constexpr auto init = vdupq_n_s32;
+    static always_inline type vectorcall load(const basetype *data)
+    {
+        return vld1q_s32(data);
+    }
+    static constexpr auto loadu = load;
+    static always_inline void vectorcall store(basetype *dest, type value)
+    {
+        vst1q_s32(dest, value);
+    }
+    static constexpr auto storeu = store;
     static constexpr auto add    = vaddq_s32;
     static constexpr auto sub    = vsubq_s32;
     static constexpr auto neg    = vnegq_s32;
@@ -630,8 +666,14 @@ template <> struct intrin<int32_t, 4> {
     }
     static always_inline auto vectorcall bitNeg(type x) { return vmvnq_s32(x); }
 
-    static constexpr auto bitShiftLeft  = vshlq_n_s32;
-    static constexpr auto bitShiftRight = vshrq_n_s32;
+    static always_inline type vectorcall bitShiftLeft(type value, int sh)
+    {
+        return vshlq_s32(value, init(sh));
+    }
+    static always_inline type vectorcall bitShiftRight(type value, int sh)
+    {
+        return bitShiftLeft(value, -sh);
+    }
 
     static constexpr auto max = vmaxq_s32;
     static constexpr auto min = vminq_s32;
