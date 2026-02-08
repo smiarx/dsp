@@ -19,15 +19,26 @@ template <typename T> struct constants {
 // NOLINTEND (readability-identifier-naming)
 
 // https://varietyofsound.wordpress.com/2011/02/14/efficient-tanh-computation-using-lamberts-continued-fraction/
-template <typename F> static inline constexpr F fasttanh(F x)
+// https://math.stackexchange.com/questions/107292/rapid-approximation-of-tanhx
+template <typename T> static inline constexpr T fasttanh(T x)
 {
-    F xsq    = x * x;
-    F num    = x * (F(135135) + xsq * (F(17325) + xsq * (F(378) + xsq)));
-    F den    = F(135135.) + xsq * (F(62370) + xsq * (F(3150) + F(28) * xsq));
-    F result = num / den;
-    result   = blend(result > 1, F(1), result);
-    result   = blend(result < -1, F(-1), result);
-    return result;
+    /* if tanh(z/2) = num/den, then
+     * tan(z) = 2⋅tanh(z/2)/(1+tanh²(z/2))
+     *        = 2⋅num/den / (1+num²/den²)
+     *        = 2⋅num⋅den / (num²+den²)
+     */
+    x     = x * T(0.5);
+    T xsq = x * x;
+    T num, den;
+    if constexpr (std::is_same_v<baseType<T>, double>) {
+        num = T(21) * x * (T(495) + xsq * (T(60) + xsq));
+        den = T(10395) + xsq * (T(4725) + xsq * (T(210) + xsq));
+    } else {
+        num = x * (T(945) + xsq * (T(105) + xsq));
+        den = T(15) * (T(63) + xsq * (T(28) + xsq));
+    }
+    T tanh = T(2) * num * den / (num * num + den * den);
+    return tanh;
 }
 
 template <typename F> constexpr auto sinc(F x)
