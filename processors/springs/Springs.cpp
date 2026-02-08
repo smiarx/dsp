@@ -338,17 +338,17 @@ void Springs::process(const float *const *__restrict in,
             // outout is last intermediary value
             x = allpassIntermediary_[kApChainSize - 1];
             ctxtdec.setOutput(x);
+
+            // write to loopback
+            x = ctxtdec.getInput();
+            loopdl_.write(ctxtdec, x);
         };
 
         CTXTRUN(ctxtdec)
         {
-            auto x = ctxtdec.getInput();
-            loopdl_.write(ctxtdec, x);
+            eq_.process(ctxtdec, eqState_);
+            lowpass_.process(ctxtdec, lowpassState_);
         };
-
-        CTXTRUN(ctxtdec) { eq_.process(ctxtdec, eqState_); };
-
-        lowpass_.processBlock(ctxtdec, lowpassState_);
 
 #ifdef SPRINGS_RMS
         rms_.processBlock(ctxtdec, rmsStack_);
