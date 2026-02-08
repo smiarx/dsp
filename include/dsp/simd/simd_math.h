@@ -82,11 +82,23 @@ always_inline simd<T, N> shift(simd<T, N> x)
 {
     return x.template shift<Shift>();
 }
+
 ////////////////////// sum ////////////////////////
 template <typename T> always_inline T sum(T x) { return x; }
 template <typename T, size_t N> always_inline T sum(simd<T, N> x)
 {
     return x.sum();
+}
+////////////////////// product ////////////////////////
+template <size_t K = 1, typename T> always_inline T product(T x)
+{
+    static_assert(K == 1);
+    return x;
+}
+template <size_t K = 1, typename T, size_t N>
+always_inline auto product(simd<T, N> x)
+{
+    return x.template product<K>();
 }
 
 template <size_t K, typename T> always_inline auto reduce(T x)
