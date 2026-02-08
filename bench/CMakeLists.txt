@@ -11,5 +11,9 @@ set(bench_sources
 )
 
 add_executable(bench ${bench_sources})
-target_include_directories(bench PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(bench PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(bench PUBLIC
+    dsp_include
+    dsp_compile_options
+)
 target_link_libraries(bench PRIVATE Catch2::Catch2WithMain)
