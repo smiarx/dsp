@@ -343,7 +343,7 @@ void Springs::process(const float *const *__restrict in,
 
         CTXTRUN(ctxtdec) { eq_.process(ctxtdec, eqState_); };
 
-        CTXTRUN(ctxtdec) { lowpass_.process(ctxtdec, lowpassState_); };
+        lowpass_.processBlock(ctxtdec, lowpassState_);
 
 #ifdef SPRINGS_RMS
         rms_.processBlock(ctxtdec, rmsStack_);

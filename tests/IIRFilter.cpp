@@ -83,6 +83,15 @@ TEST_CASE("IIR Filter")
 
             REQUIRE_THAT(x, WithinAbs(expect[i], 1e-8));
         }
+
+        // test block
+        double xblock[kN]{};
+        xblock[0] = 1;
+        state     = {};
+        filter.processBlock(dsp::Context(xblock, kN), state);
+        for (int i = 0; i < kN; ++i) {
+            REQUIRE_THAT(xblock[i], WithinAbs(expect[i], 1e-8));
+        }
     }
 
     SECTION("float ellip")
@@ -252,6 +261,17 @@ TEST_CASE("IIR Filter")
 
             for (int j = 0; j < 4; ++j) {
                 REQUIRE_THAT(x[j], WithinAbs(expect[j][i], 1e-5f));
+            }
+        }
+
+        // test block
+        ft xblock[kN]{};
+        xblock[0] = 1;
+        state     = {};
+        filter.processBlock(dsp::Context(xblock, kN), state);
+        for (int i = 0; i < kN; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                REQUIRE_THAT(xblock[i][j], WithinAbs(expect[j][i], 1e-5f));
             }
         }
     }
