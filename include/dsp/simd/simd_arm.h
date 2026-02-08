@@ -91,6 +91,16 @@ template <> struct intrin<float, 2> {
             return value;
     }
 
+    template <size_t K>
+    static always_inline auto vectorcall duplicate(type value)
+    {
+        if constexpr (K == 2) {
+            return vcombine_f32(vzip1_f32(value, value),
+                                vzip2_f32(value, value));
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+
     template <int Shift> static always_inline type vectorcall shift(type value)
     {
         constexpr float32x2_t zero{};
@@ -484,6 +494,16 @@ template <> struct intrin<int32_t, 2> {
         if constexpr (K == 1) return vget_lane_s32(value, Id);
         else
             return value;
+    }
+
+    template <size_t K>
+    static always_inline auto vectorcall duplicate(type value)
+    {
+        if constexpr (K == 2) {
+            return vcombine_s32(vzip1_s32(value, value),
+                                vzip2_s32(value, value));
+        } else
+            static_assert(false, "wrong duplicate");
     }
 
     template <int Shift> static always_inline type vectorcall shift(type value)

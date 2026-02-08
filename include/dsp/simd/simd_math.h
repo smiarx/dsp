@@ -111,6 +111,19 @@ always_inline auto prefix(simd<T, N> x)
     return x.template prefix<K>();
 }
 
+/////////////////// duplicate ////////////////////////////
+template <size_t K, typename T> always_inline auto duplicate(T x)
+{
+    if constexpr (K == 1) return x;
+    else
+        return simd<T, K>(x);
+}
+template <size_t K, typename T, size_t N>
+always_inline auto duplicate(simd<T, N> x)
+{
+    return x.template duplicate<K>();
+}
+
 /////////////////// push ////////////////////////////
 template <typename P, typename O>
 [[nodiscard]] always_inline auto push(P /*x*/, O y)

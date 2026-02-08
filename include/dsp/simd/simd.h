@@ -367,6 +367,15 @@ template <typename T, size_t N> struct simd {
             return def::reduce4(value_);
         }
     }
+
+    template <size_t K>
+    always_inline simd<T, N * K> vectorcall duplicate() const noexcept
+    {
+        if constexpr (K == 1) return *this;
+        else
+            return def::template duplicate<K>(value_);
+    }
+
     template <size_t K> always_inline simd vectorcall flip() const noexcept
     {
         static_assert(K >= 1 && K <= N);
