@@ -324,7 +324,6 @@ void TapeDelay::process(const float *const *__restrict in,
             };
             pregain_  = savePregain[lastIncrSize - 1];
             postgain_ = savePostgain[lastIncrSize - 1];
-            saturation_.reset();
         } else {
             CTXTRUNVEC(ctxt)
             {
@@ -372,6 +371,7 @@ void TapeDelay::process(const float *const *__restrict in,
     wet_.reset();
     feedbackCompensated_.reset();
     speedMod_.reset();
+    saturation_.reset();
 }
 
 } // namespace DSP_ARCH_NAMESPACE
