@@ -4,7 +4,8 @@
 #include "FastMath.h"
 #include "Utils.h"
 #include <cmath>
-#include <gcem.hpp>
+
+#include "gcem/gcem.h"
 
 namespace dsp
 {
