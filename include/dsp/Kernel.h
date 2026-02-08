@@ -32,6 +32,8 @@ class TapKernel : public TapLin<baseType<T>>
     static constexpr auto kA           = Kernel::kSize;
     static constexpr auto kFilterWidth = kA * 2;
 
+    static constexpr auto kMaxScale = 3;
+
     // type used in lookup table
     class KernelType : public std::array<T, kFilterWidth>
     {
@@ -73,10 +75,15 @@ class TapKernel : public TapLin<baseType<T>>
                 } else if (std::fabs(x - 1.f) < 1e-7) {
                     kernels[idFromKernel(-1)] = bt(1);
                 } else {
+                    T sum{};
                     for (size_t id = 0; id < kFilterWidth; ++id) {
                         auto k      = static_cast<bt>(kernelFromId(id));
                         auto value  = Kernel::generate(-k - x);
                         kernels[id] = value;
+                        sum += value;
+                    }
+                    for (size_t id = 0; id < kFilterWidth; ++id) {
+                        kernels[id] /= sum;
                     }
                 }
 
@@ -131,27 +138,58 @@ class TapKernel : public TapLin<baseType<T>>
         return x;
     }
 
-    // template <class Ctxt, class DL>
-    // auto read(Ctxt c, const DL &delayline, int id, float fd, float scale)
-    //{
-    //     if (scale < 1.f) {
-    //         return read(c, delayline, id, fd);
-    //     } else {
-    //         // need to scale the kernel by scale
-    //         int Ascaled                      = A * scale;
-    //         decltype(delayline.read(c, 0)) x = {0};
-    //         for (Kernel k = -Ascaled + 1; k < Ascaled; ++k) {
-    //             float kpos  = (k + fd) / scale;
-    //             int kscaled = static_cast<int>(kpos);
-    //             int fkpos   = kpos - kscaled;
-    //             auto kernel = lut_.read(fkpos)[idFromKernel(kscaled)];
+    template <class Ctxt, class DL>
+    auto read(Ctxt c, const DL &delayline, bt scale)
+    {
+        /* bandlimited read delayline with cutoff defined by
+         * `NyquistFreq/scale`.
+         * to be used if delayline is read at a rate of `scale`
+         * much slower than simple read
+         */
+        static_assert(!Ctxt::kUseVec);
 
-    //            auto point = delayline.read(c, id + k);
-    //            x += point * kernel;
-    //        }
-    //        return x;
-    //    }
-    //}
+        if (scale <= bt(1)) return read(c, delayline);
+
+        scale         = dsp::min(scale, bt(kMaxScale));
+        auto invscale = bt(1) / scale;
+
+        decltype(c.getInput()) x{};
+
+        auto idelay = TapNoInterp<bt>::id_;
+        auto fdelay = TapLin<bt>::fd_;
+
+        std::array<T, kFilterWidth * kMaxScale> kernels;
+
+        auto delaywidth = static_cast<int>(fdelay + kA * scale);
+        auto pos        = (fdelay - delaywidth) * invscale;
+        int i           = 0;
+        while (pos < kA * bt(0.999)) {
+            int kernel = static_cast<int>(std::floor(pos));
+            auto posf  = pos - kernel;
+            kernels[i] = lut.read(posf)[idFromKernel(kernel)];
+            ++i;
+            pos += invscale;
+        }
+
+        auto delay  = idelay + delaywidth;
+        auto length = i;
+
+        auto kernCtxt = c.vec();
+        kernCtxt.setBlockSize(length);
+        kernCtxt.setData(kernels.data());
+
+        T kernsum{};
+        CTXTRUN(kernCtxt)
+        {
+            auto points = delayline.read(kernCtxt, delay);
+            auto kerns  = kernCtxt.getInput();
+            points *= kerns;
+            x += reduce<kTypeWidth<T>>(points);
+            kernsum += reduce<kTypeWidth<T>>(kerns);
+        };
+
+        return x / kernsum;
+    }
 };
 
 // define static variable
