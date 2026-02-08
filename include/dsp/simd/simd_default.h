@@ -259,7 +259,24 @@ template <typename T> struct intrin<T, 1> {
         return std::min(x1, x2);
     }
     static always_inline type vectorcall abs(type x) { return std::abs(x); }
+
+    template <size_t Id, size_t K>
+    static always_inline type vectorcall getlane(type x)
+    {
+        return x;
+    }
+
     static always_inline basetype vectorcall sum(type x) { return x; }
+
+    template <size_t K> static always_inline auto vectorcall duplicate(type x)
+    {
+        return intrin<T, K>::init(x);
+    }
+
+    static always_inline type vectorcall push(type /*x*/, type other)
+    {
+        return other;
+    }
 
     static always_inline masktype vectorcall cmpeq(type x1, type x2)
     {

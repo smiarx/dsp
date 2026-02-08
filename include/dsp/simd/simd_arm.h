@@ -83,9 +83,42 @@ template <> struct intrin<float, 2> {
     }
 #endif
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vget_lane_f32(value, Id);
+        else
+            return value;
+    }
+
+    template <size_t K>
+    static always_inline auto vectorcall duplicate(type value)
+    {
+        if constexpr (K == 2) {
+            return vcombine_f32(vzip1_f32(value, value),
+                                vzip2_f32(value, value));
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float32x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vext_f32(v1, v2, n);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64_f32(value);
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vext_f32(vmov_n_f32(v), x, 1);
     }
 
     static constexpr auto cmpeq = vceq_f32;
@@ -190,6 +223,26 @@ template <> struct intrin<float, 4> {
     }
 #endif
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_f32(value, Id);
+        else if constexpr (K == 2) {
+            return Id == 1 ? vget_high_f32(value) : vget_low_f32(value);
+        } else
+            return value;
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float32x4_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 4 - Shift : -Shift;
+        return vextq_f32(v1, v2, n);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64q_f32(value);
@@ -207,6 +260,16 @@ template <> struct intrin<float, 4> {
     static always_inline float32x2_t vectorcall reduce2(type x)
     {
         return vget_low_f32(add(x, flip2(x)));
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vextq_f32(vmovq_n_f32(v), x, 3);
+    }
+
+    static always_inline type vectorcall push(type x, float32x2_t v)
+    {
+        return vcombine_f32(v, vget_low_f32(x));
     }
 
     static constexpr auto cmpeq = vceqq_f32;
@@ -301,10 +364,33 @@ template <> struct intrin<double, 2> {
 
     static constexpr auto abs = vabsq_f64;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_f64(value, Id);
+        else
+            return value;
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr float64x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vextq_f64(v1, v2, n);
+    }
+
     static constexpr auto sum = vaddvq_f64;
     static always_inline type vectorcall flip1(type value)
     {
         return vextq_f64(value, value, 1);
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vcombine_f64(vdup_n_f64(v), vget_low_f64(x));
     }
 
     static constexpr auto cmpeq = vceqq_f64;
@@ -401,6 +487,35 @@ template <> struct intrin<int32_t, 2> {
     static constexpr auto min = vmin_s32;
 
     static constexpr auto abs = vabs_s32;
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vget_lane_s32(value, Id);
+        else
+            return value;
+    }
+
+    template <size_t K>
+    static always_inline auto vectorcall duplicate(type value)
+    {
+        if constexpr (K == 2) {
+            return vcombine_s32(vzip1_s32(value, value),
+                                vzip2_s32(value, value));
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr int32x2_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 2 - Shift : -Shift;
+        return vext_s32(v1, v2, n);
+    }
+
 #ifdef DSP_AARCH64
     static constexpr auto sum = vaddv_s32;
 #else
@@ -413,6 +528,11 @@ template <> struct intrin<int32_t, 2> {
     static always_inline type vectorcall flip1(type value)
     {
         return vrev64_s32(value);
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vext_s32(vmov_n_s32(v), x, 1);
     }
 
     static constexpr auto cmpeq = vceq_s32;
@@ -518,6 +638,26 @@ template <> struct intrin<int32_t, 4> {
 
     static constexpr auto abs = vabsq_s32;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if constexpr (K == 1) return vgetq_lane_s32(value, Id);
+        else if constexpr (K == 2) {
+            return Id == 1 ? vget_high_s32(value) : vget_low_s32(value);
+        } else
+            return value;
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        constexpr int32x4_t zero{};
+
+        auto v1          = Shift > 0 ? zero : value;
+        auto v2          = Shift > 0 ? value : zero;
+        constexpr auto n = Shift > 0 ? 4 - Shift : -Shift;
+        return vextq_s32(v1, v2, n);
+    }
+
 #ifdef DSP_AARCH64
     static constexpr auto sum = vaddvq_s32;
 #else
@@ -542,6 +682,16 @@ template <> struct intrin<int32_t, 4> {
     static always_inline auto vectorcall reduce2(type x)
     {
         return vget_low_s32(add(x, flip2(x)));
+    }
+
+    static always_inline type vectorcall push(type x, basetype v)
+    {
+        return vextq_s32(vmovq_n_s32(v), x, 3);
+    }
+
+    static always_inline type vectorcall push(type x, int32x2_t v)
+    {
+        return vcombine_s32(v, vget_low_s32(x));
     }
 
     static constexpr auto cmpeq = vceqq_s32;

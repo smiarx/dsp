@@ -110,6 +110,30 @@ template <> struct intrin<int32_t, 4> {
     }
 #endif
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        switch (Id * K) {
+        default:
+            break;
+        case 1:
+            value = _mm_shuffle_epi32(value, _MM_SHUFFLE(0, 3, 2, 1));
+            break;
+        case 2:
+            value = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+            break;
+        case 3:
+            value = _mm_shuffle_epi32(value, _MM_SHUFFLE(2, 1, 0, 3));
+            break;
+        }
+        if constexpr (K == 1) {
+            return _mm_cvtsi128_si32(value);
+        } else if constexpr (K == 2) {
+            return intx2_t{value};
+        } else
+            return value;
+    }
+
 #if defined(__SSE3__)
     static constexpr auto abs = _mm_abs_epi32;
 #else
@@ -119,6 +143,25 @@ template <> struct intrin<int32_t, 4> {
         return blend(mask, x, neg(x));
     }
 #endif
+
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 0, 0));
+            auto vhi = _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 3, 2, 2));
+            return _mm256_set_m128i(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0 ? _mm_slli_si128(value, 4 * Shift)
+                         : _mm_srli_si128(value, -4 * Shift);
+    }
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -140,6 +183,18 @@ template <> struct intrin<int32_t, 4> {
     {
         type flip = flip2(value);
         return add(value, flip);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_castps_si128(
+            _mm_move_ss(_mm_castsi128_ps(shift<1>(x)),
+                        _mm_castsi128_ps(_mm_cvtsi32_si128(v))));
+    }
+    static always_inline type push(type x, intx2_t v)
+    {
+        return _mm_castps_si128(_mm_shuffle_ps(
+            _mm_castsi128_ps(v), _mm_castsi128_ps(x), _MM_SHUFFLE(1, 0, 1, 0)));
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_epi32;
@@ -257,10 +312,55 @@ template <> struct intrin<float, 4> {
     static constexpr auto max = _mm_max_ps;
     static constexpr auto min = _mm_min_ps;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        switch (Id * K) {
+        default:
+            break;
+        case 1:
+            value = _mm_shuffle_ps(value, value, _MM_SHUFFLE(0, 3, 2, 1));
+            break;
+        case 2:
+            value = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+            break;
+        case 3:
+            value = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 1, 0, 3));
+            break;
+        }
+        if constexpr (K == 1) {
+            return _mm_cvtss_f32(value);
+        } else if constexpr (K == 2) {
+            return floatx2_t{value};
+        } else
+            return value;
+    }
+
     static always_inline type vectorcall abs(type value)
     {
         return bitAnd(value, init(floatMask<basetype>::kNotSign.f));
     }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto r = Shift > 0
+                     ? _mm_slli_si128(_mm_castps_si128(value), 4 * Shift)
+                     : _mm_srli_si128(_mm_castps_si128(value), -4 * Shift);
+        return _mm_castsi128_ps(r);
+    }
+
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 0, 0));
+            auto vhi = _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 3, 2, 2));
+            return _mm256_set_m128(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -281,6 +381,15 @@ template <> struct intrin<float, 4> {
     {
         type flip = flip2(value);
         return add(value, flip);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_ss(shift<1>(x), _mm_set_ss(v));
+    }
+    static always_inline type push(type x, floatx2_t v)
+    {
+        return _mm_shuffle_ps(v, x, _MM_SHUFFLE(1, 0, 1, 0));
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_ps;
@@ -412,7 +521,44 @@ template <> struct intrin<float, 2> {
     {
         return base::min(x1, x2);
     }
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if (Id == 1) {
+            value = _mm_shuffle_ps(value, value, _MM_SHUFFLE(0, 3, 2, 1));
+        }
+        if constexpr (K == 1) {
+            return _mm_cvtss_f32(value);
+        } else
+            return value;
+    }
+
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0
+                   ? _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 0, 3))
+                   : _mm_shuffle_ps(value, value, _MM_SHUFFLE(3, 2, 3, 1));
+    }
+
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            return _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 0, 0));
+        }
+#if DSP_AVX
+        else if constexpr (K == 4) {
+            auto vlo = _mm_shuffle_ps(value, value, _MM_SHUFFLE(0, 0, 0, 0));
+            auto vhi = _mm_shuffle_ps(value, value, _MM_SHUFFLE(1, 1, 1, 1));
+            return _mm256_set_m128(vhi, vlo);
+        }
+#endif
+        else
+            static_assert(false, "wrong duplicate");
+    }
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -423,6 +569,11 @@ template <> struct intrin<float, 2> {
         type swap = flip1(value);
         type sum  = add(value, swap);
         return _mm_cvtss_f32(sum);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_ss(shift<1>(x), _mm_set_ss(v));
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
@@ -536,7 +687,43 @@ template <> struct intrin<int, 2> {
     {
         return base::min(x1, x2);
     }
+
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if (Id == 1) {
+            value = _mm_shuffle_epi32(value, _MM_SHUFFLE(0, 3, 2, 1));
+        }
+        if constexpr (K == 1) {
+            return _mm_cvtsi128_si32(value);
+        } else
+            return value;
+    }
+
     static always_inline type vectorcall abs(type x) { return base::abs(x); }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return Shift > 0 ? _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 0, 3))
+                         : _mm_shuffle_epi32(value, _MM_SHUFFLE(3, 2, 3, 1));
+    }
+
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            return _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 0, 0));
+        }
+#if DSP_AVX
+        else if constexpr (K == 4) {
+            auto vlo = _mm_shuffle_epi32(value, _MM_SHUFFLE(0, 0, 0, 0));
+            auto vhi = _mm_shuffle_epi32(value, _MM_SHUFFLE(1, 1, 1, 1));
+            return _mm256_set_m128i(vhi, vlo);
+        }
+#endif
+        else
+            static_assert(false, "wrong duplicate");
+    }
 
     static always_inline type vectorcall flip1(type value)
     {
@@ -547,6 +734,13 @@ template <> struct intrin<int, 2> {
         type swap = flip1(value);
         type sum  = add(value, swap);
         return _mm_cvtsi128_si32(sum);
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_castps_si128(
+            _mm_move_ss(_mm_castsi128_ps(shift<1>(x)),
+                        _mm_castsi128_ps(_mm_cvtsi32_si128(v))));
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
@@ -632,10 +826,43 @@ template <> struct intrin<double, 2> {
     static constexpr auto max = _mm_max_pd;
     static constexpr auto min = _mm_min_pd;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if (Id == 1) {
+            value = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(0, 1));
+        }
+        if constexpr (K == 1) {
+            return _mm_cvtsd_f64(value);
+        } else
+            return value;
+    }
+
     static always_inline type vectorcall abs(type value)
     {
         return bitAnd(value, init(*reinterpret_cast<const basetype *>(
                                  &floatMask<basetype>::kNotSign)));
+    }
+
+#if DSP_AVX
+    template <size_t K>
+    static always_inline auto vectorcall duplicate([[maybe_unused]] type value)
+    {
+        if constexpr (K == 2) {
+            auto vlo = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(0, 0));
+            auto vhi = _mm_shuffle_pd(value, value, _MM_SHUFFLE2(1, 1));
+            return _mm256_set_m128d(vhi, vlo);
+        } else
+            static_assert(false, "wrong duplicate");
+    }
+#endif
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto r = Shift > 0
+                     ? _mm_slli_si128(_mm_castpd_si128(value), 8 * Shift)
+                     : _mm_srli_si128(_mm_castpd_si128(value), -8 * Shift);
+        return _mm_castsi128_pd(r);
     }
 
     static always_inline type vectorcall flip1(type value)
@@ -646,6 +873,11 @@ template <> struct intrin<double, 2> {
     {
         type flip = flip1(value);
         return _mm_cvtsd_f64(add(value, flip));
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        return _mm_move_sd(shift<1>(x), _mm_set_sd(v));
     }
 
     static constexpr auto cmpeq = _mm_cmpeq_pd;
@@ -771,6 +1003,60 @@ template <> struct intrin<int32_t, 8> {
     static constexpr auto min = _mm256_min_epi32;
     static constexpr auto abs = _mm256_abs_epi32;
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        switch ((Id * K) % 4) {
+        default:
+            break;
+        case 1:
+            value = _mm256_shuffle_epi32(value, _MM_SHUFFLE(0, 3, 2, 1));
+            break;
+        case 2:
+            value = _mm256_shuffle_epi32(value, _MM_SHUFFLE(1, 0, 3, 2));
+            break;
+        case 3:
+            value = _mm256_shuffle_epi32(value, _MM_SHUFFLE(2, 1, 0, 3));
+            break;
+        }
+
+        auto r = _mm256_extractf128_si256(value, Id * K >= 4 ? 1 : 0);
+        if constexpr (K == 1) {
+            return _mm_cvtsi128_si32(r);
+        } else if constexpr (K == 2) {
+            return intx2_t{r};
+        } else if constexpr (K == 4) {
+            return r;
+        } else
+            return value;
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        auto vp = _mm256_permute2f128_si256(
+            value, value, Shift > 0 ? 1 << 3 : (1) + (1 << 7));
+
+        constexpr auto kShift = Shift > 0 ? Shift : -Shift;
+        if constexpr (kShift == 4) return vp;
+
+        constexpr __m256i kZero{};
+        constexpr auto kShiftAlign = kShift < 4 ? kShift : kShift - 4;
+
+        auto v1 = Shift > 0 ? value : vp;
+        auto v2 = Shift > 0 ? vp : value;
+
+        auto va1 = kShift < 4 ? v1 : v2;
+        auto va2 = kShift < 4 ? v2 : kZero;
+
+        constexpr auto kAlign = Shift > 0 ? (kShiftAlign == 1   ? 12
+                                             : kShiftAlign == 2 ? 8
+                                             : kShiftAlign == 3 ? 4
+                                                                : 0)
+                                          : kShift * 4;
+        return Shift < -4 ? _mm256_alignr_epi8(vp, kZero, kAlign)
+                          : _mm256_alignr_epi8(va1, va2, kAlign);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return _mm256_shuffle_epi32(value, _MM_SHUFFLE(2, 3, 0, 1));
@@ -806,6 +1092,57 @@ template <> struct intrin<int32_t, 8> {
         auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extracti128_si256(sum, 0);
+    }
+
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2 || K == 4);
+        if (K == 1) {
+            auto shift1 = _mm256_slli_si256(value, 4);
+            value       = _mm256_add_epi32(value, shift1);
+        }
+        if (K <= 2) {
+            auto shift2 = _mm256_slli_si256(value, 8);
+            value       = _mm256_add_epi32(value, shift2);
+        }
+
+        __m128i sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_epi32(_mm256_extract_epi32(value, 3));
+            break;
+        case 2:
+            sum1block = _mm_shuffle_epi32(_mm256_castsi256_si128(value),
+                                          _MM_SHUFFLE(3, 2, 3, 2));
+            break;
+        case 4:
+            sum1block = _mm256_castsi256_si128(value);
+            break;
+        }
+
+        return _mm256_add_epi32(value, _mm256_setr_m128i(__m128i{}, sum1block));
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = _mm256_castsi256_ps(shift<1>(x));
+        auto lo = _mm_move_ss(_mm256_castps256_ps128(sh),
+                              _mm_castsi128_ps(_mm_cvtsi32_si128(v)));
+        return _mm256_castps_si256(_mm256_insertf128_ps(sh, lo, 0));
+    }
+    static always_inline type push(type x, intx2_t v)
+    {
+        auto sh = _mm256_castsi256_ps(shift<2>(x));
+        auto lo =
+            _mm_shuffle_ps(_mm_castsi128_ps(v), _mm256_castps256_ps128(sh),
+                           _MM_SHUFFLE(3, 2, 1, 0));
+        return _mm256_castps_si256(_mm256_insertf128_ps(sh, lo, 0));
+    }
+    static always_inline type push(type x, __m128i v)
+    {
+        auto sh = shift<4>(x);
+        return _mm256_inserti128_si256(sh, v, 0);
     }
 
     static constexpr auto cmpeq = _mm256_cmpeq_epi32;
@@ -916,6 +1253,40 @@ template <> struct intrin<float, 8> {
                                  &floatMask<basetype>::kNotSign)));
     }
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        switch ((Id * K) % 4) {
+        default:
+            break;
+        case 1:
+            value = _mm256_shuffle_ps(value, value, _MM_SHUFFLE(0, 3, 2, 1));
+            break;
+        case 2:
+            value = _mm256_shuffle_ps(value, value, _MM_SHUFFLE(1, 0, 3, 2));
+            break;
+        case 3:
+            value = _mm256_shuffle_ps(value, value, _MM_SHUFFLE(2, 1, 0, 3));
+            break;
+        }
+
+        auto r = _mm256_extractf128_ps(value, Id * K >= 4 ? 1 : 0);
+        if constexpr (K == 1) {
+            return _mm_cvtss_f32(r);
+        } else if constexpr (K == 2) {
+            return floatx2_t{r};
+        } else if constexpr (K == 4) {
+            return r;
+        } else
+            return value;
+    }
+
+    template <int Shift> static always_inline type vectorcall shift(type value)
+    {
+        return _mm256_castsi256_ps(
+            intrin<int, 8>::template shift<Shift>(_mm256_castps_si256(value)));
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return _mm256_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1));
@@ -953,6 +1324,58 @@ template <> struct intrin<float, 8> {
         auto flip = flip4(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_ps(sum, 0);
+    }
+
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2 || K == 4);
+        if (K == 1) {
+            auto shift1 = _mm256_castsi256_ps(
+                _mm256_slli_si256(_mm256_castps_si256(value), 4));
+            value = _mm256_add_ps(value, shift1);
+        }
+        if (K <= 2) {
+            auto shift2 = _mm256_castsi256_ps(
+                _mm256_slli_si256(_mm256_castps_si256(value), 8));
+            value = _mm256_add_ps(value, shift2);
+        }
+
+        __m128 sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_ps(value[3]);
+            break;
+        case 2:
+            sum1block = _mm_shuffle_ps(_mm256_castps256_ps128(value),
+                                       _mm256_castps256_ps128(value),
+                                       _MM_SHUFFLE(3, 2, 3, 2));
+            break;
+        case 4:
+            sum1block = _mm256_castps256_ps128(value);
+            break;
+        }
+
+        return _mm256_add_ps(value, _mm256_setr_m128(__m128{}, sum1block));
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = shift<1>(x);
+        auto lo = _mm_move_ss(_mm256_castps256_ps128(sh), _mm_set_ss(v));
+        return _mm256_insertf128_ps(sh, lo, 0);
+    }
+    static always_inline type push(type x, floatx2_t v)
+    {
+        auto sh = shift<2>(x);
+        auto lo = _mm_shuffle_ps(v, _mm256_castps256_ps128(sh),
+                                 _MM_SHUFFLE(3, 2, 1, 0));
+        return _mm256_insertf128_ps(sh, lo, 0);
+    }
+    static always_inline type push(type x, __m128 v)
+    {
+        auto sh = shift<4>(x);
+        return _mm256_insertf128_ps(sh, v, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)
@@ -1071,6 +1494,43 @@ template <> struct intrin<double, 4> {
                                  &floatMask<basetype>::kNotSign)));
     }
 
+    template <size_t Id, size_t K>
+    static always_inline auto vectorcall getlane(type value)
+    {
+        if ((Id * K) % 2 == 1) {
+            value = _mm256_shuffle_pd(value, value, _MM_SHUFFLE(0, 0, 1, 1));
+        }
+
+        auto r = _mm256_extractf128_pd(value, Id * K >= 2 ? 1 : 0);
+        if constexpr (K == 1) {
+            return _mm_cvtsd_f64(r);
+        } else if constexpr (K == 2) {
+            return r;
+        } else
+            return value;
+    }
+
+    template <int Shift> static type vectorcall shift(type value)
+    {
+        auto iv = _mm256_castpd_si256(value);
+        auto vp = _mm256_permute2f128_si256(
+            iv, iv, Shift > 0 ? (1 << 3) : 1 + (1 << 7));
+
+        constexpr auto kShift = Shift > 0 ? Shift : -Shift;
+        if constexpr (kShift == 2) return _mm256_castsi256_pd(vp);
+
+        __m256i zero{};
+        auto v1  = Shift > 0 ? iv : vp;
+        auto v2  = Shift > 0 ? vp : iv;
+        auto va1 = kShift < 2 ? v1 : v2;
+        auto va2 = kShift < 2 ? v2 : zero;
+
+        auto r = Shift == -3 ? _mm256_alignr_epi8(zero, vp, 8)
+                             : _mm256_alignr_epi8(va1, va2, 8);
+
+        return _mm256_castsi256_pd(r);
+    }
+
     static always_inline type vectorcall flip1(type value)
     {
         return _mm256_shuffle_pd(value, value, _MM_SHUFFLE(0, 0, 1, 1));
@@ -1093,6 +1553,40 @@ template <> struct intrin<double, 4> {
         auto flip = flip2(value);
         auto sum  = add(value, flip);
         return _mm256_extractf128_pd(sum, 0);
+    }
+
+    template <size_t K> static always_inline type vectorcall prefix(type value)
+    {
+        static_assert(K == 1 || K == 2);
+        if (K == 1) {
+            auto shift = _mm256_castsi256_pd(
+                _mm256_slli_si256(_mm256_castpd_si256(value), 8));
+            value = _mm256_add_pd(value, shift);
+        }
+
+        __m128d sum1block;
+        switch (K) {
+        default:
+        case 1:
+            sum1block = _mm_set1_pd(value[1]);
+            break;
+        case 2:
+            sum1block = _mm256_castpd256_pd128(value);
+            break;
+        }
+        return _mm256_add_pd(value, _mm256_setr_m128d(__m128d{}, sum1block));
+    }
+
+    static always_inline type push(type x, basetype v)
+    {
+        auto sh = shift<1>(x);
+        auto lo = _mm_move_sd(_mm256_castpd256_pd128(sh), _mm_set_sd(v));
+        return _mm256_insertf128_pd(sh, lo, 0);
+    }
+    static always_inline type push(type x, __m128d v)
+    {
+        auto sh = shift<2>(x);
+        return _mm256_insertf128_pd(sh, v, 0);
     }
 
     static always_inline type vectorcall cmpeq(type x1, type x2)

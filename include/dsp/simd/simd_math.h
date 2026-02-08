@@ -39,6 +39,16 @@ template <typename T, size_t N> always_inline auto get(simd<T, N> x, size_t i)
     return x.get(i);
 }
 
+template <size_t Id, size_t K = 1, typename T> always_inline auto getlane(T x)
+{
+    return x;
+}
+template <size_t Id, size_t K = 1, typename T, size_t N>
+always_inline auto getlane(simd<T, N> x)
+{
+    return x.template getlane<Id, K>();
+}
+
 ////////////////////// max ////////////////////////
 template <typename T> always_inline T max(T x, T y) { return std::max(x, y); }
 template <typename T, size_t N>
@@ -62,11 +72,33 @@ template <typename T, size_t N> always_inline simd<T, N> abs(simd<T, N> x)
     return x.abs();
 }
 
+////////////////////// shift ////////////////////////
+template <int Shift, typename T> always_inline T shift([[maybe_unused]] T x)
+{
+    return Shift == 0 ? x : 0;
+}
+template <int Shift, typename T, size_t N>
+always_inline simd<T, N> shift(simd<T, N> x)
+{
+    return x.template shift<Shift>();
+}
+
 ////////////////////// sum ////////////////////////
 template <typename T> always_inline T sum(T x) { return x; }
 template <typename T, size_t N> always_inline T sum(simd<T, N> x)
 {
     return x.sum();
+}
+////////////////////// product ////////////////////////
+template <size_t K = 1, typename T> always_inline T product(T x)
+{
+    static_assert(K == 1);
+    return x;
+}
+template <size_t K = 1, typename T, size_t N>
+always_inline auto product(simd<T, N> x)
+{
+    return x.template product<K>();
 }
 
 template <size_t K, typename T> always_inline auto reduce(T x)
@@ -83,6 +115,37 @@ always_inline auto reduce(simd<T, N> x)
 template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
 {
     return x.template flip<K>();
+}
+
+template <size_t K = 1, typename T, size_t N>
+always_inline auto prefix(simd<T, N> x)
+{
+    return x.template prefix<K>();
+}
+
+/////////////////// duplicate ////////////////////////////
+template <size_t K, typename T> always_inline auto duplicate(T x)
+{
+    if constexpr (K == 1) return x;
+    else
+        return simd<T, K>(x);
+}
+template <size_t K, typename T, size_t N>
+always_inline auto duplicate(simd<T, N> x)
+{
+    return x.template duplicate<K>();
+}
+
+/////////////////// push ////////////////////////////
+template <typename P, typename O>
+[[nodiscard]] always_inline auto push(P /*x*/, O y)
+{
+    return y;
+}
+template <typename T, size_t N, typename O>
+[[nodiscard]] always_inline auto push(simd<T, N> x, O y)
+{
+    return x.push(y);
 }
 
 /////////////////// Logic ////////////////////////////

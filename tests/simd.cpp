@@ -23,6 +23,35 @@ template <typename T, size_t N> class TestSimd
         }
     }
 
+    template <int Shift> static void testShift(dsp::simd<T, N> x)
+    {
+        auto sx = dsp::shift<Shift>(x);
+
+        loop(i)
+        {
+            auto ii = static_cast<int>(i);
+            if ((Shift > 0 && ii < Shift) ||
+                (Shift < 0 && ii >= static_cast<int>(N + Shift)))
+                cmp(sx[i], 0);
+            else {
+                cmp(sx[i], x[i - Shift]);
+            }
+        }
+    }
+
+    template <size_t K> static void testPrefix(dsp::simd<T, N> x)
+    {
+        auto p = dsp::prefix<K>(x);
+
+        T acc[K] = {};
+        for (size_t i = 0; i < N; i += K) {
+            for (size_t k = 0; k < K; ++k) {
+                acc[k] += x[i + k];
+                cmp(p[i + k], acc[k]);
+            }
+        }
+    }
+
     static void run()
     {
         constexpr T kArrayX[] = {4, 2, 39, 19, -15, 17, 23, -100},
@@ -30,6 +59,49 @@ template <typename T, size_t N> class TestSimd
         auto x                = dsp::simd<T, N>::load(kArrayX);
         auto y                = dsp::simd<T, N>::load(kArrayY);
 
+        SECTION("getlane")
+        {
+            cmp(dsp::getlane<0>(x), x[0]);
+
+            if constexpr (N > 1) {
+                cmp(dsp::getlane<1>(x), x[1]);
+            }
+            if constexpr (N > 2) {
+                cmp(dsp::getlane<2>(x), x[2]);
+                cmp(dsp::getlane<3>(x), x[3]);
+
+                auto lane02 = dsp::getlane<0, 2>(x);
+                cmp(lane02[0], x[0]);
+                cmp(lane02[1], x[1]);
+                auto lane12 = dsp::getlane<1, 2>(x);
+                cmp(lane12[0], x[2]);
+                cmp(lane12[1], x[3]);
+            }
+            if constexpr (N > 4) {
+                cmp(dsp::getlane<4>(x), x[4]);
+                cmp(dsp::getlane<5>(x), x[5]);
+                cmp(dsp::getlane<6>(x), x[6]);
+                cmp(dsp::getlane<7>(x), x[7]);
+
+                auto lane22 = dsp::getlane<2, 2>(x);
+                cmp(lane22[0], x[4]);
+                cmp(lane22[1], x[5]);
+                auto lane32 = dsp::getlane<3, 2>(x);
+                cmp(lane32[0], x[6]);
+                cmp(lane32[1], x[7]);
+
+                auto lane04 = dsp::getlane<0, 4>(x);
+                cmp(lane04[0], x[0]);
+                cmp(lane04[1], x[1]);
+                cmp(lane04[2], x[2]);
+                cmp(lane04[3], x[3]);
+                auto lane14 = dsp::getlane<1, 4>(x);
+                cmp(lane14[0], x[4]);
+                cmp(lane14[1], x[5]);
+                cmp(lane14[2], x[6]);
+                cmp(lane14[3], x[7]);
+            }
+        }
         SECTION("init")
         {
             T scalar = 1;
@@ -94,9 +166,57 @@ template <typename T, size_t N> class TestSimd
         SECTION("sum")
         {
             auto s1 = sum(x);
-            auto s2 = 0;
+            T s2    = 0;
             loop(i) { s2 += x[i]; }
             cmp(s1, s2);
+        }
+        SECTION("product")
+        {
+            auto s1 = dsp::product(x);
+            T s2    = 1;
+            loop(i) { s2 *= x[i]; }
+            cmp(s1, s2);
+            if constexpr (N > 2) {
+                constexpr auto kK = 2;
+                auto s1           = dsp::product<kK>(x);
+                T s2[kK]          = {1, 1};
+                loop(i) s2[i % kK] *= x[i];
+                cmp(s1[0], s2[0]);
+                cmp(s1[1], s2[1]);
+            }
+            if constexpr (N > 4) {
+                constexpr auto kK = 4;
+                auto s1           = dsp::product<kK>(x);
+                T s2[kK]          = {1, 1, 1, 1};
+                loop(i) s2[i % kK] *= x[i];
+                cmp(s1[0], s2[0]);
+                cmp(s1[1], s2[1]);
+                cmp(s1[2], s2[2]);
+                cmp(s1[3], s2[3]);
+            }
+        }
+        SECTION("shift")
+        {
+            if constexpr (N > 1) {
+                testShift<1>(x);
+                testShift<-1>(x);
+            }
+            if constexpr (N > 2) {
+                testShift<2>(x);
+                testShift<3>(x);
+                testShift<-2>(x);
+                testShift<-3>(x);
+            }
+            if constexpr (N > 4) {
+                testShift<4>(x);
+                testShift<5>(x);
+                testShift<6>(x);
+                testShift<7>(x);
+                testShift<-4>(x);
+                testShift<-5>(x);
+                testShift<-6>(x);
+                testShift<-7>(x);
+            }
         }
         SECTION("reduce")
         {
@@ -117,6 +237,33 @@ template <typename T, size_t N> class TestSimd
                     for (size_t i = 0; i < K; ++i) s2[i] += x[k * K + i];
 
                 for (size_t i = 0; i < K; ++i) cmp(s1[i], s2[i]);
+            }
+        }
+        SECTION("duplicate")
+        {
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 2) {
+                constexpr size_t kK = 2;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
+            }
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 4) {
+                constexpr size_t kK = 4;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
+            }
+            if constexpr (N <= DSP_MAX_VEC_SIZE / sizeof(T) / 8) {
+                constexpr size_t kK = 8;
+                auto xdup           = dsp::duplicate<kK>(x);
+                loop(i)
+                {
+                    for (size_t j = 0; j < kK; ++j) cmp(x[i], xdup[kK * i + j]);
+                }
             }
         }
         SECTION("flip")
@@ -140,6 +287,54 @@ template <typename T, size_t N> class TestSimd
                 auto f             = dsp::flip<K>(x);
                 for (size_t i = 0; i < N; ++i) {
                     cmp(f[i], x[i ^ K]);
+                }
+            }
+        }
+        SECTION("prefix")
+        {
+            if constexpr (N > 1) {
+                testPrefix<1>(x);
+            }
+            if constexpr (N > 2) {
+                testPrefix<2>(x);
+            }
+            if constexpr (N > 4) {
+                testPrefix<4>(x);
+            }
+        }
+
+        SECTION("push")
+        {
+            if constexpr (N > 1) {
+                auto pval = T(3);
+                auto r    = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i == 0) cmp(r[i], pval);
+                    else
+                        cmp(r[i], x[i - 1]);
+                }
+            }
+            if constexpr (N > 2) {
+                T pvalArr[] = {17, -2};
+                auto pval   = dsp::simd<T, 2>::load(pvalArr);
+                auto r      = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i < 2) cmp(r[i], pval[i]);
+                    else
+                        cmp(r[i], x[i - 2]);
+                }
+            }
+            if constexpr (N > 4) {
+                T pvalArr[] = {3, 5, 8, -6};
+                auto pval   = dsp::simd<T, 4>::load(pvalArr);
+                auto r      = dsp::push(x, pval);
+                loop(i)
+                {
+                    if (i < 4) cmp(r[i], pval[i]);
+                    else
+                        cmp(r[i], x[i - 4]);
                 }
             }
         }
