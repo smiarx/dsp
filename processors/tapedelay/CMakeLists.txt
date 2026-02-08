@@ -7,7 +7,8 @@ option(DSP_TAPEDELAY_SWITCH_INDICATOR
     "Compile Tapedelay with switch indicator functionality" OFF)
 
 # add avx2 version for dispatch
-if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)"
+   OR APPLE)
     list(APPEND tapedelay_sources "avx2/TapeDelay.cpp")
     if(MSVC)
         set_source_files_properties(avx2/TapeDelay.cpp COMPILE_FLAGS "/arch:AVX2")
