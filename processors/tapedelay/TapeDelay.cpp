@@ -305,9 +305,16 @@ void TapeDelay::process(const float *const *__restrict in,
             lpf_.process(ctxt, lpfMem_);
             // high pass filter
             hpf_.process(ctxt, hpfMem_);
+        };
 
-            // saturation
-            if (saturation_.isActive()) {
+        // distortion
+        if (saturation_.isActive()) {
+            constexpr auto kIncrSize = decltype(ctxt.vec())::kIncrSize;
+            mtype savePregain[kIncrSize];
+            mtype savePostgain[kIncrSize];
+            size_t lastIncrSize{};
+            CTXTRUNVEC(ctxt)
+            {
                 auto x      = ctxt.getInput();
                 using ctxtT = decltype(x);
 
@@ -319,42 +326,48 @@ void TapeDelay::process(const float *const *__restrict in,
                 x = postgain_ * dsp::fasttanh(x * pregain_);
                 ctxt.setOutput(x);
 
-                pregain_  = pregain;
-                postgain_ = postgain;
-            } else {
+                ctxt.store(*savePregain, pregain);
+                ctxt.store(*savePostgain, postgain);
+                lastIncrSize = decltype(ctxt)::kIncrSize;
+            };
+            pregain_  = savePregain[lastIncrSize - 1];
+            postgain_ = savePostgain[lastIncrSize - 1];
+        } else {
+            CTXTRUNVEC(ctxt)
+            {
                 auto x = ctxt.getInput();
                 x      = postgain_ * dsp::fasttanh(x * pregain_);
                 ctxt.setOutput(x);
-            }
+            };
+        }
 
-            // write to delay buffers and output
-            auto mode = mode_;
-            {
-                constexpr auto kIncrSize = decltype(ctxt)::kIncrSize;
-                auto loop                = ctxt.getInput();
-                mtype xin[kIncrSize];
+        auto mode = mode_;
+        CTXTRUNVEC(ctxt)
+        {
+            constexpr auto kIncrSize = decltype(ctxt)::kIncrSize;
+            auto loop                = ctxt.getInput();
+            mtype xin[kIncrSize];
 
-                for (size_t j = 0; j < kIncrSize; ++j)
-                    for (size_t i = 0; i < kN; ++i) xin[j][i] = *localin[i]++;
+            for (size_t j = 0; j < kIncrSize; ++j)
+                for (size_t i = 0; i < kN; ++i) xin[j][i] = *localin[i]++;
 
-                auto dry = dry_.step(ctxt);
-                auto wet = wet_.step(ctxt);
+            auto dry = dry_.step(ctxt);
+            auto wet = wet_.step(ctxt);
 
-                mtype xout[kIncrSize];
-                ctxt.store(xout[0], ctxt.load(xin[0]) * dry + loop * wet);
-                for (size_t j = 0; j < kIncrSize; ++j)
-                    for (size_t i = 0; i < kN; ++i) *localout[i]++ = xout[j][i];
+            mtype xout[kIncrSize];
+            ctxt.store(xout[0], ctxt.load(xin[0]) * dry + loop * wet);
+            for (size_t j = 0; j < kIncrSize; ++j)
+                for (size_t i = 0; i < kN; ++i) *localout[i]++ = xout[j][i];
 
-                auto feedback = feedbackCompensated_.step(ctxt);
+            auto feedback = feedbackCompensated_.step(ctxt);
 
-                if (mode == kReverse) {
-                    delayline_.write(ctxt, ctxt.load(xin[0]));
-                    auto inloop = loop * feedback;
-                    delaylineReverse_.write(ctxt, inloop);
-                } else {
-                    auto inloop = ctxt.load(xin[0]) + loop * feedback;
-                    delayline_.write(ctxt, inloop);
-                }
+            if (mode == kReverse) {
+                delayline_.write(ctxt, ctxt.load(xin[0]));
+                auto inloop = loop * feedback;
+                delaylineReverse_.write(ctxt, inloop);
+            } else {
+                auto inloop = ctxt.load(xin[0]) + loop * feedback;
+                delayline_.write(ctxt, inloop);
             }
         };
         buffer_.nextBlock(ctxt);
