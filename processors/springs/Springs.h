@@ -165,8 +165,11 @@ class Springs
     /* decimate and interpolate memory lines */
     using MRD = dsp::MultiRateDecimate<float, 15, kMaxDecimate>;
     using MRI = dsp::MultiRateInterpolate<dsp::mfloat<2>, 15, kMaxDecimate>;
-    static const MRD kDecimate;
-    static const MRI kInterpolate;
+
+    // we use pointers instead of variables so that they are not initialized at
+    // startup - crashes with bad instruction arch if avx is not available
+    static MRD *kDecimate;
+    static MRI *kInterpolate;
     MRD::DLDecimate<0> dldecimate_;
     MRI::DLInterpolate<0> dlinterpolate_;
     int decimateId_{0};
@@ -265,6 +268,15 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     allocateBuffer(bufferDec_, mtype);
 
 #undef allocateBuffer
+
+    if (kDecimate == nullptr) {
+        kDecimate = (MRD *)realloc(kDecimate, sizeof(MRD));
+        new (kDecimate) MRD{};
+    }
+    if (kInterpolate == nullptr) {
+        kInterpolate = (MRI *)realloc(kInterpolate, sizeof(MRI));
+        new (kInterpolate) MRI{};
+    }
 }
 
 template <class Free> void Springs::free(Free free)

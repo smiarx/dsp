@@ -11,7 +11,7 @@ namespace processors
 {
 inline namespace DSP_ARCH_NAMESPACE
 {
-TapeDelay::FadeLut TapeDelay::fadeLut;
+TapeDelay::FadeLut *TapeDelay::fadeLut;
 
 void TapeDelay::update(float delay, float feedback, float cutlowpass,
                        float cuthighpass, float saturation, float drift,
@@ -229,6 +229,8 @@ template <TapeDelay::Mode M, class Ctxt> int TapeDelay::readBlock(Ctxt ctxt)
 void TapeDelay::process(const float *const *__restrict in,
                         float *const *__restrict out, int count)
 {
+    assert(fadeLut != nullptr);
+
     int blockSize = maxBlockSizeWithDelay_;
 
     const float *localin[] = {in[0], in[1]};
@@ -291,7 +293,7 @@ void TapeDelay::process(const float *const *__restrict in,
                 }
                 auto xOut = ctxt.getInput();
 
-                auto fade = fadeLut[static_cast<size_t>(fadePos_)];
+                auto fade = (*fadeLut)[static_cast<size_t>(fadePos_)];
                 auto x    = xOut + fade * (xIn - xOut);
                 --fadePos_;
 

@@ -15,8 +15,8 @@ inline namespace DSP_ARCH_NAMESPACE
 {
 
 // multirate converter
-const Springs::MRD Springs::kDecimate{};
-const Springs::MRI Springs::kInterpolate{};
+Springs::MRD *Springs::kDecimate{};
+Springs::MRI *Springs::kInterpolate{};
 
 void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
@@ -215,6 +215,9 @@ void Springs::setNStages()
 void Springs::process(const float *const *__restrict in,
                       float *const *__restrict out, int count)
 {
+    assert(kDecimate != nullptr);
+    assert(kInterpolate != nullptr);
+
     auto *inl  = in[0];
     auto *inr  = in[1];
     auto *inl2 = inl;
@@ -267,8 +270,8 @@ void Springs::process(const float *const *__restrict in,
         }
 #endif
 
-        kDecimate.decimate(rateFactor_, ctxtIn, ctxtdec, dldecimate_,
-                           decimateId_);
+        kDecimate->decimate(rateFactor_, ctxtIn, ctxtdec, dldecimate_,
+                            decimateId_);
 
         CTXTRUN(ctxtdec)
         {
@@ -376,8 +379,8 @@ void Springs::process(const float *const *__restrict in,
             ctxtdecOut.setOutput(wetsig);
         };
 
-        decimateId_ = kInterpolate.interpolate(rateFactor_, ctxtdecOut, ctxtOut,
-                                               dlinterpolate_, decimateId_);
+        decimateId_ = kInterpolate->interpolate(
+            rateFactor_, ctxtdecOut, ctxtOut, dlinterpolate_, decimateId_);
 
         CTXTRUN(ctxtOut)
         {

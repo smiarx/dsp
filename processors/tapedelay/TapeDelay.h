@@ -54,7 +54,9 @@ class TapeDelay
             }
         }
     };
-    static FadeLut fadeLut;
+    // we use pointer instead of variable so that it's not initialized at
+    // startup - crashes with bad instruction arch if avx is not available
+    static FadeLut *fadeLut;
 
     enum Mode {
         kNormal    = 0,
@@ -202,6 +204,11 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     buf                            = (mtype *)realloc(buf, kRealBufferSize);
     memset(buf, 0, kRealBufferSize);
     buffer_.setData(buf);
+
+    if (fadeLut == nullptr) {
+        fadeLut = (FadeLut *)realloc(fadeLut, sizeof(FadeLut));
+        new (fadeLut) FadeLut{};
+    }
 }
 
 template <class Free> void TapeDelay::free(Free free)
