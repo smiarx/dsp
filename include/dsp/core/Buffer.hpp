@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+using bufferId_t = int;
+
 inline namespace DSP_ARCH_NAMESPACE
 {
 template <class T, std::size_t MinSize> class Buffer
@@ -13,10 +15,10 @@ template <class T, std::size_t MinSize> class Buffer
     /* implements ring buffer */
   public:
     // offset to allow vectorized computing
-    static constexpr auto kVecOffset = sizeof(batch<T>) / sizeof(T);
-    static constexpr auto kBaseSize  = nextPow2(MinSize);
-    static constexpr int kMask       = kBaseSize - 1;
-    static constexpr auto kSize      = kBaseSize + kVecOffset;
+    static constexpr auto kVecOffset  = sizeof(batch<T>) / sizeof(T);
+    static constexpr auto kBaseSize   = nextPow2(MinSize);
+    static constexpr bufferId_t kMask = kBaseSize - 1;
+    static constexpr auto kSize       = kBaseSize + kVecOffset;
 
     using Type = T;
 
@@ -28,10 +30,10 @@ template <class T, std::size_t MinSize> class Buffer
     T *getData() { return data_; }
 
     template <typename V, bool Vec = false, bool Safe = false>
-    void write(int i, V val)
+    void write(bufferId_t i, V val)
     {
         assert(data_ != nullptr);
-        assert((0 <= i) && (i <= static_cast<int>(MinSize)));
+        assert((0 <= i) && (i <= static_cast<bufferId_t>(MinSize)));
 
         const auto pos = position(i);
         if constexpr (Vec) {
@@ -59,15 +61,15 @@ template <class T, std::size_t MinSize> class Buffer
             }
         }
     }
-    template <typename V> void writeVec(int i, V val)
+    template <typename V> void writeVec(bufferId_t i, V val)
     {
         write<V, true>(i, val);
     }
 
-    template <bool Vec = false> [[nodiscard]] auto read(int i) const
+    template <bool Vec = false> [[nodiscard]] auto read(bufferId_t i) const
     {
         assert(data_ != nullptr);
-        assert((0 <= i) && (i <= static_cast<int>(MinSize)));
+        assert((0 <= i) && (i <= static_cast<bufferId_t>(MinSize)));
 
         const auto pos = position(i);
         if constexpr (Vec) {
@@ -76,9 +78,9 @@ template <class T, std::size_t MinSize> class Buffer
             return dsp::DSP_ARCH_NAMESPACE::load(data_[pos]);
         }
     }
-    [[nodiscard]] auto readVec(int i) const { return read<true>(i); }
+    [[nodiscard]] auto readVec(bufferId_t i) const { return read<true>(i); }
 
-    void nextId(int incr) { id_ = (id_ + incr) & kMask; }
+    void nextId(bufferId_t incr) { id_ = (id_ + incr) & kMask; }
 
     // prepare for next block given ctxt
     template <class Ctxt> void nextBlock(Ctxt ctxt, bool checkLimits = false)
@@ -91,14 +93,14 @@ template <class T, std::size_t MinSize> class Buffer
                 data_[kBaseSize], dsp::DSP_ARCH_NAMESPACE::loadBatch(data_[0]));
     }
 
-    [[nodiscard]] int getId() const { return id_; }
+    [[nodiscard]] bufferId_t getId() const { return id_; }
 
   private:
-    int id_{kVecOffset};
+    bufferId_t id_{kVecOffset};
     T *__restrict data_{nullptr};
 
     // give data position given i
-    inline auto position(int i) const { return (id_ - i) & kMask; }
+    inline auto position(bufferId_t i) const { return (id_ - i) & kMask; }
 };
 
 template <class T, size_t MinSize, bool Vec = false>
@@ -130,7 +132,7 @@ class BufferContext : public Context<T, Vec>
 
     BufferT &getBuffer() { return buffer_; }
 
-    void next(int incr = Parent::kIncrSize)
+    void next(bufferId_t incr = Parent::kIncrSize)
     {
         buffer_.nextId(incr);
         Parent::next(incr);
@@ -138,19 +140,63 @@ class BufferContext : public Context<T, Vec>
 
     void bufferSafeForVectorization() { buffer_.setLimits(); }
 
-    [[nodiscard]] auto read(int i) const
+    [[nodiscard]] auto read(bufferId_t i) const
     {
         return buffer_.template read<Vec>(i);
     }
 
-    void write(int i, SigType val)
+    void write(bufferId_t i, SigType val)
     {
         return buffer_.template write<SigType, Vec>(i, val);
     }
 
-    void writeSafe(int i, SigType val)
+    void writeSafe(bufferId_t i, SigType val)
     {
         return buffer_.template write<SigType, Vec, true>(i, val);
+    }
+
+    [[nodiscard]] auto getId() const { return buffer_.getId(); }
+
+    // id greater than
+    bool idGreaterThan(bufferId_t otherId)
+    {
+        return modCmpGT<BufferT::kBaseSize>(getId(), otherId);
+    }
+    // id small than
+    bool idLessThan(bufferId_t otherId)
+    {
+        return modCmpGT<BufferT::kBaseSize>(otherId, getId());
+    }
+
+    // id greater than
+    bool idGreaterEq(bufferId_t otherId)
+    {
+        return modCmpGE<BufferT::kBaseSize>(getId(), otherId);
+    }
+    // id small than
+    bool idLessEq(bufferId_t otherId)
+    {
+        return modCmpGE<BufferT::kBaseSize>(otherId, getId());
+    }
+
+    bool idEqual(bufferId_t otherId)
+    {
+        return modCmpEq<BufferT::kBaseSize>(getId(), otherId);
+    }
+
+    template <typename IdType> auto idDiff(IdType otherId)
+    {
+        return dsp::modDiff<BufferT::kBaseSize>(getId(), otherId);
+    }
+
+    template <typename IdType> auto modDiff(IdType id1, IdType id2)
+    {
+        return dsp::modDiff<BufferT::kBaseSize>(id1, id2);
+    }
+
+    template <typename IdType> auto modAdd(IdType id1, IdType id2)
+    {
+        return dsp::modAdd<BufferT::kBaseSize>(id1, id2);
     }
 
   private:
