@@ -48,7 +48,7 @@ template <typename T, size_t Size> class Lut
     {
         pos *= Size;
         auto ipos = static_cast<int>(pos);
-        auto fpos = pos - static_cast<float>(ipos);
+        auto fpos = pos - static_cast<Float>(ipos);
 
         // ipos between 0 and Size
         ipos &= static_cast<int>(kMask);

@@ -17,6 +17,7 @@ template <typename T> static void testIR()
 
     constexpr auto kKernelSize = 4;
     using ft                   = T;
+    using bt = dsp::baseType<T>;
     using Kernel = dsp::kernels::Sinc<kKernelSize, dsp::windows::Kaiser<140>>;
     using Tap    = dsp::TapKernel<ft, Kernel, 256>;
 
@@ -32,9 +33,9 @@ template <typename T> static void testIR()
     Tap tap;
 
     int n                   = 0;
-    dsp::baseType<ft> delay = 8.34523;
+    auto delay = bt(8.34523);
     int idelay              = static_cast<int>(delay);
-    auto fdelay             = delay - idelay;
+    auto fdelay             = delay - bt(idelay);
 
     tap.setDelay(delay);
     CTXTRUN(ctxt)
@@ -44,7 +45,7 @@ template <typename T> static void testIR()
         ft expect = 0;
         ft sum    = 0;
         for (int i = -kKernelSize; i < kKernelSize; ++i) {
-            auto kernel = Kernel::generate(-i - fdelay);
+            auto kernel = Kernel::generate(bt(-i) - fdelay);
             sum += kernel;
             if (n - idelay + i == 0) {
                 expect = dsp::load(expect) + kernel;
@@ -79,14 +80,14 @@ template <typename T> static void testDC()
 
     Tap tap;
 
-    dsp::baseType<ft> delay = 10.38523;
-    ft dc                   = 0.5;
+    auto delay = dsp::baseType<ft>(10.38523);
+    ft dc      = 0.5;
 
     tap.setDelay(delay);
     int n = 0;
     CTXTRUN(ctxt)
     {
-        if (n > 2 * kKernelSize + delay) {
+        if (n > 2 * kKernelSize + static_cast<int>(delay)) {
             auto x = tap.read(ctxt, delayline);
             for (size_t i = 0; i < dsp::kTypeWidth<ft>; ++i)
                 REQUIRE_THAT(dsp::get(x, i), WithinAbs(dsp::get(dc, i), 1e-5f));
@@ -116,7 +117,7 @@ template <typename T> static void testBandLimited()
 
     Tap tap;
 
-    dsp::baseType<ft> delay = 10.38523;
+    dsp::baseType<ft> delay = 10.38523f;
 
     tap.setDelay(delay);
     int n       = 0;
@@ -129,27 +130,29 @@ template <typename T> static void testBandLimited()
             for (size_t i = 0; i < dsp::kTypeWidth<ft>; ++i)
                 REQUIRE_THAT(dsp::get(x, i), WithinAbs(0.0, 1e-5));
 
-            delayline.write(ctxt, dsp::sin(dsp::constants<T>::pi * n));
+            delayline.write(
+                ctxt, dsp::sin(dsp::constants<T>::pi * dsp::baseType<ft>(n)));
             ++n;
         };
     }
 
     SECTION("Reconstruction")
     {
-        ft f0 = 0.0191;
+        ft f0 = 0.0191f;
         CTXTRUN(ctxt)
         {
-            if (n > 2 * kKernelSize + delay) {
+            if (n > 2 * kKernelSize + static_cast<int>(delay)) {
                 auto x = tap.read(ctxt, delayline, scale);
-                auto e = dsp::sin(dsp::constants<T>::pi * (n - delay) *
+                auto e = dsp::sin(dsp::constants<T>::pi * (ft(n) - delay) *
                                   dsp::load(f0));
                 for (size_t i = 0; i < dsp::kTypeWidth<ft>; ++i)
                     REQUIRE_THAT(dsp::get(x, i),
                                  WithinAbs(dsp::get(e, i), 1e-4));
             }
 
-            delayline.write(
-                ctxt, dsp::sin(dsp::constants<T>::pi * n * dsp::load(f0)));
+            delayline.write(ctxt,
+                            dsp::sin(dsp::constants<T>::pi *
+                                     dsp::baseType<ft>(n) * dsp::load(f0)));
             ++n;
         };
     }

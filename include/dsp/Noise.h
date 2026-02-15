@@ -16,7 +16,7 @@ template <typename T> class INoise
                                              1492758273, 1746273223};
 
   public:
-    INoise() : INoise(std::random_device{}()) {}
+    INoise() : INoise(static_cast<int>(std::random_device{}())) {}
     INoise(int seed)
     {
         auto rnd = seed;

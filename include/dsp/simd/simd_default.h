@@ -236,7 +236,7 @@ template <typename T> struct intrin<T, 1> {
         return x1 / x2;
     }
     static always_inline type sqrt(type x) { return std::sqrt(x); }
-    static always_inline type signbit(type x) { return std::signbit(x); }
+    static always_inline auto signbit(type x) { return std::signbit(x); }
     static always_inline type vectorcall bitAnd(type x1, type x2)
     {
         return x1 & x2;

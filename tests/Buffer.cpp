@@ -12,7 +12,7 @@ TEST_CASE("Buffer Class", "[buffer]")
     dsp::Buffer<mf, kN> buf;
     mf data[decltype(buf)::kSize]{};
 
-#define loop(i) for (int i = 0; i < 2; ++i)
+#define loop(i) for (size_t i = 0; i < 2; ++i)
 
     SECTION("Constructor")
     {
@@ -33,7 +33,7 @@ TEST_CASE("Buffer Class", "[buffer]")
         buf.nextId(off);
         id += off;
 
-        mf x = {2, 3}, y;
+        mf x = {2.f, 3.f}, y;
         buf.write(0, x.load());
 
         REQUIRE((id == buf.getId()));

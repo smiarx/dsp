@@ -54,8 +54,8 @@ void Springs::update(float r, float freq, float td, float t60, float tone,
 void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
-    auto rateFactor = static_cast<int>(kDecimateMaxFreq / freqScaled);
-    rateFactor      = std::min(rateFactor, kMaxDecimate);
+    auto rateFactor = static_cast<unsigned int>(kDecimateMaxFreq / freqScaled);
+    rateFactor = std::min(rateFactor, static_cast<unsigned int>(kMaxDecimate));
 
     freqScaled *= static_cast<float>(rateFactor);
 
@@ -73,11 +73,11 @@ void Springs::setFreq(float freq, int blockSize)
 
     /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
     decltype(lowpass_)::SOS kSosAnalog = {{{
-        {0., 0., 0.00255383, 1., 0.21436212, 0.0362477},
-        {0., 0., 1., 1., 0.19337886, 0.21788333},
-        {0., 0., 1., 1., 0.15346633, 0.51177596},
-        {0., 0., 1., 1., 0.09853145, 0.80566858},
-        {0., 0., 1., 1., 0.03395162, 0.98730422},
+        {0.f, 0.f, 0.00255383f, 1.f, 0.21436212f, 0.0362477f},
+        {0.f, 0.f, 1.f, 1.f, 0.19337886f, 0.21788333f},
+        {0.f, 0.f, 1.f, 1.f, 0.15346633f, 0.51177596f},
+        {0.f, 0.f, 1.f, 1.f, 0.09853145f, 0.80566858f},
+        {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
     }}};
 
     // if downsampling factor change we reset lowpassState to avoid clicks
@@ -86,9 +86,9 @@ void Springs::setFreq(float freq, int blockSize)
 
     decimateId_ = 0;
 
-    int oldRateFactor = rateFactor_;
-    rateFactor_       = rateFactor;
-    freq_             = freq;
+    auto oldRateFactor = rateFactor_;
+    rateFactor_        = rateFactor;
+    freq_              = freq;
 
     if (rateFactor != oldRateFactor) {
         auto fM = static_cast<float>(rateFactor);
@@ -153,8 +153,8 @@ void Springs::setTone(float tone, int /*blockSize*/)
 {
     tone_ = tone;
 
-    auto eqPeak =
-        dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ * rateFactor_;
+    auto eqPeak = dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ *
+                  static_cast<float>(rateFactor_);
     static constexpr auto kMaxEqPeak = 0.95f;
     eqPeak                           = std::min(kMaxEqPeak, eqPeak);
     eq_.setFreq(eqPeak);

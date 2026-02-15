@@ -71,7 +71,8 @@ template <size_t L, int Off> class DelayLine
     static constexpr auto kLength = L;
     static constexpr auto kOffset = Off;
     static constexpr auto kNextOffset =
-        kOffset + nextAlignedOffset(kLength, DSP_MAX_VEC_SIZE / 4);
+        kOffset +
+        nextAlignedOffset(kLength, static_cast<size_t>(DSP_MAX_VEC_SIZE / 4));
 
     template <int O> using WithOffset = DelayLine<L, O>;
 
@@ -209,11 +210,11 @@ struct TapTail {
 
 /* help function */
 template <class Ctxt, class DL, class T>
-void basefixread(Ctxt /*c*/, const DL & /*delayline*/, T & /*x*/, int /*i*/)
+void basefixread(Ctxt /*c*/, const DL & /*delayline*/, T & /*x*/, size_t /*i*/)
 {
 }
 template <class Ctxt, class DL, class T, int D, int... Ds>
-void basefixread(Ctxt c, const DL &delayline, T &x, int i)
+void basefixread(Ctxt c, const DL &delayline, T &x, size_t i)
 {
     static_assert(D <= DL::kLength - Ctxt::Type::kWidth + 1,
                   "tap delay length is bigger than delay line");
@@ -290,8 +291,9 @@ template <typename T> class TapLin : public TapNoInterp<T>
     void setDelay(const T &d)
     {
         IntT id;
-        store(id, toInt(load(d)));
-        store(fd_, load(d) - id);
+        auto vd = load(d);
+        store(id, toInt(vd));
+        store(fd_, vd - decltype(vd)(id));
         TapNoInterp<T>::setDelay(id);
     }
 

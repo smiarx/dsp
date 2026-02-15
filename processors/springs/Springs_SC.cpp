@@ -15,9 +15,10 @@ template <class Arch> void Springs_Ctor(SpringsUnit<Arch> *unit)
     SETCALC(springsNext<Arch>);
     auto springs = (Arch *)RTAlloc(unit->mWorld, sizeof(Arch));
     new (springs) Arch();
-    springs->prepare(SAMPLERATE, BUFLENGTH, [&unit](void *ptr, size_t len) {
-        return RTRealloc(unit->mWorld, ptr, len);
-    });
+    springs->prepare(static_cast<float>(SAMPLERATE), BUFLENGTH,
+                     [&unit](void *ptr, size_t len) {
+                         return RTRealloc(unit->mWorld, ptr, len);
+                     });
     unit->springs = springs;
 
     ClearUnitIfMemFailed(unit->springs);

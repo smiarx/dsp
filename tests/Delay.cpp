@@ -16,20 +16,22 @@ static inline void checkValue(V delay, int i, float value, float offset = 0.f)
 {
     if (i < (int)delay) REQUIRE_THAT(value, WithinRel(0.));
     else if (i > (int)delay)
-        REQUIRE_THAT(value, WithinRel(float(i) - delay + offset));
+        REQUIRE_THAT(value,
+                     WithinRel(float(i) - static_cast<float>(delay) + offset));
 }
 template <typename V>
 static inline void checkValue(V delay, int i, double value, double offset = 0.)
 {
     if (i < (int)delay) REQUIRE_THAT(value, WithinRel(0.));
     else if (i > (int)delay)
-        REQUIRE_THAT(value, WithinRel(double(i) - delay + offset));
+        REQUIRE_THAT(
+            value, WithinRel(double(i) - static_cast<double>(delay) + offset));
 }
 template <typename V, typename T>
 static inline void checkValue(V delay, int &i, T value, float offset = 0.f)
 {
     for (size_t j = 0; j < decltype(value)::kWidth; ++j) {
-        checkValue(delay, i + j, value[j], offset);
+        checkValue(delay, i + static_cast<int>(j), value[j], offset);
     }
 }
 
@@ -99,7 +101,7 @@ TEST_CASE("DelayLine", "[dsp][delayline]")
                 checkValue(kDelay2, i, v2, 10.f);
                 if constexpr (std::is_same_v<ft, decltype(v1)>) ++i;
                 else
-                    i += decltype(v1)::kWidth;
+                    i += int(decltype(v1)::kWidth);
             };
             buffer.nextBlock(ctxt);
         }
@@ -167,7 +169,7 @@ TEST_CASE("CopyDelayLine", "[dsp][copydelayline]")
                 checkValue(kDelay, i, v);
                 if constexpr (std::is_same_v<ft, decltype(x)>) ++i;
                 else
-                    i += decltype(x)::kWidth;
+                    i += static_cast<int>(decltype(x)::kWidth);
             };
         }
     }
@@ -236,14 +238,14 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                     auto d = GENERATE(take(1, random(2.f, ft(kDelayMax - 2))));
                     auto v = dsp::TapCubic<ft>(d).read(ctxt, delay);
 
-                    if (i < d - 1.f) {
+                    if (ft(i) < d - 1.f) {
                         REQUIRE_THAT(v, WithinRel(ft(0)));
                     } else {
-                        ft x0     = i - static_cast<int>(d);
+                        ft x0     = ft(i) - ft(static_cast<int>(d));
                         ft x1     = std::max(ft(0), x0 - 1);
                         ft x2     = std::max(ft(0), x1 - 1);
                         ft xm1    = x0 + 1;
-                        ft fd     = d - static_cast<int>(d);
+                        ft fd     = d - ft(static_cast<int>(d));
                         ft expect = dsp::hermite(xm1, x0, x1, x2, fd);
 
                         REQUIRE_THAT(v, WithinRel(expect));
@@ -322,7 +324,7 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                 delay.write(ctxt, x);
                 if constexpr (std::is_same_v<ft, decltype(x)>) ++i;
                 else
-                    i += decltype(x)::kWidth;
+                    i += static_cast<int>(decltype(x)::kWidth);
             };
             buffer.nextBlock(ctxt);
         }
@@ -405,7 +407,7 @@ TEST_CASE("Tap", "[dsp][delay][tap]")
                                             static_cast<fscal>(kDelayMax - 2))))};
                     auto v = dsp::TapCubic<ft>(d).read(ctxt, delay);
 
-                    for (int j = 0; j < 2; ++j) {
+                    for (size_t j = 0; j < 2; ++j) {
                         fscal x0  = i - static_cast<int>(d[j]) + off;
                         fscal x1  = x0 - 1;
                         fscal x2  = x1 - 1;

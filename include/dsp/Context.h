@@ -15,8 +15,8 @@ template <typename T, bool Vec = false> class Context
     Context(const Context &ctxt)            = default;
     Context &operator=(const Context &ctxt) = default;
 
-    static constexpr auto kIncrSize = Vec ? sizeof(batch<T>) / sizeof(T) : 1;
-    static constexpr bool kUseVec   = Vec;
+    static constexpr int kIncrSize = Vec ? sizeof(batch<T>) / sizeof(T) : 1;
+    static constexpr bool kUseVec  = Vec;
 
     using BaseType = T;
     using Type     = std::conditional_t<Vec, batch<T>, T>;
@@ -152,10 +152,11 @@ template <bool Rev, class Ctxt1, class Ctxt2> class ContextRun2
             auto ctxt1Scal = ctxt1_.scalar();
             auto ctxt2Scal = ctxt2_.scalar();
 
-            constexpr auto kNextStep = Rev ? -1 : 1;
+            constexpr auto kScalNextStep = Rev ? -1 : 1;
 
             for (; n < ctxt1Scal.getBlockSize();
-                 n += 1, ctxt1Scal.next(kNextStep), ctxt2Scal.next(kNextStep)) {
+                 n += 1, ctxt1Scal.next(kScalNextStep),
+                 ctxt2Scal.next(kScalNextStep)) {
                 func(ctxt1Scal, ctxt2Scal);
             }
         }
@@ -176,6 +177,7 @@ template <bool Rev, class Ctxt1, class Ctxt2> class ContextRun2
 
 #define CTXTRUN(ctxt) \
     if (dsp::ContextRun contextRun{ctxt}) contextRun = [&](auto ctxt)
+
 #define CTXTRUNVEC(ctxt)                           \
     if (dsp::ContextRun contextRunVec{ctxt.vec()}) \
     contextRunVec = [&](auto ctxt)

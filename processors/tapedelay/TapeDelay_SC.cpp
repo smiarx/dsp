@@ -18,7 +18,7 @@ template <class Arch> void TapeDelay_Ctor(TapeDelayUnit<Arch> *unit)
     ClearUnitIfMemFailed(unit->tapedelay);
     new (unit->tapedelay) Arch();
 
-    unit->tapedelay->prepare(SAMPLERATE, BUFLENGTH,
+    unit->tapedelay->prepare(static_cast<float>(SAMPLERATE), BUFLENGTH,
                              [&unit](void *ptr, size_t len) {
                                  return RTRealloc(unit->mWorld, ptr, len);
                              });
