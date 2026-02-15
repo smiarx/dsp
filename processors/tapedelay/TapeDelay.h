@@ -13,6 +13,8 @@
 #include <atomic>
 #endif
 
+#include "TapeDelayDefines.h"
+
 namespace processors
 {
 inline namespace DSP_ARCH_NAMESPACE
@@ -27,9 +29,9 @@ class TapeDelay
 
     static constexpr auto kMaxBlockSize      = 512;
     static constexpr type kDefaultSampleRate = 48000;
-    static constexpr type kMaxDelay          = 5;
+    static constexpr type kMaxDelay          = type(TAPEDELAY_MAX_DELAY);
 
-    static constexpr type kReverseDelayMaxRatio = 3.1f;
+    static constexpr type kReverseDelayMaxRatio = type(TAPEDELAY_REVERSE_MAX_RATIO);
 
     static constexpr type kSpeedSmoothTime = 0.7f;
     static constexpr type kSpeedModFreq    = 0.242f;
