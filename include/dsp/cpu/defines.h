@@ -31,7 +31,7 @@
 #define DSP_ARCH_NAMESPACE sse
 #endif
 
-#ifndef DSP_NO_DISPATCH
+#ifndef DSP_X86_DISPATCH
 #define DSP_X86_DISPATCH 1
 #endif
 
