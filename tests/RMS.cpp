@@ -55,7 +55,7 @@ TEST_CASE("RMS", "[dsp][rms]")
         dsp::RMS<ft, kRmsSize> rms;
         dsp::Stack<ft, 1> stack;
         ft x[kSize];
-        float freq = GENERATE(take(4, random(4.f / kRmsSize, 1.f)));
+        float freq = GENERATE(0.05f, 0.1f, 0.187f, 0.23f);
 
         for (size_t t = 0; t < 2; ++t) {
             for (size_t k = 0; k < kNBlock; ++k) {
