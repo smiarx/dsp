@@ -33,15 +33,15 @@ TEST_CASE("LFO Sine", "[dsp][lfo][sine]")
 {
     SECTION("float") { testSine(0.001f); }
     SECTION("float with phase") { testSine(0.005f, 0.684f); }
-    SECTION("float x 2") { testSine<dsp::mfloat<2>>({0.002, 0.003}); }
+    SECTION("float x 2") { testSine<dsp::mfloat<2>>({0.002f, 0.003f}); }
     SECTION("float x 2 with phase")
     {
-        testSine<dsp::mfloat<2>>({0.0002339, 0.000332}, {0.3982, 0.9883});
+        testSine<dsp::mfloat<2>>({0.0002339f, 0.000332f}, {0.3982f, 0.9883f});
     }
     SECTION("double x 2") { testSine<dsp::mdouble<2>>({0.000212, 0.0008}); }
     SECTION("float x 4")
     {
-        testSine<dsp::mfloat<4>>({0.00143, 0.0008, 0.0032, 0.0011});
+        testSine<dsp::mfloat<4>>({0.00143f, 0.0008f, 0.0032f, 0.0011f});
     }
 
     SECTION("long run") { testSine<double, 48000>(0.000354); }
@@ -56,9 +56,9 @@ template <typename T, int N = 52> static void testParabolic(const T &freq)
     for (int k = 0; k < N; ++k) {
         auto x = lfo.process();
 
-        T expect     = k * f + 0.5;
+        T expect     = T(k) * f + T(0.5);
         auto iexpect = dsp::toInt(expect);
-        expect -= iexpect + 0.5;
+        expect -= T(iexpect) + T(0.5);
 
         expect = 4 * (expect);
         expect = expect * (2 - dsp::abs(expect));

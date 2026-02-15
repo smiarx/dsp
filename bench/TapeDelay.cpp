@@ -15,8 +15,9 @@ TEST_CASE("TapeDelay")
 
         processors::TapeDelay tapedelay;
         tapedelay.prepare(kSampleRate, kBlockSize);
-        tapedelay.update(0.2, 0.8, 3000, 10, -40, 0.3,
-                         processors::TapeDelay::Mode::kNormal, 0.4, kBlockSize);
+        tapedelay.update(0.2f, 0.8f, 3000.f, 10.f, -40.f, 0.3f,
+                         processors::TapeDelay::Mode::kNormal, 0.4f,
+                         kBlockSize);
 
         BENCHMARK("TapeDelay") { tapedelay.process(ins, ins, kBlockSize); };
 

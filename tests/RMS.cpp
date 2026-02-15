@@ -60,7 +60,7 @@ TEST_CASE("RMS", "[dsp][rms]")
         for (size_t t = 0; t < 2; ++t) {
             for (size_t k = 0; k < kNBlock; ++k) {
                 for (size_t n = 0; n < kSize; ++n) {
-                    x[n] = std::sin(dsp::constants<float>::pi * freq * n);
+                    x[n] = std::sin(dsp::constants<float>::pi * freq * ft(n));
                 }
 
                 rms.processBlock(dsp::Context(x, kSize), stack);
@@ -94,8 +94,9 @@ TEST_CASE("RMS", "[dsp][rms]")
             for (size_t k = 0; k < kNBlock; ++k) {
                 rms.processBlock(dsp::Context(x, kSize), stack);
             }
-            REQUIRE_THAT(stack.get(),
-                         WithinAbs(sqrtf((1.f + j) * kShift / kRmsSize), 1e-6));
+            REQUIRE_THAT(
+                stack.get(),
+                WithinAbs(sqrtf((1.f + ft(j)) * kShift / kRmsSize), 1e-6));
         }
 
         for (auto &xn : x) {
@@ -106,9 +107,10 @@ TEST_CASE("RMS", "[dsp][rms]")
             for (size_t k = 0; k < kNBlock; ++k) {
                 rms.processBlock(dsp::Context(x, kSize), stack);
             }
-            REQUIRE_THAT(stack.get(), WithinAbs(sqrtf((kNOverlap - 1.f - j) *
-                                                      kShift / kRmsSize),
-                                                1e-6));
+            REQUIRE_THAT(
+                stack.get(),
+                WithinAbs(sqrtf((kNOverlap - 1.f - ft(j)) * kShift / kRmsSize),
+                          1e-6));
         }
     }
 }

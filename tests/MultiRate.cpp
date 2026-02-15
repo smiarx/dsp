@@ -32,7 +32,7 @@ TEST_CASE("MultiRate", "[dsp][multirate]")
     std::array<ft, kN> xInterp{};
 
     // low frequency signal
-    for (int i = 0; i < kN; ++i) {
+    for (size_t i = 0; i < kN; ++i) {
         x[i] = dsp::sin(2 * dsp::constants<ft>::pi * ft(200. / 48000) * ft(i));
     }
 
@@ -40,13 +40,13 @@ TEST_CASE("MultiRate", "[dsp][multirate]")
     auto ctxtDec    = dsp::BufferContext(xDec.data(), kN, bufDec);
     auto ctxtInterp = dsp::Context(xInterp.data(), kN);
 
-    auto kRate = GENERATE(2, 3, 4, 5, 6);
+    auto kRate = GENERATE(2u, 3u, 4u, 5u, 6u);
     multirate.decimate(kRate, ctxt, ctxtDec, decState, 0);
     multirate.interpolate(kRate, ctxtDec, ctxtInterp, interpState, 0);
 
     // decimate & interpolate will reproduce same signal delayed
-    auto kDelay = multirate.getDelay(kRate);
-    for (int i = kDelay + 100; i < kN; ++i) {
+    auto kDelay = static_cast<size_t>(multirate.getDelay(kRate));
+    for (size_t i = kDelay + 100; i < kN; ++i) {
         REQUIRE_THAT(xInterp[i],
                      Catch::Matchers::WithinAbs(x[i - kDelay], ft(1e-6)));
     }

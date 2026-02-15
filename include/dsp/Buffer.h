@@ -53,7 +53,8 @@ template <class T, std::size_t MinSize> class Buffer
             // safely write vor vec read even when writing scalars
             if constexpr (Safe && !std::is_same_v<T, batch<T>>) {
                 if (static_cast<size_t>(pos) < kVecOffset) {
-                    dsp::DSP_ARCH_NAMESPACE::store(data_[kBaseSize + pos], val);
+                    dsp::DSP_ARCH_NAMESPACE::store(
+                        data_[static_cast<int>(kBaseSize) + pos], val);
                 }
             }
         }

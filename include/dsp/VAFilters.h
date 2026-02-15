@@ -20,7 +20,7 @@ enum FilterType {
 
 template <typename T> static constexpr auto warpGain(const T &freq)
 {
-    return tan(dsp::constants<T>::pi * load(freq) * 0.5);
+    return tan(dsp::constants<T>::pi * load(freq) * T(0.5));
 }
 
 template <typename T, FilterType FT = kLowPass> class OnePole

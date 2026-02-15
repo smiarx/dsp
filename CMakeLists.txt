@@ -52,8 +52,8 @@ if(MSVC)
 )
 else()
     target_compile_options(dsp_compile_options INTERFACE
-    -Wall -Wextra -Wpedantic -Werror -fopenmp-simd
-    $<$<CONFIG:RELEASE>:-O3 -ffast-math -funsafe-math-optimizations -ffp-contract=fast>
+    -Wall -Wextra -Wpedantic -Werror -Wconversion -Wsign-conversion -Wno-shadow -Wnon-virtual-dtor
+    $<$<CONFIG:RELEASE>: -ffast-math -funsafe-math-optimizations -ffp-contract=fast>
 )
 endif()
 target_compile_features(dsp_compile_options INTERFACE cxx_std_17)

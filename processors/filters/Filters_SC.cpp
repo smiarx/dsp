@@ -38,7 +38,7 @@ template <class Base, bool hasRes> void filterCtor(Filter<Base, hasRes> *unit)
     }
 
     unit->freq = IN0(1);
-    float freq = unit->freq * SAMPLEDUR * 2.f;
+    float freq = unit->freq * static_cast<float>(SAMPLEDUR) * 2.f;
     if constexpr (hasRes) {
         unit->res    = IN0(2);
         unit->filter = Base({freq}, {unit->res});
@@ -68,7 +68,7 @@ void filterNextA(Filter<Base, hasRes> *unit, int inNumSamples)
     auto *in  = IN(0);
     auto *out = OUT(0);
     for (int n = 0; n < inNumSamples; ++n) {
-        float freq = IN(1)[n] * SAMPLEDUR * 2.f;
+        float freq = IN(1)[n] * static_cast<float>(SAMPLEDUR) * 2.f;
         if constexpr (hasRes) {
             float res    = IN0(2);
             unit->filter = Base({freq}, {res});
@@ -88,7 +88,7 @@ template <class Base, bool hasRes>
 void filterNext(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
-        float freq = IN0(1) * SAMPLEDUR * 2.f;
+        float freq = IN0(1) * static_cast<float>(SAMPLEDUR) * 2.f;
         if constexpr (hasRes) {
             float res    = IN0(2);
             unit->filter = Base({freq}, {res});

@@ -15,7 +15,7 @@ TEST_CASE("Springs")
 
         processors::Springs springs;
         springs.prepare(kSampleRate, kBlockSize);
-        springs.update(0.5, 4500, 0.05, 2.3, 0.3, 0.4, 0.4, 1., 0.3,
+        springs.update(0.5f, 4500.f, 0.05f, 2.3f, 0.3f, 0.4f, 0.4f, 1.f, 0.3f,
                        kBlockSize);
         BENCHMARK("Springs") { springs.process(ins, ins, kBlockSize); };
         springs.free();

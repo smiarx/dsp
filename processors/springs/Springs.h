@@ -34,31 +34,31 @@ class Springs
 
     static constexpr auto kMaxBlockSize         = 512;
     static constexpr auto kMaxDecimate          = 8;
-    static constexpr type kMaxLoopLengthSeconds = 0.2;
-    static constexpr type kLoopLengthSeconds    = 0.25;
+    static constexpr type kMaxLoopLengthSeconds = 0.2f;
+    static constexpr type kLoopLengthSeconds    = 0.25f;
     static constexpr auto kLoopLength =
         static_cast<int>(kLoopLengthSeconds * kDefaultSamplerRate);
     static constexpr auto kCascadeL = 160;
 
-    static constexpr type kDecimateMaxFreq = 0.78;
-    static constexpr type kDcBlockFreq     = 10.;
+    static constexpr type kDecimateMaxFreq = 0.78f;
+    static constexpr type kDcBlockFreq     = 10.f;
 
-    static constexpr type kEqBandWidth = 5.;
+    static constexpr type kEqBandWidth = 5.f;
 
-    static constexpr type kMinRWithMaxCascadeL = 0.1;
+    static constexpr type kMinRWithMaxCascadeL = 0.1f;
 
-    static constexpr type kNonLinearityGain = 0.2;
+    static constexpr type kNonLinearityGain = 0.2f;
 
-    static constexpr type kToneMin = 80.;
-    static constexpr type kToneMax = 5000.;
+    static constexpr type kToneMin = 80.f;
+    static constexpr type kToneMax = 5000.f;
 
-    static constexpr mtype kFreqFactor   = {0.98, 1.02, 0.97, 1.03};
-    static constexpr mtype kRFactor      = {1.08, 0.97, 1.05, 0.98};
+    static constexpr mtype kFreqFactor   = {0.98f, 1.02f, 0.97f, 1.03f};
+    static constexpr mtype kRFactor      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr mtype kLoopTdFactor = {
-        0.8293183583208989, 1.1876863056468745, 0.94273342, 1.2432815625};
-    static constexpr mtype kLoopModFreq   = {0.2, 0.4, 0.2, 0.3f};
-    static constexpr mtype kLoopModFactor = {0.0035, 0.002, 0.0038, 0.0027};
-    static constexpr type kLoopRippleGain = 0.016;
+        0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
+    static constexpr mtype kLoopModFreq   = {0.2f, 0.4f, 0.2f, 0.3f};
+    static constexpr mtype kLoopModFactor = {0.0035f, 0.002f, 0.0038f, 0.0027f};
+    static constexpr type kLoopRippleGain = 0.016f;
 
     // use simd to improve all pass chain
     // for example
@@ -123,7 +123,7 @@ class Springs
   private:
     void setNStages();
 
-    int rateFactor_{1};
+    unsigned int rateFactor_{1};
     type sampleRate_{kDefaultSamplerRate};
     type freqScale_{2.f / kDefaultSamplerRate};
     int maxBlockSize_{};
@@ -139,9 +139,9 @@ class Springs
     type scatter_{1.f};
 
     dsp::ControlSmoother<type> dry_{1.f};
-    dsp::ControlSmoother<dsp::mfloat<2>> wet_{{1, 0}};
+    dsp::ControlSmoother<dsp::mfloat<2>> wet_{{1.f, 0.f}};
 
-    static constexpr type kMinScatter = 0.1;
+    static constexpr type kMinScatter = 0.1f;
     [[nodiscard]] auto getScatterFactor() const
     {
         return kMinScatter + scatter_;

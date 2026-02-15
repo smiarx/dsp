@@ -16,7 +16,7 @@ template <typename T> static auto rms(T *x, size_t length)
     for (size_t n = 0; n < length; ++n) {
         rms += dsp::load(x[n]) * x[n];
     }
-    rms = dsp::sqrt(rms / length);
+    rms = dsp::sqrt(rms / T(length));
     return rms;
 }
 
@@ -25,8 +25,8 @@ TEST_CASE("Allpass2", "[dsp][allpass2]")
     SECTION("Reference")
     {
         using ft           = dsp::mfloat<2>;
-        constexpr auto kA0 = 0.3333333333333333;
-        constexpr auto kA1 = -0.9335804264972017;
+        constexpr auto kA0 = 0.3333333333333333f;
+        constexpr auto kA1 = -0.9335804264972017f;
         dsp::AllPass2<ft> ap;
         decltype(ap)::State apstate{};
         ap.setCoeffs({kA0, kA0}, {kA1, kA1});

@@ -106,26 +106,26 @@ static inline auto getInfos() noexcept
 
     Infos infos;
 
-    infos.sse2       = regs1[3] >> 26 & sseStateOsEnabled;
-    infos.sse3       = regs1[2] >> 0 & sseStateOsEnabled;
-    infos.ssse3      = regs1[2] >> 9 & sseStateOsEnabled;
-    infos.sse4_1     = regs1[2] >> 19 & sseStateOsEnabled;
-    infos.sse4_2     = regs1[2] >> 20 & sseStateOsEnabled;
-    infos.fma3_sse42 = regs1[2] >> 12 & sseStateOsEnabled;
+    infos.sse2       = static_cast<bool>(regs1[3] >> 26 & sseStateOsEnabled);
+    infos.sse3       = static_cast<bool>(regs1[2] >> 0 & sseStateOsEnabled);
+    infos.ssse3      = static_cast<bool>(regs1[2] >> 9 & sseStateOsEnabled);
+    infos.sse4_1     = static_cast<bool>(regs1[2] >> 19 & sseStateOsEnabled);
+    infos.sse4_2     = static_cast<bool>(regs1[2] >> 20 & sseStateOsEnabled);
+    infos.fma3_sse42 = static_cast<bool>(regs1[2] >> 12 & sseStateOsEnabled);
 
-    infos.avx = regs1[2] >> 28 & avxStateOsEnabled;
+    infos.avx = static_cast<bool>(regs1[2] >> 28 & avxStateOsEnabled);
 
     uint32_t regs8[4];
     internal::cpuid(regs8, 0x80000001);
-    infos.fma4 = regs8[2] >> 16 & avxStateOsEnabled;
+    infos.fma4 = static_cast<bool>(regs8[2] >> 16 & avxStateOsEnabled);
 
     uint32_t regs7[4];
     internal::cpuid(regs7, 0x7);
-    infos.avx2 = regs7[1] >> 5 & avxStateOsEnabled;
+    infos.avx2 = static_cast<bool>(regs7[1] >> 5 & avxStateOsEnabled);
 
     uint32_t regs7a[4];
     internal::cpuid(regs7a, 0x7, 0x1);
-    infos.avxvnni = regs7a[0] >> 4 & avxStateOsEnabled;
+    infos.avxvnni = static_cast<bool>(regs7a[0] >> 4 & avxStateOsEnabled);
 
     return infos;
 }

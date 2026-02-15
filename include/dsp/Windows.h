@@ -13,7 +13,7 @@ template <int Attenuation> class Kaiser
     {
         constexpr F kBeta  = computeBeta<F>(Attenuation);
         constexpr F kDenom = F(1) / zerothOrderBessel(kBeta);
-        F K                = kBeta * sqrtf(F(1) - x * x);
+        F K                = kBeta * dsp::sqrt(F(1) - x * x);
         F num              = zerothOrderBessel(K);
 
         return num * kDenom;

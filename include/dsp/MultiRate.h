@@ -163,7 +163,7 @@ class MultiRate : public MultiRateDecimate<T, Order, M>,
   public:
     constexpr int getDelay(unsigned int rate)
     {
-        return ((Order + 1) * rate - 1);
+        return ((static_cast<int>(Order) + 1) * static_cast<int>(rate) - 1);
     }
 };
 } // namespace dsp
