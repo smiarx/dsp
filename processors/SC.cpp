@@ -1,8 +1,8 @@
 #include "dsp/cpu/infos.h"
 #include <SC_InterfaceTable.h>
 
-#include "springs/Springs_SC.h"
-#include "tapedelay/TapeDelay_SC.h"
+#include "Springs_SC.h"
+#include "TapeDelay_SC.h"
 
 extern void loadFilters();
 
