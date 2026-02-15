@@ -18,6 +18,8 @@
 #include "dsp/Enveloppe.h"
 #endif
 
+#include "SpringsDefines.h"
+
 namespace processors
 {
 inline namespace DSP_ARCH_NAMESPACE
@@ -26,7 +28,7 @@ inline namespace DSP_ARCH_NAMESPACE
 class Springs
 {
   public:
-    static constexpr auto kN = 4;
+    static constexpr auto kN = SPRINGS_N_SPRINGS;
     using type               = float;
     using mtype              = dsp::multi<type, kN>;
 
@@ -207,7 +209,7 @@ class Springs
   public:
     static constexpr auto kRmsSize      = 64;
     static constexpr auto kRmsOverlap   = kRmsSize - 16;
-    static constexpr auto kRmsStackSize = 64;
+    static constexpr auto kRmsStackSize = SPRINGS_RMS_STACK_SIZE;
 
     [[nodiscard]] const auto *getRMSStack() const
     {
