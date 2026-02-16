@@ -157,6 +157,7 @@ class Springs
     dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff0_{};
     dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff1_{};
 
+    dsp::ControlSmoother<mtype> lowpassFreqs_{};
     dsp::IIRFilter<mtype, 10> lowpass_{};
     typename decltype(lowpass_)::State lowpassState_{};
 

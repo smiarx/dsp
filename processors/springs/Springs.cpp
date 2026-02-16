@@ -18,6 +18,15 @@ inline namespace DSP_ARCH_NAMESPACE
 Springs::MRD *Springs::kDecimate{};
 Springs::MRI *Springs::kInterpolate{};
 
+/* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
+static constexpr dsp::IIRFilter<Springs::mtype, 10>::SOS kSosAnalog = {{{
+    {0.f, 0.f, 0.00255383f, 1.f, 0.21436212f, 0.0362477f},
+    {0.f, 0.f, 1.f, 1.f, 0.19337886f, 0.21788333f},
+    {0.f, 0.f, 1.f, 1.f, 0.15346633f, 0.51177596f},
+    {0.f, 0.f, 1.f, 1.f, 0.09853145f, 0.80566858f},
+    {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
+}}};
+
 void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
@@ -75,18 +84,8 @@ void Springs::setFreq(float freq, int blockSize)
     allpassCoeff1_.set(allpass_.getCoeff1(), invBlockSize);
     allpass_.setCoeff1(allpassCoeff1_.get());
 
-    /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
-    decltype(lowpass_)::SOS kSosAnalog = {{{
-        {0.f, 0.f, 0.00255383f, 1.f, 0.21436212f, 0.0362477f},
-        {0.f, 0.f, 1.f, 1.f, 0.19337886f, 0.21788333f},
-        {0.f, 0.f, 1.f, 1.f, 0.15346633f, 0.51177596f},
-        {0.f, 0.f, 1.f, 1.f, 0.09853145f, 0.80566858f},
-        {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
-    }}};
-
-    // if downsampling factor change we reset lowpassState to avoid clicks
-    if (rateFactor != rateFactor_) lowpassState_ = {};
-    lowpass_.fromAnalog(kSosAnalog, freqs);
+    // set new frequencies to lowpass filter
+    lowpassFreqs_.set(freqs, invBlockSize);
 
     decimateId_ = 0;
 
@@ -383,6 +382,10 @@ void Springs::process(const float *const *__restrict in,
         CTXTRUN(ctxtdec)
         {
             eq_.process(ctxtdec, eqState_);
+
+            if (lowpassFreqs_.isActive()) {
+                lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.step(ctxtdec));
+            }
             lowpass_.process(ctxtdec, lowpassState_);
         };
 
@@ -437,6 +440,10 @@ void Springs::process(const float *const *__restrict in,
     allpassCoeff0_.reset();
     allpassCoeff1_.reset();
     loopGain_.reset();
+    if (lowpassFreqs_.isActive()) {
+        lowpassFreqs_.reset();
+        lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.get());
+    }
 }
 
 } // namespace DSP_ARCH_NAMESPACE
