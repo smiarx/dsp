@@ -11,7 +11,7 @@ endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)"
    OR APPLE)
-   option(DSP_X86_DISPATCH "Build for different x86 instructions set" ON)
+   option(DSP_X86_DISPATCH "Build for different x86 instructions set" OFF)
 
    if(DSP_X86_DISPATCH)
        add_library(dsp_avx2 INTERFACE)

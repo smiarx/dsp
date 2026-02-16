@@ -32,7 +32,7 @@
 #endif
 
 #ifndef DSP_X86_DISPATCH
-#define DSP_X86_DISPATCH 1
+#define DSP_X86_DISPATCH 0
 #endif
 
 #endif
