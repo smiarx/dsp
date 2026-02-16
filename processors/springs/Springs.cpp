@@ -362,22 +362,20 @@ void Springs::process(const float *const *__restrict in,
             auto x = ctxtdec.getInput();
 
             // shift intermediary values
-            for (size_t j = kApChainSize - 1; j > 0; --j) {
-                allpassIntermediary_[j] = allpassIntermediary_[j - 1];
-            }
-            // set value as first entries of intermediary values
-            allpassIntermediary_[0] = x;
+            // and set value as first entries of intermediary values
+            allpassIntermediary_ =
+                dsp::push(dsp::load(allpassIntermediary_), x);
 
             // compute allpass filters
-            dsp::Context c1(
-                reinterpret_cast<dsp::batch<mtype> *>(&allpassIntermediary_));
+            dsp::Context c1(&allpassIntermediary_);
             for (size_t j = 0; j < apNStages_; ++j) {
                 allpass_.process(c1, allpassState_[j]);
             }
 
             // outout is last intermediary value
-            x = allpassIntermediary_[kApChainSize - 1];
-            ctxtdec.setOutput(x);
+            dsp::batch<mtype> allpassOutput =
+                dsp::shift<-(kN) * int(kApChainSize - 1)>(c1.getInput());
+            ctxtdec.setOutput(allpassOutput);
 
             // write to loopback
             x = ctxtdec.getInput();

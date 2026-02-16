@@ -70,11 +70,8 @@ class Springs
     // with y as intermediary values and z as final values
     // reducing the number of computation by 2
     // introduce a delay in chain of size APChainSize
-#ifndef SPRINGS_MAX_VEC_SIZE
-#define SPRINGS_MAX_VEC_SIZE DSP_MAX_VEC_SIZE
-#endif
     static constexpr auto kApChainSize =
-        SPRINGS_MAX_VEC_SIZE / sizeof(type) / kN;
+        sizeof(dsp::batch<mtype>) / sizeof(mtype);
     static constexpr auto kApCascadeL = kCascadeL / kApChainSize;
 
     Springs()
@@ -151,7 +148,7 @@ class Springs
 
     // allpass
     dsp::AllPass2<dsp::batch<mtype>> allpass_{};
-    std::array<mtype, kApChainSize> allpassIntermediary_{};
+    dsp::batch<mtype> allpassIntermediary_{};
     typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
     unsigned int apNStages_{kApCascadeL};
     dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff0_{};
