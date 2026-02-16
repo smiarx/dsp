@@ -4,6 +4,9 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
+
 template <typename T> static constexpr T nextAlignedOffset(T off, T align)
 {
     off += align - 1;
@@ -50,4 +53,5 @@ template <typename F> static constexpr auto expScale(F min, F max, F x)
     return min * std::pow(max / min, x);
 }
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

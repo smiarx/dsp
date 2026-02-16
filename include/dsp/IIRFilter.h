@@ -9,6 +9,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 // second order section
 template <typename T> struct SOS {
@@ -271,4 +273,5 @@ template <typename T> class IIRFilter<T, 0, true>
     };
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

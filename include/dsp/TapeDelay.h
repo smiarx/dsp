@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 // https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_9.pdf
 
@@ -186,4 +188,5 @@ template <class Tap = TapLin<float>> class TapTape
     float prevdelay_{0};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

@@ -4,6 +4,8 @@
 
 namespace dsp::windows
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <int Attenuation> class Kaiser
 {
@@ -54,4 +56,5 @@ class Hamming
     }
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp::windows

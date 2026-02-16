@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 template <class... T> class List
 {
 };
@@ -342,4 +344,6 @@ template <typename T> class AllPass2
 //
 //     float g1save{1.f};
 // };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

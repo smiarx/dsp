@@ -5,6 +5,8 @@
 
 namespace dsp::va
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 /* Various implementation from
  * https://archive.org/details/the-art-of-va-filter-design-rev.-2.1.2
@@ -268,4 +270,6 @@ template <typename T, FilterType FT = kLowPass> class Ladder
     T denominator_;
     OP onepole_;
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp::va

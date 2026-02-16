@@ -7,6 +7,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, bool Vectorize = false> class ControlSmoother
 {
@@ -139,4 +141,5 @@ template <typename T> class SmootherLin
     int count_{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

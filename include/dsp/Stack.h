@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t Size> class Stack
 {
@@ -30,4 +32,5 @@ template <typename T, size_t Size> class Stack
     T stack_[Size]{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

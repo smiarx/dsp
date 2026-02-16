@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 namespace kernels
 {
@@ -190,4 +192,6 @@ class TapKernel : public TapLin<baseType<T>>
         return x / kernsum;
     }
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

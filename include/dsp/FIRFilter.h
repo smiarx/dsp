@@ -20,6 +20,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t Order> class FIRFilter
 {
@@ -276,4 +278,5 @@ class FIRInterpolate
     T b_[L][kPaddedLength]{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

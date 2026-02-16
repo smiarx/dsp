@@ -7,6 +7,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 class BufferOffset
 {
@@ -351,4 +353,6 @@ template <typename T> class TapCubic : public TapLin<T>
         return hermite(xm1, x0, x1, x2, fd);
     }
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

@@ -4,6 +4,9 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
+
 template <typename T> class DoubleRamp
 {
   public:
@@ -71,4 +74,6 @@ template <typename T> class DoubleRamp
     T stepDown_{};
     intType<T> state_{};
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

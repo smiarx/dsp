@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T> class INoise
 {
@@ -63,4 +65,5 @@ template <typename T> class Noise : public INoise<T>
     }
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
