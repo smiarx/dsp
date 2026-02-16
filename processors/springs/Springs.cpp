@@ -100,7 +100,9 @@ void Springs::setFreq(float freq, int blockSize)
         auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
         dcblocker_.setFreq(dcblockfreq);
 
-        setTd(td_, blockSize);
+        // we changed the feedbackloop delay with a smooth rate equal to it's
+        // value
+        setTd(td_, int(td_ * sampleRate_), true);
         setTone(tone_, blockSize);
 
         setNStages();
@@ -129,7 +131,7 @@ void Springs::setRes(float r, int blockSize)
     setNStages();
 }
 
-void Springs::setTd(float td, int blockSize)
+void Springs::setTd(float td, int blockSize, bool changedRate)
 {
     td_            = td;
     float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
@@ -142,12 +144,21 @@ void Springs::setTd(float td, int blockSize)
     auto loopTd     = sampleTd * loopFactor;
     loopModAmp_     = loopTd * kLoopModFactor;
     loopChaosMod_   = loopTd * 0.07f * dsp::pow(chaos_, 2.5f);
-    auto predelayT  = dsp::toInt(loopTd * .5f);
+    // predelay is floored because because we don't want unwanted filtering from
+    // linear interpolation
+    auto predelayT = dsp::toFloat<float>(dsp::toInt(loopTd * .5f));
 
-    loopTd_.set(loopTd, static_cast<float>(rateFactor_) /
-                            static_cast<float>(blockSize));
+    auto rateBlockSize =
+        ((blockSize + int(rateFactor_) - 1 - decimateId_) / int(rateFactor_));
+    loopTd_.set(loopTd, rateBlockSize);
 
-    predelay_.setDelay(predelayT);
+    // if we changed rate, the we smoothed over the delay length, hence
+    // blocksize is divided by to for predelay
+    if (changedRate) {
+        predelay_.set(predelayT, rateBlockSize / 2);
+    } else {
+        predelay_.set(predelayT, rateBlockSize);
+    }
 
     setT60(t60_, blockSize);
 }
@@ -287,7 +298,16 @@ void Springs::process(const float *const *__restrict in,
             auto x = ctxtdec.getInput();
             predelaydl_.write(ctxtdec, x);
 
-            x = predelay_.read(ctxtdec, predelaydl_);
+            // if predelay is smoothed we use linear tap
+            if (predelay_.isActive()) {
+                predelayTap_.setDelay(predelay_.step());
+                x = predelayTap_.read(ctxtdec, predelaydl_);
+            }
+            // if it's fixed we use non interpolating tap
+            else {
+                dsp::TapNoInterp<mtype> &predelayTapNoInterp = predelayTap_;
+                x = predelayTapNoInterp.read(ctxtdec, predelaydl_);
+            }
             ctxtdec.setOutput(x);
         };
 
@@ -299,7 +319,7 @@ void Springs::process(const float *const *__restrict in,
             auto mod   = loopMod_.process();
             auto chaos = loopChaos_.step();
 
-            auto delay = loopTd_.step(ctxtdec);
+            auto delay = loopTd_.step();
 
             delay += mod * loopModAmp_ + chaos;
             looptap.setDelay(delay);
@@ -412,7 +432,6 @@ void Springs::process(const float *const *__restrict in,
 
     dry_.reset();
     wet_.reset();
-    loopTd_.reset();
     allpassCoeff0_.reset();
     allpassCoeff1_.reset();
 }

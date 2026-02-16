@@ -105,7 +105,7 @@ class Springs
     // setters
     void setFreq(float freq, int blockSize);
     void setRes(float r, int blockSize);
-    void setTd(float td, int blockSize);
+    void setTd(float td, int blockSize, bool changedRate = false);
     void setChaos(float chaos, int blockSize);
     void setT60(float t60, int blockSize);
     void setTone(float tone, int blockSize);
@@ -185,11 +185,12 @@ class Springs
     dsp::Buffer<dsp::mfloat<2>, kInBufSize> bufferOut_;
 
     dsp::DelayLine<kLoopLength / 2> predelaydl_;
-    dsp::TapNoInterp<mtype> predelay_;
+    dsp::SmootherLin<mtype> predelay_{};
+    dsp::TapLin<mtype> predelayTap_{};
 
     type loopGain_{};
-    static constexpr type kDefaultTd    = kLoopLength * 0.1;
-    dsp::ControlSmoother<mtype> loopTd_ = {
+    static constexpr type kDefaultTd = kLoopLength * 0.1;
+    dsp::SmootherLin<mtype> loopTd_  = {
         {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
     mtype loopModAmp_{};
     dsp::lfo::Parabolic<mtype> loopMod_{};
