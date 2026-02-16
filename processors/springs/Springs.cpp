@@ -231,6 +231,11 @@ void Springs::setNStages()
 
     // divide by rate factor
     apNStages_ = (apNStages_ + rateFactor_ - 1) / rateFactor_;
+
+    // reset state in unused stages
+    for (size_t i = apNStages_; i < kApCascadeL; ++i) {
+        allpassState_[i] = {};
+    }
 }
 
 void Springs::process(const float *const *__restrict in,
