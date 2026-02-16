@@ -788,7 +788,10 @@ template <> struct intrin<int, 2> {
     }
 
     // convert
-    static always_inline type vectorcall convert(float x) { return init(x); }
+    static always_inline type vectorcall convert(float x)
+    {
+        return init(static_cast<basetype>(x));
+    }
     static always_inline type vectorcall convert(floatx2_t x)
     {
         return _mm_cvttps_epi32(x);

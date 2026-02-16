@@ -2,6 +2,8 @@
 
 namespace dsp::linalg
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 /* square matrix */
 template <typename F, size_t N>
@@ -45,4 +47,5 @@ template <typename T, size_t N> constexpr Matrix<T, N> identity()
 
 template <size_t N> using fMatrix = Matrix<float, N>;
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp::linalg

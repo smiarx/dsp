@@ -12,6 +12,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t Size, size_t Overlap = 0> class RMS
 {
@@ -88,6 +90,8 @@ template <typename T, size_t Size> class RMS<T, Size>
     size_t n_ = 0;
     T sumsq_{};
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
 
 #ifdef __GNUC__

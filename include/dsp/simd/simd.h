@@ -342,7 +342,7 @@ template <typename T, size_t N> struct simd {
 
     always_inline mask vectorcall signbit() const noexcept
     {
-        return def::signbit(value_);
+        return static_cast<mask>(def::signbit(value_));
     }
 
     always_inline basetype vectorcall sum() const noexcept
@@ -440,7 +440,8 @@ template <typename T, size_t N> struct simd {
     template <int Shift> always_inline simd vectorcall shift() const noexcept
     {
         if constexpr (Shift == 0) return *this;
-        if constexpr ((Shift < 0 ? -Shift : Shift) >= N) return {};
+        if constexpr (static_cast<size_t>(Shift < 0 ? -Shift : Shift) >= N)
+            return {};
         else
             return def::template shift<Shift>(value_);
     }

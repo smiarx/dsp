@@ -7,7 +7,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cstdlib>
 
-template <typename T, int Order, bool Vec = false> static void testFir()
+template <typename T, size_t Order, bool Vec = false> static void testFir()
 {
     // generate random coeffs
     std::array<T, Order + 1> b;
@@ -62,7 +62,7 @@ TEST_CASE("FIR filter test", "[dsp][firfilter]")
     SECTION("float x 4 vec") { testFir<dsp::mfloat<4>, 15, true>(); }
 }
 
-template <typename T, int Order, int M, bool Vec = false>
+template <typename T, size_t Order, size_t M, bool Vec = false>
 static void testFirDecimate()
 {
     // build decimate filter
@@ -108,8 +108,8 @@ static void testFirDecimate()
     // check that decimate is equal to 1 over M filtered sample
     for (size_t n = 0; n < kNSamples; n += M) {
         for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i) {
-            auto val                     = dsp::get(xDecimated[n / M], i);
-            constexpr decltype(val) kEps = 1e-6;
+            auto val            = dsp::get(xDecimated[n / M], i);
+            constexpr auto kEps = decltype(val)(1e-6);
             REQUIRE_THAT(
                 val, Catch::Matchers::WithinRel(dsp::get(xFilt[n], i), kEps));
         }
@@ -131,26 +131,29 @@ TEST_CASE("FIR decimate", "[dsp][fir][decimate]")
         constexpr auto kN       = 50;
         constexpr auto kO       = 13;
         std::array<float, kN> x = {
-            0.,         0.01923305, 0.03845899, 0.05767071, 0.07686108,
-            0.09602303, 0.11514945, 0.13423327, 0.15326743, 0.17224489,
-            0.19115863, 0.21000165, 0.22876698, 0.24744769, 0.26603685,
-            0.28452759, 0.30291307, 0.32118649, 0.33934109, 0.35737015,
-            0.375267,   0.39302503, 0.41063766, 0.42809838, 0.44540072,
-            0.46253829, 0.47950475, 0.49629381, 0.51289928, 0.529315,
-            0.5455349,  0.56155299, 0.57736333, 0.59296008, 0.60833747,
-            0.6234898,  0.63841148, 0.65309698, 0.66754088, 0.68173782,
-            0.69568255, 0.70936992, 0.72279486, 0.73595241, 0.7488377,
-            0.76144596, 0.77377252, 0.78581284, 0.79756244, 0.80901699};
+            0.f,         0.01923305f, 0.03845899f, 0.05767071f, 0.07686108f,
+            0.09602303f, 0.11514945f, 0.13423327f, 0.15326743f, 0.17224489f,
+            0.19115863f, 0.21000165f, 0.22876698f, 0.24744769f, 0.26603685f,
+            0.28452759f, 0.30291307f, 0.32118649f, 0.33934109f, 0.35737015f,
+            0.375267f,   0.39302503f, 0.41063766f, 0.42809838f, 0.44540072f,
+            0.46253829f, 0.47950475f, 0.49629381f, 0.51289928f, 0.529315f,
+            0.5455349f,  0.56155299f, 0.57736333f, 0.59296008f, 0.60833747f,
+            0.6234898f,  0.63841148f, 0.65309698f, 0.66754088f, 0.68173782f,
+            0.69568255f, 0.70936992f, 0.72279486f, 0.73595241f, 0.7488377f,
+            0.76144596f, 0.77377252f, 0.78581284f, 0.79756244f, 0.80901699f,
+        };
 
         // signal.decimate(x, 2,27,'fir', zero_phase=False)
         std::array<float, kN / 2> expect = {
-            0.00000000e+00,  8.30978079e-05, 2.40111901e-05,  3.10682470e-04,
-            -1.27662335e-04, 8.51615654e-04, -1.13936683e-03, 9.48246747e-03,
-            4.87176327e-02,  8.64312536e-02, 1.24966445e-01,  1.62826426e-01,
-            2.00664657e-01,  2.38123860e-01, 2.75271734e-01,  3.12037896e-01,
-            3.48342354e-01,  3.84131390e-01, 4.19352050e-01,  4.53952219e-01,
-            4.87880701e-01,  5.21087295e-01, 5.53522866e-01,  5.85139421e-01,
-            6.15890181e-01,
+            0.00000000e+00f,  8.30978079e-05f,  2.40111901e-05f,
+            3.10682470e-04f,  -1.27662335e-04f, 8.51615654e-04f,
+            -1.13936683e-03f, 9.48246747e-03f,  4.87176327e-02f,
+            8.64312536e-02f,  1.24966445e-01f,  1.62826426e-01f,
+            2.00664657e-01f,  2.38123860e-01f,  2.75271734e-01f,
+            3.12037896e-01f,  3.48342354e-01f,  3.84131390e-01f,
+            4.19352050e-01f,  4.53952219e-01f,  4.87880701e-01f,
+            5.21087295e-01f,  5.53522866e-01f,  5.85139421e-01f,
+            6.15890181e-01f,
         };
 
         dsp::FIRDecimate<float, kO, 2, dsp::windows::Hamming> decimate;
@@ -168,13 +171,13 @@ TEST_CASE("FIR decimate", "[dsp][fir][decimate]")
 
         decimate.decimate(ctxtIn, ctxtOut, decState, 0);
 
-        for (int i = 0; i < ctxtOut.getBlockSize(); ++i) {
+        for (size_t i = 0; i < size_t(ctxtOut.getBlockSize()); ++i) {
             REQUIRE_THAT(xDec[i], Catch::Matchers::WithinAbs(expect[i], 1e-6f));
         }
     }
 }
 
-template <typename T, int Order, int L, bool Vec = false>
+template <typename T, size_t Order, size_t L, bool Vec = false>
 static void testFirInterpolate()
 {
     // build decimate filter
@@ -182,11 +185,11 @@ static void testFirInterpolate()
     typename decltype(interpolate)::DL interpState;
 
     // reproduce interpolate filter coeffs
-    constexpr auto kNCoeffs = (Order + 1) * L;
+    constexpr size_t kNCoeffs = (Order + 1) * L;
     std::array<T, kNCoeffs> bF;
     auto freq = dsp::baseType<T>(1) / L;
     auto mid  = (kNCoeffs - 1) / dsp::baseType<T>(2);
-    for (auto i = 0; i < kNCoeffs; ++i) {
+    for (size_t i = 0; i < kNCoeffs; ++i) {
         auto fi = dsp::baseType<T>(i);
         bF[i]   = dsp::windows::Kaiser<140>::generate((fi - mid) / mid) *
                 dsp::sinc((fi - mid) * freq);
@@ -229,8 +232,8 @@ static void testFirInterpolate()
     // check that decimate is equal to 1 over M filtered sample
     for (size_t n = 0; n < kNSamples * L; ++n) {
         for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i) {
-            auto val                     = dsp::get(xInterp[n], i);
-            constexpr decltype(val) kEps = 1e-6;
+            auto val            = dsp::get(xInterp[n], i);
+            constexpr auto kEps = decltype(val)(1e-6);
             REQUIRE_THAT(
                 val, Catch::Matchers::WithinAbs(dsp::get(xFilt[n], i), kEps));
         }

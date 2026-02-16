@@ -61,7 +61,7 @@ TEST_CASE("Context Class", "[context]")
         REQUIRE((testVal == *ctxtf.getData()));
 
         // simd
-        dsp::mfloat<4> xmf{1, 2, 3, 4};
+        dsp::mfloat<4> xmf{1.f, 2.f, 3.f, 4.f};
         dsp::Context ctxt(&xmf);
         auto in = ctxt.getInput();
 
@@ -147,7 +147,7 @@ TEST_CASE("Context Run", "[context-run]")
                     std::is_same_v<decltype(x), dsp::simd<float, kBatchSize>>);
 
             if (count == kCountCheck) {
-                for (int i = 0; i < kBatchSize; ++i) {
+                for (size_t i = 0; i < kBatchSize; ++i) {
                     REQUIRE(
                         (x[i] ==
                          data[(kCountCheck * kBatchSize + i) / kK][i % kK]));
@@ -178,7 +178,7 @@ TEST_CASE("Context Run", "[context-run]")
                     std::is_same_v<decltype(x), dsp::simd<float, kBatchSize>>);
 
             if (count == kCountCheck) {
-                for (int i = 0; i < kBatchSize; ++i) {
+                for (size_t i = 0; i < kBatchSize; ++i) {
                     REQUIRE(
                         (x[i] ==
                          data[(kCountCheck * kBatchSize + i) / kK][i % kK]));
@@ -195,8 +195,8 @@ TEST_CASE("Context Run", "[context-run]")
                               (kNumElements % kMaxBatchSize) / kK));
     }
 
-    for (int i = 0; i < kN; ++i) {
-        for (int j = 0; j < kK; ++j) {
+    for (size_t i = 0; i < kN; ++i) {
+        for (size_t j = 0; j < kK; ++j) {
             REQUIRE((data[i][j] == orig[i][j] * 2));
         }
     }
@@ -210,9 +210,12 @@ TEST_CASE("ContextRun2")
     constexpr auto kN = 12;
 
     ft4 x[] = {
-        {0, 1, 2, 3},     {4, 5, 6, 7},     {8, 9, 10, 11},   {12, 13, 14, 15},
-        {16, 17, 18, 19}, {20, 21, 22, 23}, {24, 25, 26, 27}, {28, 29, 30, 31},
-        {32, 33, 34, 35}, {36, 37, 38, 39}, {40, 41, 42, 43}, {44, 45, 46, 47},
+        {0.f, 1.f, 2.f, 3.f},     {4.f, 5.f, 6.f, 7.f},
+        {8.f, 9.f, 10.f, 11.f},   {12.f, 13.f, 14.f, 15.f},
+        {16.f, 17.f, 18.f, 19.f}, {20.f, 21.f, 22.f, 23.f},
+        {24.f, 25.f, 26.f, 27.f}, {28.f, 29.f, 30.f, 31.f},
+        {32.f, 33.f, 34.f, 35.f}, {36.f, 37.f, 38.f, 39.f},
+        {40.f, 41.f, 42.f, 43.f}, {44.f, 45.f, 46.f, 47.f},
     };
     ft2 x2Data[kN]{};
     ft2 *x2 = x2Data;

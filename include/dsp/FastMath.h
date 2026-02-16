@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 // constants
 // NOLINTBEGIN (readability-identifier-naming)
@@ -78,4 +80,6 @@ template <typename F> static constexpr auto zerothOrderBessel(F x)
 
     return bessel;
 }
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

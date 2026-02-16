@@ -13,6 +13,8 @@
 #include <atomic>
 #endif
 
+#include "TapeDelayDefines.h"
+
 namespace processors
 {
 inline namespace DSP_ARCH_NAMESPACE
@@ -27,13 +29,13 @@ class TapeDelay
 
     static constexpr auto kMaxBlockSize      = 512;
     static constexpr type kDefaultSampleRate = 48000;
-    static constexpr type kMaxDelay          = 5;
+    static constexpr type kMaxDelay          = type(TAPEDELAY_MAX_DELAY);
 
-    static constexpr type kReverseDelayMaxRatio = 3.1;
+    static constexpr type kReverseDelayMaxRatio = type(TAPEDELAY_REVERSE_MAX_RATIO);
 
-    static constexpr type kSpeedSmoothTime = 0.7;
-    static constexpr type kSpeedModFreq    = 0.242;
-    static constexpr type kSpeedModAmp     = 0.02;
+    static constexpr type kSpeedSmoothTime = 0.7f;
+    static constexpr type kSpeedModFreq    = 0.242f;
+    static constexpr type kSpeedModAmp     = 0.02f;
 
     static constexpr auto kKernelSize = 4;
 
@@ -54,7 +56,9 @@ class TapeDelay
             }
         }
     };
-    static FadeLut fadeLut;
+    // we use pointer instead of variable so that it's not initialized at
+    // startup - crashes with bad instruction arch if avx is not available
+    static FadeLut *fadeLut;
 
     enum Mode {
         kNormal    = 0,
@@ -101,8 +105,8 @@ class TapeDelay
                  float *const *__restrict out, int count);
 
   private:
-    type freqScale_{2. / kDefaultSampleRate};
-    type sampleRate_{1. / kDefaultSampleRate};
+    type freqScale_{2.f / kDefaultSampleRate};
+    type sampleRate_{1.f / kDefaultSampleRate};
     int maxBlockSize_{};
     int maxBlockSizeWithDelay_{};
 
@@ -202,6 +206,11 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     buf                            = (mtype *)realloc(buf, kRealBufferSize);
     memset(buf, 0, kRealBufferSize);
     buffer_.setData(buf);
+
+    if (fadeLut == nullptr) {
+        fadeLut = (FadeLut *)realloc(fadeLut, sizeof(FadeLut));
+        new (fadeLut) FadeLut{};
+    }
 }
 
 template <class Free> void TapeDelay::free(Free free)

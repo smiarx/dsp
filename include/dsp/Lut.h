@@ -1,9 +1,13 @@
 #pragma once
 
 #include "Utils.h"
+#include "cpu/defines.h"
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
+
 template <typename T, size_t Size> class Lut
 {
     enum {
@@ -48,7 +52,7 @@ template <typename T, size_t Size> class Lut
     {
         pos *= Size;
         auto ipos = static_cast<int>(pos);
-        auto fpos = pos - static_cast<float>(ipos);
+        auto fpos = pos - static_cast<Float>(ipos);
 
         // ipos between 0 and Size
         ipos &= static_cast<int>(kMask);
@@ -64,4 +68,6 @@ template <typename T, size_t Size> class Lut
     /* Lookup table */
     T table_[Size][2] = {};
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

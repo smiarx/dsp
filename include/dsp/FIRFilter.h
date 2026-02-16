@@ -20,6 +20,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, size_t Order> class FIRFilter
 {
@@ -66,7 +68,7 @@ template <typename T, size_t Order> class FIRFilter
                     x0 = ctxtVec.load(*xtmp);
                 }
             } else {
-                x0 = delayline.read(ctxtVec, delay);
+                x0 = delayline.read(ctxtVec, static_cast<int>(delay));
             }
 
             for (size_t n = 0; n < kIncrSize; ++n) {
@@ -106,7 +108,7 @@ class FIRDecimate
     FIRDecimate(baseType<T> cutoff = 1)
     {
         auto freq = cutoff / M;
-        auto mid  = (kNCoeff - 1) / 2.;
+        auto mid  = (kNCoeff - 1) * baseType<T>(0.5);
         /* generate windowed sinc */
         for (size_t n = 0; n < kNCoeff; ++n) {
             auto fn = static_cast<baseType<T>>(n);
@@ -276,4 +278,5 @@ class FIRInterpolate
     T b_[L][kPaddedLength]{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

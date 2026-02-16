@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 // https://www.dafx.de/paper-archive/2018/papers/DAFx2018_paper_9.pdf
 
@@ -138,8 +140,7 @@ template <class Tap = TapLin<float>> class TapTape
         auto fdelay = static_cast<float>(foundPos1 - readPosition) /
                       static_cast<float>(foundPos1 - foundPos0);
 
-        Tap tap;
-        tap.setDelay(delay, fdelay);
+        tap_.setDelay(delay, fdelay);
 
         auto totaldelay = static_cast<float>(delay) + fdelay;
         auto scale      = 1.f - (totaldelay - prevdelay_);
@@ -149,9 +150,9 @@ template <class Tap = TapLin<float>> class TapTape
         if (scale > kScaleThresh) {
             constexpr auto kScaleGrow = 1.1f;
             scale = kScaleThresh + kScaleGrow * (scale - kScaleThresh);
-            return tap.read(c, delayline, scale);
+            return tap_.read(c, delayline, scale);
         } else {
-            return tap.read(c, delayline);
+            return tap_.read(c, delayline);
         }
     }
 
@@ -182,8 +183,10 @@ template <class Tap = TapLin<float>> class TapTape
     }
 
     // index of last read position
+    Tap tap_;
     size_t nread_{0};
     float prevdelay_{0};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

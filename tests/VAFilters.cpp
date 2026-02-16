@@ -17,7 +17,7 @@ static void generatesine(const T &f, const T &phase, T *x, size_t length)
 {
     // generate signal
     for (size_t n = 0; n < length; ++n) {
-        x[n] = dsp::sin(dsp::constants<float>::pi * dsp::load(f) * n +
+        x[n] = dsp::sin(dsp::constants<float>::pi * dsp::load(f) * T(n) +
                         dsp::load(phase));
     }
 }
@@ -29,7 +29,7 @@ static void filterArray(const T &cut, T *x, size_t length)
     typename decltype(filter)::State filterstate;
 
     filter.setFreq(cut);
-    filter.processBlock(dsp::Context(x, length), filterstate);
+    filter.processBlock(dsp::Context(x, int(length)), filterstate);
 }
 
 template <class Filter, typename T>
@@ -39,7 +39,7 @@ static void filterResArray(const T &cut, const T &res, T *x, size_t length)
     typename decltype(filter)::State filterstate;
 
     filter.setFreq(cut, res);
-    filter.processBlock(dsp::Context(x, length), filterstate);
+    filter.processBlock(dsp::Context(x, int(length)), filterstate);
 }
 
 template <typename T> static auto rms(T *x, size_t length)
@@ -48,7 +48,7 @@ template <typename T> static auto rms(T *x, size_t length)
     for (size_t n = 0; n < length; ++n) {
         rms += dsp::load(x[n]) * x[n];
     }
-    rms = dsp::sqrt(rms / length);
+    rms = dsp::sqrt(rms / T(length));
 
     return rms;
 }
@@ -68,11 +68,11 @@ TEST_CASE("VA Filters", "[dsp][va][onepole][lowpass]")
 
 #define TEST_DC(FILTER, TYPE, VAL)                                     \
     {                                                                  \
-        int start  = 6.f / cut;                                        \
-        int length = start + 20;                                       \
+        auto start  = size_t(6.f / cut);                               \
+        auto length = start + 20;                                      \
         generatesine(0.f, {dsp::constants<ft>::pi / 2.f}, x, length);  \
         filterArray<FILTER<ft, TYPE>>(cut, x, length);                 \
-        for (auto n = start; n < length; ++n) {                        \
+        for (size_t n = start; n < length; ++n) {                      \
             REQUIRE_THAT(x[n], Catch::Matchers::WithinAbs(VAL, 1e-3)); \
         }                                                              \
     }

@@ -1,0 +1,9 @@
+#pragma once
+
+#ifndef TAPEDELAY_MAX_DELAY
+#define TAPEDELAY_MAX_DELAY 5
+#endif
+
+#ifndef TAPEDELAY_REVERSE_MAX_RATIO
+#define TAPEDELAY_REVERSE_MAX_RATIO 3.1
+#endif

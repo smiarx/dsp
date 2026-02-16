@@ -10,7 +10,7 @@ using namespace Catch::Matchers;
 template <typename T, size_t N> class TestSimd
 {
   public:
-    static constexpr T kEps = 1e-6;
+    static constexpr T kEps = T(1e-6);
 
 #define loop(i) for (size_t i = 0; i < N; ++i)
 
@@ -31,10 +31,10 @@ template <typename T, size_t N> class TestSimd
         {
             auto ii = static_cast<int>(i);
             if ((Shift > 0 && ii < Shift) ||
-                (Shift < 0 && ii >= static_cast<int>(N + Shift)))
+                (Shift < 0 && ii >= int(N) + Shift))
                 cmp(sx[i], 0);
             else {
-                cmp(sx[i], x[i - Shift]);
+                cmp(sx[i], x[size_t(int(i) - Shift)]);
             }
         }
     }
@@ -505,12 +505,12 @@ TEST_CASE("Convert", "[dsp][simd]")
         REQUIRE((xf4f2[1] == xf4[1]));
 
         auto xi2f2 = static_cast<dsp::simd<float, 2>>(xi2);
-        REQUIRE((xi2f2[0] == xi2[0]));
-        REQUIRE((xi2f2[1] == xi2[1]));
+        REQUIRE((xi2f2[0] == float(xi2[0])));
+        REQUIRE((xi2f2[1] == float(xi2[1])));
 
         auto xi4f2 = static_cast<dsp::simd<float, 2>>(xi4);
-        REQUIRE((xi4f2[0] == xi4[0]));
-        REQUIRE((xi4f2[1] == xi4[1]));
+        REQUIRE((xi4f2[0] == float(xi4[0])));
+        REQUIRE((xi4f2[1] == float(xi4[1])));
 
 #ifdef DSP_SIMD_DOUBLE
         auto xd2f2 = static_cast<dsp::simd<float, 2>>(xd2);

@@ -5,6 +5,8 @@
 
 namespace dsp::va
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 /* Various implementation from
  * https://archive.org/details/the-art-of-va-filter-design-rev.-2.1.2
@@ -20,7 +22,7 @@ enum FilterType {
 
 template <typename T> static constexpr auto warpGain(const T &freq)
 {
-    return tan(dsp::constants<T>::pi * load(freq) * 0.5);
+    return tan(dsp::constants<T>::pi * load(freq) * T(0.5));
 }
 
 template <typename T, FilterType FT = kLowPass> class OnePole
@@ -268,4 +270,6 @@ template <typename T, FilterType FT = kLowPass> class Ladder
     T denominator_;
     OP onepole_;
 };
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp::va

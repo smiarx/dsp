@@ -5,6 +5,8 @@
 
 namespace dsp::lfo
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T> class Sine
 {
@@ -110,4 +112,5 @@ template <typename T> class Parabolic
     iT freq_{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp::lfo

@@ -7,6 +7,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 template <typename T, bool Vectorize = false> class ControlSmoother
 {
@@ -30,7 +32,7 @@ template <typename T, bool Vectorize = false> class ControlSmoother
 
             // create incr vector (eg. {1,2,3,4})
             T incr[kWidth];
-            for (size_t i = 0; i < kWidth; ++i) incr[i] = i + 1;
+            for (size_t i = 0; i < kWidth; ++i) incr[i] = bT(i) + bT(1);
 
             Context<T, Vectorize> ctxt(step_.data());
             ctxt.setOutput(ctxt.load(*incr) * step_[0]);
@@ -117,8 +119,9 @@ template <typename T> class SmootherLin
 
     void set(const T &target, int count)
     {
-        step_  = (load(target) - value_) / count;
-        count_ = count;
+        auto rate = baseType<T>(1) / baseType<T>(count);
+        step_     = (load(target) - value_) * rate;
+        count_    = count;
     }
 
     auto step()
@@ -138,4 +141,5 @@ template <typename T> class SmootherLin
     int count_{};
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

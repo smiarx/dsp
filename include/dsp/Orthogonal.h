@@ -5,6 +5,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 /* orthogonal transforms */
 
@@ -460,5 +462,6 @@ template <typename T, size_t H = kTypeWidth<T>> auto hadamard(T x)
 //
 //     return matH;
 // }
-//
+
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

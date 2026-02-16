@@ -6,6 +6,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 namespace kernels
 {
@@ -52,7 +54,8 @@ class TapKernel : public TapLin<baseType<T>>
             }
             return lhs;
         }
-        friend auto operator*(KernelType lhs, const float rhs)
+        template <typename Float>
+        friend auto operator*(KernelType lhs, const Float rhs)
         {
             for (size_t k = 0; k < kFilterWidth; ++k) {
                 lhs[k] = load(lhs[k]) * rhs;
@@ -93,7 +96,7 @@ class TapKernel : public TapLin<baseType<T>>
     };
 
   private:
-    static LutType lut;
+    LutType lut_;
 
     enum KernelNum {
         kFirst = -kA,
@@ -120,9 +123,8 @@ class TapKernel : public TapLin<baseType<T>>
         auto fdelay = TapLin<bt>::fd_;
         auto delay  = idelay - kernelFromId(0);
 
-        auto kernels = lut.read(fdelay);
+        auto kernels = lut_.read(fdelay);
 
-        auto l        = 0;
         auto kernCtxt = c.vec();
         kernCtxt.setBlockSize(kFilterWidth);
         kernCtxt.setData(kernels.data());
@@ -132,7 +134,6 @@ class TapKernel : public TapLin<baseType<T>>
             auto points = delayline.read(kernCtxt, delay);
             points *= kernCtxt.getInput();
             x += reduce<kTypeWidth<T>>(points);
-            l += decltype(kernCtxt)::kIncrSize;
         };
 
         return x;
@@ -161,12 +162,12 @@ class TapKernel : public TapLin<baseType<T>>
         std::array<T, kFilterWidth * kMaxScale> kernels;
 
         auto delaywidth = static_cast<int>(fdelay + kA * scale);
-        auto pos        = (fdelay - delaywidth) * invscale;
-        int i           = 0;
+        auto pos        = (fdelay - bt(delaywidth)) * invscale;
+        size_t i        = 0;
         while (pos < kA * bt(0.999)) {
             int kernel = static_cast<int>(std::floor(pos));
-            auto posf  = pos - kernel;
-            kernels[i] = lut.read(posf)[idFromKernel(kernel)];
+            auto posf  = pos - bt(kernel);
+            kernels[i] = lut_.read(posf)[idFromKernel(kernel)];
             ++i;
             pos += invscale;
         }
@@ -175,7 +176,7 @@ class TapKernel : public TapLin<baseType<T>>
         auto length = i;
 
         auto kernCtxt = c.vec();
-        kernCtxt.setBlockSize(length);
+        kernCtxt.setBlockSize(static_cast<int>(length));
         kernCtxt.setData(kernels.data());
 
         T kernsum{};
@@ -192,8 +193,5 @@ class TapKernel : public TapLin<baseType<T>>
     }
 };
 
-// define static variable
-template <typename T, class Kernel, size_t LutSize>
-typename TapKernel<T, Kernel, LutSize>::LutType
-    TapKernel<T, Kernel, LutSize>::lut;
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

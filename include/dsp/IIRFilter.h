@@ -9,6 +9,8 @@
 
 namespace dsp
 {
+inline namespace DSP_ARCH_NAMESPACE
+{
 
 // second order section
 template <typename T> struct SOS {
@@ -233,8 +235,9 @@ class IIRFilter
             tf[nsos].b1 = 0;
             tf[nsos].b0 = highpass ? 0 : 1;
             tf[nsos].a2 = 1;
-            tf[nsos].a1 = -2 * gcem::cos(dsp::constants<bT>::pi *
-                                         (2 * nsos + Order + 1) / (2 * Order));
+            tf[nsos].a1 =
+                -2 * gcem::cos(dsp::constants<bT>::pi *
+                               bT(2 * nsos + Order + 1) / bT(2 * Order));
             tf[nsos].a0 = 1;
         }
         return tf;
@@ -270,4 +273,5 @@ template <typename T> class IIRFilter<T, 0, true>
     };
 };
 
+} // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

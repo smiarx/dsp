@@ -10,12 +10,13 @@
 template <typename T, bool Vec = false, bool VecCtxt = Vec>
 static void testControlSmoother()
 {
-    const auto N                = 12;
-    const dsp::baseType<T> rate = 1.f / N;
-    const T init                = 1.f;
-    const T value               = 2.f;
-    const dsp::baseType<T> eps  = 1e-6;
-    constexpr auto kWidth       = dsp::kTypeWidth<T>;
+    using bT              = dsp::baseType<T>;
+    const auto N          = 12;
+    const auto rate       = bT(1) / bT(N);
+    const T init          = T(1.);
+    const T value         = T(2.);
+    const auto eps        = bT(1e-6);
+    constexpr auto kWidth = dsp::kTypeWidth<T>;
 
     dsp::ControlSmoother<T, Vec> smoother{init};
 
@@ -30,7 +31,7 @@ static void testControlSmoother()
         REQUIRE_THAT(dsp::get(x, i),
                      Catch::Matchers::WithinRel(dsp::get(init, i), eps));
 
-    int k = 0;
+    size_t k = 0;
     CTXTRUN(ctxt)
     {
         auto x = smoother.step(ctxt);

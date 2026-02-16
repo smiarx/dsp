@@ -7,8 +7,9 @@ using namespace Catch::Matchers;
 
 template <typename T> static void testTanh()
 {
-    T eps      = std::is_same_v<T, double> ? 1e-6 : 1e-5;
-    T values[] = {0, 0.1, 0.43, 0.83, 1, 1.238, 3.398, 5.4983, 7.3873};
+    T eps      = std::is_same_v<T, double> ? T(1e-6) : T(1e-5);
+    T values[] = {T(0),     T(0.1),   T(0.43),   T(0.83),  T(1),
+                  T(1.238), T(3.398), T(5.4983), T(7.3873)};
     for (auto v : values) {
         REQUIRE_THAT(dsp::fasttanh(v), WithinAbs(std::tanh(v), eps));
         REQUIRE_THAT(dsp::fasttanh(-v), WithinAbs(std::tanh(-v), eps));
