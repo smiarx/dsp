@@ -181,10 +181,12 @@ void Springs::setTone(float tone, int /*blockSize*/)
     eq_.setBandWidth(kEqBandWidth);
 }
 
-void Springs::setT60(float t60, int /*blockSize*/)
+void Springs::setT60(float t60, int blockSize)
 {
-    t60_      = t60;
-    loopGain_ = dsp::pow(0.001f, td_ / t60_);
+    t60_ = t60;
+    auto invBlockSize =
+        static_cast<float>(rateFactor_) / static_cast<float>(blockSize);
+    loopGain_.set(dsp::pow(0.001f, td_ / t60_), invBlockSize);
 }
 
 void Springs::setWidth(float width, int blockSize)
@@ -334,7 +336,7 @@ void Springs::process(const float *const *__restrict in,
 
             loopRipple += kLoopRippleGain * (loop - loopRipple);
 
-            x += loopRipple * loopGain_;
+            x += loopRipple * loopGain_.step(ctxtdec);
             ctxtdec.setOutput(x);
         };
 
@@ -434,6 +436,7 @@ void Springs::process(const float *const *__restrict in,
     wet_.reset();
     allpassCoeff0_.reset();
     allpassCoeff1_.reset();
+    loopGain_.reset();
 }
 
 } // namespace DSP_ARCH_NAMESPACE

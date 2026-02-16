@@ -188,7 +188,7 @@ class Springs
     dsp::SmootherLin<mtype> predelay_{};
     dsp::TapLin<mtype> predelayTap_{};
 
-    type loopGain_{};
+    dsp::ControlSmoother<type> loopGain_{};
     static constexpr type kDefaultTd = kLoopLength * 0.1;
     dsp::SmootherLin<mtype> loopTd_  = {
         {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
