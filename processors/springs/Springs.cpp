@@ -69,7 +69,11 @@ void Springs::setFreq(float freq, int blockSize)
         freqsAP /= 2;
     }
 
+    auto invBlockSize =
+        static_cast<float>(rateFactor) / static_cast<float>(blockSize);
     allpass_.setFreq(freqsAP);
+    allpassCoeff1_.set(allpass_.getCoeff1(), invBlockSize);
+    allpass_.setCoeff1(allpassCoeff1_.get());
 
     /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
     decltype(lowpass_)::SOS kSosAnalog = {{{
@@ -112,6 +116,11 @@ void Springs::setRes(float r, int blockSize)
     auto rs      = dsp::abs(r_) * rFactor;
 
     allpass_.setRes(dsp::batch<mtype>::simdtype::convert(rs));
+
+    auto invBlockSize =
+        static_cast<float>(rateFactor_) / static_cast<float>(blockSize);
+    allpassCoeff0_.set(allpass_.getCoeff0(), invBlockSize);
+    allpass_.setCoeff0(allpassCoeff0_.get());
 
     if (signChanged) {
         setFreq(freq_, blockSize);
@@ -322,6 +331,8 @@ void Springs::process(const float *const *__restrict in,
         // allpass cascade
         CTXTRUN(ctxtdec)
         {
+            allpass_.setCoeff0(allpassCoeff0_.step(ctxtdec));
+            allpass_.setCoeff1(allpassCoeff1_.step(ctxtdec));
             auto x = ctxtdec.getInput();
 
             // shift intermediary values
@@ -402,6 +413,8 @@ void Springs::process(const float *const *__restrict in,
     dry_.reset();
     wet_.reset();
     loopTd_.reset();
+    allpassCoeff0_.reset();
+    allpassCoeff1_.reset();
 }
 
 } // namespace DSP_ARCH_NAMESPACE
