@@ -135,6 +135,8 @@ template <typename T> class SmootherLin
         return load(value_);
     }
 
+    [[nodiscard]] auto isActive() const { return count_ > 0;}
+
   private:
     T value_{};
     T step_{};

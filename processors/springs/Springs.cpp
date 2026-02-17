@@ -18,6 +18,15 @@ inline namespace DSP_ARCH_NAMESPACE
 Springs::MRD *Springs::kDecimate{};
 Springs::MRI *Springs::kInterpolate{};
 
+/* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
+static constexpr dsp::IIRFilter<Springs::mtype, 10>::SOS kSosAnalog = {{{
+    {0.f, 0.f, 0.00255383f, 1.f, 0.21436212f, 0.0362477f},
+    {0.f, 0.f, 1.f, 1.f, 0.19337886f, 0.21788333f},
+    {0.f, 0.f, 1.f, 1.f, 0.15346633f, 0.51177596f},
+    {0.f, 0.f, 1.f, 1.f, 0.09853145f, 0.80566858f},
+    {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
+}}};
+
 void Springs::update(float r, float freq, float td, float t60, float tone,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
@@ -69,20 +78,14 @@ void Springs::setFreq(float freq, int blockSize)
         freqsAP /= 2;
     }
 
+    auto invBlockSize =
+        static_cast<float>(rateFactor) / static_cast<float>(blockSize);
     allpass_.setFreq(freqsAP);
+    allpassCoeff1_.set(allpass_.getCoeff1(), invBlockSize);
+    allpass_.setCoeff1(allpassCoeff1_.get());
 
-    /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
-    decltype(lowpass_)::SOS kSosAnalog = {{{
-        {0.f, 0.f, 0.00255383f, 1.f, 0.21436212f, 0.0362477f},
-        {0.f, 0.f, 1.f, 1.f, 0.19337886f, 0.21788333f},
-        {0.f, 0.f, 1.f, 1.f, 0.15346633f, 0.51177596f},
-        {0.f, 0.f, 1.f, 1.f, 0.09853145f, 0.80566858f},
-        {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
-    }}};
-
-    // if downsampling factor change we reset lowpassState to avoid clicks
-    if (rateFactor != rateFactor_) lowpassState_ = {};
-    lowpass_.fromAnalog(kSosAnalog, freqs);
+    // set new frequencies to lowpass filter
+    lowpassFreqs_.set(freqs, invBlockSize);
 
     decimateId_ = 0;
 
@@ -96,7 +99,9 @@ void Springs::setFreq(float freq, int blockSize)
         auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
         dcblocker_.setFreq(dcblockfreq);
 
-        setTd(td_, blockSize);
+        // we changed the feedbackloop delay with a smooth rate equal to it's
+        // value
+        setTd(td_, int(td_ * sampleRate_), true);
         setTone(tone_, blockSize);
 
         setNStages();
@@ -113,6 +118,11 @@ void Springs::setRes(float r, int blockSize)
 
     allpass_.setRes(dsp::batch<mtype>::simdtype::convert(rs));
 
+    auto invBlockSize =
+        static_cast<float>(rateFactor_) / static_cast<float>(blockSize);
+    allpassCoeff0_.set(allpass_.getCoeff0(), invBlockSize);
+    allpass_.setCoeff0(allpassCoeff0_.get());
+
     if (signChanged) {
         setFreq(freq_, blockSize);
     }
@@ -120,7 +130,7 @@ void Springs::setRes(float r, int blockSize)
     setNStages();
 }
 
-void Springs::setTd(float td, int blockSize)
+void Springs::setTd(float td, int blockSize, bool changedRate)
 {
     td_            = td;
     float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
@@ -133,12 +143,21 @@ void Springs::setTd(float td, int blockSize)
     auto loopTd     = sampleTd * loopFactor;
     loopModAmp_     = loopTd * kLoopModFactor;
     loopChaosMod_   = loopTd * 0.07f * dsp::pow(chaos_, 2.5f);
-    auto predelayT  = dsp::toInt(loopTd * .5f);
+    // predelay is floored because because we don't want unwanted filtering from
+    // linear interpolation
+    auto predelayT = dsp::toFloat<float>(dsp::toInt(loopTd * .5f));
 
-    loopTd_.set(loopTd, static_cast<float>(rateFactor_) /
-                            static_cast<float>(blockSize));
+    auto rateBlockSize =
+        ((blockSize + int(rateFactor_) - 1 - decimateId_) / int(rateFactor_));
+    loopTd_.set(loopTd, rateBlockSize);
 
-    predelay_.setDelay(predelayT);
+    // if we changed rate, the we smoothed over the delay length, hence
+    // blocksize is divided by to for predelay
+    if (changedRate) {
+        predelay_.set(predelayT, rateBlockSize / 2);
+    } else {
+        predelay_.set(predelayT, rateBlockSize);
+    }
 
     setT60(t60_, blockSize);
 }
@@ -161,10 +180,12 @@ void Springs::setTone(float tone, int /*blockSize*/)
     eq_.setBandWidth(kEqBandWidth);
 }
 
-void Springs::setT60(float t60, int /*blockSize*/)
+void Springs::setT60(float t60, int blockSize)
 {
-    t60_      = t60;
-    loopGain_ = dsp::pow(0.001f, td_ / t60_);
+    t60_ = t60;
+    auto invBlockSize =
+        static_cast<float>(rateFactor_) / static_cast<float>(blockSize);
+    loopGain_.set(dsp::pow(0.001f, td_ / t60_), invBlockSize);
 }
 
 void Springs::setWidth(float width, int blockSize)
@@ -210,6 +231,11 @@ void Springs::setNStages()
 
     // divide by rate factor
     apNStages_ = (apNStages_ + rateFactor_ - 1) / rateFactor_;
+
+    // reset state in unused stages
+    for (size_t i = apNStages_; i < kApCascadeL; ++i) {
+        allpassState_[i] = {};
+    }
 }
 
 void Springs::process(const float *const *__restrict in,
@@ -278,7 +304,16 @@ void Springs::process(const float *const *__restrict in,
             auto x = ctxtdec.getInput();
             predelaydl_.write(ctxtdec, x);
 
-            x = predelay_.read(ctxtdec, predelaydl_);
+            // if predelay is smoothed we use linear tap
+            if (predelay_.isActive()) {
+                predelayTap_.setDelay(predelay_.step());
+                x = predelayTap_.read(ctxtdec, predelaydl_);
+            }
+            // if it's fixed we use non interpolating tap
+            else {
+                dsp::TapNoInterp<mtype> &predelayTapNoInterp = predelayTap_;
+                x = predelayTapNoInterp.read(ctxtdec, predelaydl_);
+            }
             ctxtdec.setOutput(x);
         };
 
@@ -290,7 +325,7 @@ void Springs::process(const float *const *__restrict in,
             auto mod   = loopMod_.process();
             auto chaos = loopChaos_.step();
 
-            auto delay = loopTd_.step(ctxtdec);
+            auto delay = loopTd_.step();
 
             delay += mod * loopModAmp_ + chaos;
             looptap.setDelay(delay);
@@ -305,7 +340,7 @@ void Springs::process(const float *const *__restrict in,
 
             loopRipple += kLoopRippleGain * (loop - loopRipple);
 
-            x += loopRipple * loopGain_;
+            x += loopRipple * loopGain_.step(ctxtdec);
             ctxtdec.setOutput(x);
         };
 
@@ -322,25 +357,25 @@ void Springs::process(const float *const *__restrict in,
         // allpass cascade
         CTXTRUN(ctxtdec)
         {
+            allpass_.setCoeff0(allpassCoeff0_.step(ctxtdec));
+            allpass_.setCoeff1(allpassCoeff1_.step(ctxtdec));
             auto x = ctxtdec.getInput();
 
             // shift intermediary values
-            for (size_t j = kApChainSize - 1; j > 0; --j) {
-                allpassIntermediary_[j] = allpassIntermediary_[j - 1];
-            }
-            // set value as first entries of intermediary values
-            allpassIntermediary_[0] = x;
+            // and set value as first entries of intermediary values
+            allpassIntermediary_ =
+                dsp::push(dsp::load(allpassIntermediary_), x);
 
             // compute allpass filters
-            dsp::Context c1(
-                reinterpret_cast<dsp::batch<mtype> *>(&allpassIntermediary_));
+            dsp::Context c1(&allpassIntermediary_);
             for (size_t j = 0; j < apNStages_; ++j) {
                 allpass_.process(c1, allpassState_[j]);
             }
 
             // outout is last intermediary value
-            x = allpassIntermediary_[kApChainSize - 1];
-            ctxtdec.setOutput(x);
+            dsp::batch<mtype> allpassOutput =
+                dsp::shift<-(kN) * int(kApChainSize - 1)>(c1.getInput());
+            ctxtdec.setOutput(allpassOutput);
 
             // write to loopback
             x = ctxtdec.getInput();
@@ -350,6 +385,10 @@ void Springs::process(const float *const *__restrict in,
         CTXTRUN(ctxtdec)
         {
             eq_.process(ctxtdec, eqState_);
+
+            if (lowpassFreqs_.isActive()) {
+                lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.step(ctxtdec));
+            }
             lowpass_.process(ctxtdec, lowpassState_);
         };
 
@@ -401,7 +440,13 @@ void Springs::process(const float *const *__restrict in,
 
     dry_.reset();
     wet_.reset();
-    loopTd_.reset();
+    allpassCoeff0_.reset();
+    allpassCoeff1_.reset();
+    loopGain_.reset();
+    if (lowpassFreqs_.isActive()) {
+        lowpassFreqs_.reset();
+        lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.get());
+    }
 }
 
 } // namespace DSP_ARCH_NAMESPACE

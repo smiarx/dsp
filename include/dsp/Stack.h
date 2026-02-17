@@ -22,6 +22,11 @@ template <typename T, size_t Size> class Stack
         return y;
     }
 
+    auto clear()
+    {
+        for (auto &x : stack_) x = T(0);
+    }
+
     [[nodiscard]] auto get() const { return dsp::load(stack_[n_]); }
 
     [[nodiscard]] const T *getSamples() const { return stack_; }
