@@ -54,6 +54,8 @@ class Springs
     static constexpr type kToneMin = 80.f;
     static constexpr type kToneMax = 5000.f;
 
+    static constexpr type kChaosSmoothTime = 0.2f;
+
     static constexpr mtype kFreqFactor   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr mtype kRFactor      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr mtype kLoopTdFactor = {

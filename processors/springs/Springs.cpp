@@ -258,7 +258,8 @@ void Springs::process(const float *const *__restrict in,
 
     auto noise = loopChaosNoise_.process();
     noise *= loopChaosMod_;
-    loopChaos_.set(noise, static_cast<int>(sampleRate_ * 0.05f));
+    loopChaos_.set(noise, static_cast<int>(sampleRate_ * kChaosSmoothTime /
+                                           static_cast<float>(rateFactor_)));
 
     while (count) {
 
