@@ -51,6 +51,12 @@ void Springs::update(float r, float freq, float td, float t60, float tone,
     }
 }
 
+auto Springs::getDownSampledBlockSize(int blockSize) const
+{
+    auto rate = static_cast<int>(rateFactor_);
+    return (blockSize + rate - 1 - (rate - decimateId_) % rate) / rate;
+}
+
 void Springs::setFreq(float freq, int blockSize)
 {
     auto freqScaled = freq * freqScale_;
@@ -68,8 +74,6 @@ void Springs::setFreq(float freq, int blockSize)
     if (r_ < 0) {
         freqsAP /= 2;
     }
-
-    allpass_.setFreq(freqsAP);
 
     /* scipy.signal.cheby1(10,2,1,analog=True,output='sos') */
     decltype(lowpass_)::SOS kSosAnalog = {{{
@@ -98,9 +102,17 @@ void Springs::setFreq(float freq, int blockSize)
 
         setTd(td_, blockSize);
         setTone(tone_, blockSize);
+        setRes(r_, blockSize);
 
         setNStages();
     }
+
+    // update allpass freq
+    auto downSampledBlockSize = getDownSampledBlockSize(blockSize);
+    auto smoothRate           = 1.f / static_cast<float>(downSampledBlockSize);
+    allpass_.setFreq(freqsAP);
+    allpassCoeff1_.set(allpass_.getCoeff1(), smoothRate);
+    allpass_.setCoeff1(allpassCoeff1_.get());
 }
 
 void Springs::setRes(float r, int blockSize)
@@ -112,6 +124,12 @@ void Springs::setRes(float r, int blockSize)
     auto rs      = dsp::abs(r_) * rFactor;
 
     allpass_.setRes(dsp::batch<mtype>::simdtype::convert(rs));
+
+    auto downSampledBlockSize = getDownSampledBlockSize(blockSize);
+    auto smoothRate           = 1.f / static_cast<float>(downSampledBlockSize);
+
+    allpassCoeff0_.set(allpass_.getCoeff0(), smoothRate);
+    allpass_.setCoeff0(allpassCoeff0_.get());
 
     if (signChanged) {
         setFreq(freq_, blockSize);
@@ -322,6 +340,8 @@ void Springs::process(const float *const *__restrict in,
         // allpass cascade
         CTXTRUN(ctxtdec)
         {
+            allpass_.setCoeff0(allpassCoeff0_.step(ctxtdec));
+            allpass_.setCoeff1(allpassCoeff1_.step(ctxtdec));
             auto x = ctxtdec.getInput();
 
             // shift intermediary values
@@ -402,6 +422,8 @@ void Springs::process(const float *const *__restrict in,
     dry_.reset();
     wet_.reset();
     loopTd_.reset();
+    allpassCoeff0_.reset();
+    allpassCoeff1_.reset();
 }
 
 } // namespace DSP_ARCH_NAMESPACE

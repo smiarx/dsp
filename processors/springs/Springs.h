@@ -124,6 +124,7 @@ class Springs
 
   private:
     void setNStages();
+    [[nodiscard]] auto getDownSampledBlockSize(int blockSize) const;
 
     unsigned int rateFactor_{1};
     type sampleRate_{kDefaultSamplerRate};
@@ -154,6 +155,8 @@ class Springs
     std::array<mtype, kApChainSize> allpassIntermediary_{};
     typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
     unsigned int apNStages_{kApCascadeL};
+    dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff0_{};
+    dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff1_{};
 
     dsp::IIRFilter<mtype, 10> lowpass_{};
     typename decltype(lowpass_)::State lowpassState_{};
