@@ -24,24 +24,23 @@ template <typename T, bool Vectorize = false> class ControlSmoother
 
     void set(const T &target, bT invBlockSize)
     {
-        if (!all(load(target_) == load(target))) {
-            target_ = target;
+        target_ = target;
 
-            auto step = (target - load(value_)) * invBlockSize;
-            step_[0]  = step;
+        auto step = (target - load(value_)) * invBlockSize;
+        step_[0]  = step;
 
-            // create incr vector (eg. {1,2,3,4})
-            T incr[kWidth];
-            for (size_t i = 0; i < kWidth; ++i) incr[i] = bT(i) + bT(1);
+        // create incr vector (eg. {1,2,3,4})
+        T incr[kWidth];
+        for (size_t i = 0; i < kWidth; ++i) incr[i] = bT(i) + bT(1);
 
-            Context<T, Vectorize> ctxt(step_.data());
-            ctxt.setOutput(ctxt.load(*incr) * step_[0]);
+        Context<T, Vectorize> ctxt(step_.data());
+        ctxt.setOutput(ctxt.load(*incr) * step_[0]);
 
-            active_ = true;
-        }
+        active_ = true;
     }
 
     [[nodiscard]] auto getTarget() const { return load(target_); }
+    [[nodiscard]] auto getStep() const { return step_; }
 
     bool isActive() { return active_; }
 

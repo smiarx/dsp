@@ -66,10 +66,6 @@ static void testControlSmoother()
     for (size_t i = 0; i < dsp::kTypeWidth<T>; ++i)
         REQUIRE_THAT(dsp::get(x, i),
                      Catch::Matchers::WithinRel(dsp::get(value, i), eps));
-
-    // dont activate if target doesn't change
-    smoother.set(value, rate);
-    REQUIRE(!smoother.isActive());
 }
 
 TEST_CASE("Control Smoother", "[dsp][smoother][controls]")
