@@ -166,6 +166,11 @@ template <typename T> class AllPass2
         a_[1] = a1;
     }
 
+    auto getCoeff0() const { return a_[0]; }
+    auto getCoeff1() const { return a_[1]; }
+    auto setCoeff0(const T &a0) { a_[0] = a0; }
+    auto setCoeff1(const T &a1) { a_[1] = a1; }
+
     template <class Ctxt, class State> void process(Ctxt c, State &state) const
     {
         static_assert(Ctxt::kIncrSize == 1, "Cannot vectorize AllPass2");

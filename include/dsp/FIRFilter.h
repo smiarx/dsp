@@ -134,9 +134,15 @@ class FIRDecimate
     int decimate(CtxtIn cin, CtxtOut &cout, DL &delayline, int decimateId) const
     {
         static_assert(!CtxtOut::kUseVec);
-        auto decimatedBlockSize = 0;
-        auto id                 = static_cast<size_t>(decimateId);
-        auto coutCopy           = cout;
+        auto decimatedBlockSize =
+            (cin.getBlockSize() + M - 1 - (M - decimateId) % M) / M;
+        auto id       = static_cast<size_t>(decimateId);
+        auto coutCopy = cout;
+
+        cout.setBlockSize(decimatedBlockSize);
+#ifndef NDEBUG
+        auto checkDecimatedBlockSize = 0;
+#endif
 
         CTXTRUN(cin)
         {
@@ -163,7 +169,9 @@ class FIRDecimate
                 auto xout = dsp::reduce<kTypeWidth<T>>(sum);
                 coutCopy.setOutput(xout);
 
-                ++decimatedBlockSize;
+#ifndef NDEBUG
+                ++checkDecimatedBlockSize;
+#endif
                 xOffset += M;
                 coutCopy.next();
             }
@@ -172,7 +180,9 @@ class FIRDecimate
             delayline.write(cin, x);
         };
 
-        cout.setBlockSize(decimatedBlockSize);
+#ifndef NDEBUG
+        assert(decimatedBlockSize == checkDecimatedBlockSize);
+#endif
         return static_cast<int>(id);
     }
 

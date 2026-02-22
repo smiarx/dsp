@@ -54,6 +54,8 @@ class Springs
     static constexpr type kToneMin = 80.f;
     static constexpr type kToneMax = 5000.f;
 
+    static constexpr type kChaosSmoothTime = 0.2f;
+
     static constexpr mtype kFreqFactor   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr mtype kRFactor      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr mtype kLoopTdFactor = {
@@ -70,11 +72,8 @@ class Springs
     // with y as intermediary values and z as final values
     // reducing the number of computation by 2
     // introduce a delay in chain of size APChainSize
-#ifndef SPRINGS_MAX_VEC_SIZE
-#define SPRINGS_MAX_VEC_SIZE DSP_MAX_VEC_SIZE
-#endif
     static constexpr auto kApChainSize =
-        SPRINGS_MAX_VEC_SIZE / sizeof(type) / kN;
+        sizeof(dsp::batch<mtype>) / sizeof(mtype);
     static constexpr auto kApCascadeL = kCascadeL / kApChainSize;
 
     Springs()
@@ -105,7 +104,7 @@ class Springs
     // setters
     void setFreq(float freq, int blockSize);
     void setRes(float r, int blockSize);
-    void setTd(float td, int blockSize);
+    void setTd(float td, int blockSize, float smoothSeconds = 0.05f);
     void setChaos(float chaos, int blockSize);
     void setT60(float t60, int blockSize);
     void setTone(float tone, int blockSize);
@@ -124,6 +123,7 @@ class Springs
 
   private:
     void setNStages();
+    [[nodiscard]] auto getDownSampledBlockSize(int blockSize) const;
 
     unsigned int rateFactor_{1};
     type sampleRate_{kDefaultSamplerRate};
@@ -151,10 +151,13 @@ class Springs
 
     // allpass
     dsp::AllPass2<dsp::batch<mtype>> allpass_{};
-    std::array<mtype, kApChainSize> allpassIntermediary_{};
+    dsp::batch<mtype> allpassIntermediary_{};
     typename decltype(allpass_)::State allpassState_[kApCascadeL]{};
     unsigned int apNStages_{kApCascadeL};
+    dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff0_{};
+    dsp::ControlSmoother<dsp::batch<mtype>> allpassCoeff1_{};
 
+    dsp::ControlSmoother<mtype> lowpassFreqs_{};
     dsp::IIRFilter<mtype, 10> lowpass_{};
     typename decltype(lowpass_)::State lowpassState_{};
 
@@ -183,13 +186,14 @@ class Springs
     dsp::Buffer<dsp::mfloat<2>, kInBufSize> bufferOut_;
 
     dsp::DelayLine<kLoopLength / 2> predelaydl_;
-    dsp::TapNoInterp<mtype> predelay_;
+    dsp::SmootherLin<mtype> predelay_{};
+    dsp::TapLin<mtype> predelayTap_{};
 
-    type loopGain_{};
-    static constexpr type kDefaultTd    = kLoopLength * 0.1;
-    dsp::ControlSmoother<mtype> loopTd_ = {
+    dsp::ControlSmoother<type> loopGain_{};
+    static constexpr type kDefaultTd = kLoopLength * 0.1;
+    dsp::SmootherLin<mtype> loopTd_  = {
         {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
-    mtype loopModAmp_{};
+    dsp::SmootherLin<mtype> loopModAmp_{};
     dsp::lfo::Parabolic<mtype> loopMod_{};
     dsp::Noise<mtype> loopChaosNoise_{};
     dsp::SmootherLin<mtype> loopChaos_{};
@@ -219,6 +223,8 @@ class Springs
     {
         return rmsStack_.getPos();
     }
+
+    void clearRMSSTack() { rmsStack_.clear(); }
 
   private:
     dsp::RMS<mtype, kRmsSize, kRmsOverlap> rms_;
