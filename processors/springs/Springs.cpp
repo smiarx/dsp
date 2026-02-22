@@ -151,7 +151,7 @@ void Springs::setTd(float td, int blockSize, float smoothSeconds)
 
     auto loopFactor = 1.f + (kLoopTdFactor.load() - 1.f) * getScatterFactor();
     auto loopTd     = sampleTd * loopFactor;
-    loopModAmp_     = loopTd * kLoopModFactor;
+    auto loopModAmp = loopTd * kLoopModFactor;
     loopChaosMod_   = loopTd * 0.07f * dsp::pow(chaos_, 2.5f);
     // predelay is floored because because we don't want unwanted filtering from
     // linear interpolation
@@ -160,6 +160,7 @@ void Springs::setTd(float td, int blockSize, float smoothSeconds)
     auto smoothLength = static_cast<int>(
         sampleRate_ / static_cast<float>(rateFactor_) * smoothSeconds);
     loopTd_.set(loopTd, smoothLength);
+    loopModAmp_.set(loopModAmp, smoothLength);
     predelay_.set(predelayT, smoothLength / 2);
 
     setT60(t60_, blockSize);
@@ -323,7 +324,7 @@ void Springs::process(const float *const *__restrict in,
 
             auto delay = loopTd_.step();
 
-            delay += mod * loopModAmp_ + chaos;
+            delay += mod * loopModAmp_.step() + chaos;
             looptap.setDelay(delay);
 
             auto loop = looptap.read(ctxtdec, loopdl_);

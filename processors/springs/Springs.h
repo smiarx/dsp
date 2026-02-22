@@ -193,7 +193,7 @@ class Springs
     static constexpr type kDefaultTd = kLoopLength * 0.1;
     dsp::SmootherLin<mtype> loopTd_  = {
         {kDefaultTd, kDefaultTd, kDefaultTd, kDefaultTd}};
-    mtype loopModAmp_{};
+    dsp::SmootherLin<mtype> loopModAmp_{};
     dsp::lfo::Parabolic<mtype> loopMod_{};
     dsp::Noise<mtype> loopChaosNoise_{};
     dsp::SmootherLin<mtype> loopChaos_{};
