@@ -84,13 +84,13 @@ void Springs::setFreq(float freq, int blockSize)
     if (rateFactor != rateFactor_) lowpassState_ = {};
     lowpass_.fromAnalog(kSosAnalog, freqs);
 
-    decimateId_ = 0;
-
     auto oldRateFactor = rateFactor_;
     rateFactor_        = rateFactor;
     freq_              = freq;
 
     if (rateFactor != oldRateFactor) {
+        decimateId_ = 0;
+
         auto fM = static_cast<float>(rateFactor);
 
         auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
