@@ -220,6 +220,8 @@ class Springs
         return rmsStack_.getPos();
     }
 
+    void clearRMSSTack() { rmsStack_.clear(); }
+
   private:
     dsp::RMS<mtype, kRmsSize, kRmsOverlap> rms_;
     dsp::Stack<mtype, kRmsStackSize> rmsStack_;
