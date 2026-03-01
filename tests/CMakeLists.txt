@@ -38,6 +38,7 @@ set(test_sources
     NSDF.cpp
     Interpolation.cpp
     Utils.cpp
+    PSOLA.cpp
 )
 
 add_executable(tests ${test_sources})
