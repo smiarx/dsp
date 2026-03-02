@@ -54,5 +54,63 @@ static constexpr auto expScale(T min, T max, U x)
     return min * std::pow(max / min, x);
 }
 
+////////////////////////////////////////////////////////////////////
+/// Modular arithmetic
+template <int Mod> static bool modCmpGE(int id1, int id2)
+{
+    static_assert(isPow2(Mod));
+    // check if id1 >= id2 modulo [kBaseSize]
+    // (e.g 5 [2048] >= 2030 [2048])
+    constexpr auto kMidSize = Mod >> 1;
+    return ((id1 - id2) & kMidSize) == 0;
+}
+template <int Mod> static bool modCmpGT(int id1, int id2)
+{
+    static_assert(isPow2(Mod));
+    // check if id1 > id2 modulo [kBaseSize]
+    // (e.g 5 [2048] > 2030 [2048])
+    return modCmpGE<Mod>(id1, id2 + 1);
+}
+template <int Mod> static bool modCmpEq(int id1, int id2)
+{
+    static_assert(isPow2(Mod));
+    // check if id1 == id2 modulo [kBaseSize]
+    // (e.g 5 [2048] > 2053 [2048])
+    return ((id1 - id2) & (Mod - 1)) == 0;
+}
+
+template <int Mod, typename Id1, typename Id2>
+static auto modAdd(Id1 id1, Id2 id2)
+{
+    static_assert(isPow2(Mod));
+    if constexpr (std::is_floating_point_v<Id2>) {
+        constexpr auto kMod     = static_cast<Id2>(Mod);
+        constexpr auto kMidSize = static_cast<Id2>(Mod >> 1);
+        auto add                = static_cast<Id2>(id1) + id2;
+        if (add > kMidSize) {
+            return -kMod + add;
+        } else if (add < -kMidSize) {
+            return kMod + add;
+        }
+        return add;
+    } else {
+        return (id1 + id2) & (Mod - 1);
+    }
+}
+
+template <int Mod, typename Id1, typename Id2>
+static auto modDiff(Id1 id1, Id2 id2)
+{
+    static_assert(isPow2(Mod));
+    if constexpr (std::is_floating_point_v<Id2>) {
+        return modAdd<Mod>(id1, -id2);
+    } else {
+        constexpr auto kMidSize = Mod >> 1;
+        constexpr auto kMidMask = kMidSize - 1;
+        auto diff               = (id1 - id2);
+        return (diff & kMidMask) - (diff & kMidSize);
+    }
+}
+
 } // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
