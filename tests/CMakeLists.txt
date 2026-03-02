@@ -37,6 +37,7 @@ set(test_sources
     PitchShift.cpp
     NSDF.cpp
     Interpolation.cpp
+    Utils.cpp
 )
 
 add_executable(tests ${test_sources})
