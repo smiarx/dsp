@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "dsp/Windows.h"
+#include <dsp/resampling/Windows.hpp>
 
 template <class Win, size_t N>
 static void testWin(std::array<double, N> &expect)

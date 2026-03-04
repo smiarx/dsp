@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "simd/multi.h"
+#include <dsp/simd/multi.hpp>
 
 namespace dsp
 {

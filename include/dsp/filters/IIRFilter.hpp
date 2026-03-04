@@ -1,11 +1,10 @@
 #pragma once
 
-#include "Context.h"
-#include "FastMath.h"
-#include "Utils.h"
-#include <cmath>
+#include <dsp/core/Context.hpp>
+#include <dsp/math/FastMath.hpp>
+#include <dsp/utils/Utils.hpp>
 
-#include "gcem/gcem.h"
+#include <dsp/third_party/gcem/gcem.h>
 
 namespace dsp
 {

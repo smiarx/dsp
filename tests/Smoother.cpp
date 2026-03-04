@@ -1,11 +1,10 @@
-#include "dsp/Smoother.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <iostream>
+#include <dsp/control/Smoother.hpp>
 
 template <typename T, bool Vec = false, bool VecCtxt = Vec>
 static void testControlSmoother()

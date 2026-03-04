@@ -2,10 +2,9 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <iostream>
 
-#include "dsp/Buffer.h"
-#include "dsp/MultiRate.h"
+#include <dsp/core/Buffer.hpp>
+#include <dsp/resampling/MultiRate.hpp>
 
 TEST_CASE("MultiRate", "[dsp][multirate]")
 {

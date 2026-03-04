@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FastMath.h"
+#include <dsp/math/FastMath.hpp>
 
 namespace dsp::windows
 {

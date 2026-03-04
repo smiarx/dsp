@@ -1,7 +1,3 @@
-#include "dsp/RMS.h"
-#include "dsp/Context.h"
-#include "dsp/FastMath.h"
-#include "dsp/Stack.h"
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_adapters.hpp>
@@ -10,6 +6,10 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cmath>
 #include <cstddef>
+#include <dsp/analysis/RMS.hpp>
+#include <dsp/analysis/Stack.hpp>
+#include <dsp/core/Context.hpp>
+#include <dsp/math/FastMath.hpp>
 
 TEST_CASE("RMS", "[dsp][rms]")
 {

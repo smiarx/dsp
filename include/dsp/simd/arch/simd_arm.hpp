@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../cpu/defines.h"
+#include <dsp/cpu/defines.h>
 
 #if DSP_NEON
 

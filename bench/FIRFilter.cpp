@@ -4,9 +4,9 @@
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 
-#include "dsp/Buffer.h"
-#include "dsp/Context.h"
-#include "dsp/FIRFilter.h"
+#include <dsp/core/Buffer.hpp>
+#include <dsp/core/Context.hpp>
+#include <dsp/filters/FIRFilter.hpp>
 
 TEST_CASE("FIR Filter")
 {

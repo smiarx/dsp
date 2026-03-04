@@ -1,13 +1,13 @@
 #pragma once
 
-#include "dsp/Buffer.h"
-#include "dsp/Delay.h"
-#include "dsp/Kernel.h"
-#include "dsp/LFO.h"
-#include "dsp/Smoother.h"
-#include "dsp/TapeDelay.h"
-#include "dsp/VAFilters.h"
-#include "dsp/Windows.h"
+#include <dsp/control/Smoother.hpp>
+#include <dsp/core/Buffer.hpp>
+#include <dsp/delay/Delay.hpp>
+#include <dsp/delay/TapeDelay.hpp>
+#include <dsp/filters/VAFilters.hpp>
+#include <dsp/modulation/LFO.hpp>
+#include <dsp/resampling/Kernel.hpp>
+#include <dsp/resampling/Windows.hpp>
 
 #ifdef TAPEDELAY_SWITCH_INDICATOR
 #include <atomic>

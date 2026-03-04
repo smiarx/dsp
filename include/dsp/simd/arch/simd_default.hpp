@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../cpu/defines.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <dsp/cpu/defines.h>
 
 #if defined(_MSC_VER)
 #define always_inline __forceinline

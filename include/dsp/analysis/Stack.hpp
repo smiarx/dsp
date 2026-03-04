@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Utils.h"
-#include "simd/multi.h"
+#include <dsp/simd/multi.hpp>
+#include <dsp/utils/Utils.hpp>
 
 namespace dsp
 {

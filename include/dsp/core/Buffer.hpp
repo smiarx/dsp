@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Context.h"
-#include "Utils.h"
 #include <cstring>
+#include <dsp/core/Context.hpp>
+#include <dsp/utils/Utils.hpp>
 
 namespace dsp
 {

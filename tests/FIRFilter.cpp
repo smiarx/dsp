@@ -1,11 +1,11 @@
-#include "dsp/FIRFilter.h"
-#include "dsp/Buffer.h"
-#include "dsp/Context.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <cstdlib>
+#include <dsp/core/Buffer.hpp>
+#include <dsp/core/Context.hpp>
+#include <dsp/filters/FIRFilter.hpp>
 
 template <typename T, size_t Order, bool Vec = false> static void testFir()
 {
