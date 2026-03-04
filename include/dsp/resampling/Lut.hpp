@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Utils.h"
-#include "cpu/defines.h"
+#include <dsp/cpu/defines.h>
+#include <dsp/utils/Utils.hpp>
 
 namespace dsp
 {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "simd.h"
-#include "simd_math.h"
 #include <array>
+#include <dsp/simd/simd.hpp>
+#include <dsp/simd/simd_math.hpp>
 
 namespace dsp
 {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Context.h"
-#include "Delay.h"
-#include "FastMath.h"
-#include "Windows.h"
+#include <dsp/core/Context.hpp>
+#include <dsp/delay/Delay.hpp>
+#include <dsp/math/FastMath.hpp>
+#include <dsp/resampling/Windows.hpp>
 
 /*
     x0 |x1 x2 x3 x4| x5 x6 x7 x8 |x9

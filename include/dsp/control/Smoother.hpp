@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Context.h"
-#include "simd/multi.h"
 #include <cassert>
 #include <cmath>
+#include <dsp/core/Context.hpp>
+#include <dsp/simd/multi.hpp>
 
 namespace dsp
 {

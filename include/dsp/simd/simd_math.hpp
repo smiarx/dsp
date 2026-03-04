@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "simd.h"
+#include <dsp/simd/simd.hpp>
 
 namespace dsp
 {

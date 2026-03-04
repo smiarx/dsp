@@ -4,8 +4,8 @@
 #include <catch2/generators/catch_generators_adapters.hpp>
 #include <catch2/generators/catch_generators_random.hpp>
 
-#include "dsp/AllPass.h"
-#include "dsp/Context.h"
+#include <dsp/core/Context.hpp>
+#include <dsp/filters/AllPass.hpp>
 
 TEST_CASE("Allpass")
 {

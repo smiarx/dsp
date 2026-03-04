@@ -1,6 +1,6 @@
 #pragma once
 
-#include "simd/multi.h"
+#include <dsp/simd/multi.hpp>
 #include <limits>
 #include <random>
 

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../cpu/defines.h"
+#include <dsp/cpu/defines.h>
 
 #if DSP_NEON
 
-#include "simd_default.h"
 #include <arm_neon.h>
+#include <dsp/simd/arch/simd_default.hpp>
 
 #define DSP_MAX_VEC_SIZE     16
 #define DSP_PADDING_VEC_SIZE 16

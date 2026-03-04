@@ -1,21 +1,21 @@
 #pragma once
 
-#include "dsp/AllPass.h"
-#include "dsp/Buffer.h"
-#include "dsp/IIRFilter.h"
-#include "dsp/LFO.h"
-#include "dsp/MultiRate.h"
-#include "dsp/Noise.h"
-#include "dsp/Smoother.h"
-#include "dsp/VAFilters.h"
+#include <dsp/control/Smoother.hpp>
+#include <dsp/core/Buffer.hpp>
+#include <dsp/filters/AllPass.hpp>
+#include <dsp/filters/IIRFilter.hpp>
+#include <dsp/filters/VAFilters.hpp>
+#include <dsp/generators/Noise.hpp>
+#include <dsp/modulation/LFO.hpp>
+#include <dsp/resampling/MultiRate.hpp>
 
 #ifdef SPRINGS_RMS
-#include "dsp/RMS.h"
-#include "dsp/Stack.h"
+#include <dsp/analysis/RMS.hpp>
+#include <dsp/analysis/Stack.hpp>
 #endif
 
 #ifdef SPRINGS_SHAKE
-#include "dsp/Enveloppe.h"
+#include <dsp/modulation/Enveloppe.hpp>
 #endif
 
 #include "SpringsDefines.h"

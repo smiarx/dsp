@@ -1,9 +1,9 @@
-#include "dsp/Context.h"
-#include "dsp/simd/multi.h"
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <dsp/core/Context.hpp>
+#include <dsp/simd/multi.hpp>
 
 TEST_CASE("Context Class", "[context]")
 {

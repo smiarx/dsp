@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Context.h"
-#include "FastMath.h"
+#include <dsp/core/Context.hpp>
+#include <dsp/math/FastMath.hpp>
 
 namespace dsp::va
 {

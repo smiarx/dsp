@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Context.h"
+#include <dsp/core/Context.hpp>
 
 namespace dsp
 {

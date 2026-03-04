@@ -1,12 +1,11 @@
 #pragma once
 
-#include <algorithm>
 #include <cstdint>
 
-#include "../cpu/defines.h"
-#include "simd_arm.h"
-#include "simd_default.h"
-#include "simd_x86_64.h"
+#include <dsp/cpu/defines.h>
+#include <dsp/simd/arch/simd_arm.hpp>
+#include <dsp/simd/arch/simd_default.hpp>
+#include <dsp/simd/arch/simd_x86_64.hpp>
 
 #ifndef DSP_MAX_VEC_SIZE
 #define DSP_MAX_VEC_SIZE 16

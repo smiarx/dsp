@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../cpu/defines.h"
-#include "simd_default.h"
+#include <dsp/cpu/defines.h>
+#include <dsp/simd/arch/simd_default.hpp>
 
 #if DSP_X86
 

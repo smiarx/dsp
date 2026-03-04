@@ -1,11 +1,11 @@
 #include "TapeDelay.h"
-#include "dsp/Buffer.h"
-#include "dsp/Context.h"
-#include "dsp/FastMath.h"
-#include "dsp/Utils.h"
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <dsp/core/Buffer.hpp>
+#include <dsp/core/Context.hpp>
+#include <dsp/math/FastMath.hpp>
+#include <dsp/utils/Utils.hpp>
 
 namespace processors
 {

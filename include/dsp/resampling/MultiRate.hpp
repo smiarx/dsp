@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FIRFilter.h"
+#include <dsp/filters/FIRFilter.hpp>
 
 namespace dsp
 {

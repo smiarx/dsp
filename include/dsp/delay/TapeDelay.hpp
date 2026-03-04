@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Delay.h"
-#include "Utils.h"
+#include <dsp/delay/Delay.hpp>
+#include <dsp/utils/Utils.hpp>
 
 namespace dsp
 {

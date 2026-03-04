@@ -1,9 +1,9 @@
-#include "dsp/Context.h"
-#include "dsp/VAFilters.h"
 #include <SC_InterfaceTable.h>
 #include <SC_PlugIn.h> // NOLINT
 #include <SC_Rate.h>
 #include <SC_Unit.h>
+#include <dsp/core/Context.hpp>
+#include <dsp/filters/VAFilters.hpp>
 
 extern InterfaceTable *ft;
 

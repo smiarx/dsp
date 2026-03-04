@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Delay.h"
+#include <dsp/delay/Delay.hpp>
 
 #ifdef __GNUC__
 #ifndef __clang__

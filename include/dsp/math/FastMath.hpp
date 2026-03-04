@@ -1,7 +1,7 @@
 #pragma once
 
-#include "simd/multi.h"
 #include <cmath>
+#include <dsp/simd/multi.hpp>
 
 namespace dsp
 {
