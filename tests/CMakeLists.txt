@@ -39,6 +39,7 @@ set(test_sources
     Interpolation.cpp
     Utils.cpp
     PSOLA.cpp
+    ZFF.cpp
 )
 
 add_executable(tests ${test_sources})
