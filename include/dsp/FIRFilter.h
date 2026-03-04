@@ -134,8 +134,9 @@ class FIRDecimate
     int decimate(CtxtIn cin, CtxtOut &cout, DL &delayline, int decimateId) const
     {
         static_assert(!CtxtOut::kUseVec);
+        constexpr auto kM = static_cast<int>(M);
         auto decimatedBlockSize =
-            (cin.getBlockSize() + M - 1 - (M - decimateId) % M) / M;
+            (cin.getBlockSize() + kM - 1 - (kM - decimateId) % kM) / kM;
         auto id       = static_cast<size_t>(decimateId);
         auto coutCopy = cout;
 
