@@ -51,9 +51,9 @@ static void springsNext(SpringsUnit<Arch> *unit, int inNumSamples)
                        (UnitDtorFunc) & Springs_Dtor<Arch>, 0);
 
 #if DSP_COMPILE_AVX2
-#define LOADFUNC loadTapeSpringsAVX2
+#define LOADFUNC loadSpringsAVX2
 #else
-#define LOADFUNC loadTapeSprings
+#define LOADFUNC loadSprings
 #endif
 
 void LOADFUNC() { DefineSpringsUnit(processors::Springs); }

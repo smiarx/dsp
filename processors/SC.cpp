@@ -11,7 +11,7 @@ PluginLoad(Processors)
 {
     ft = inTable;
 
-#ifdef DSP_X86_DISPATCH
+#if DSP_X86_DISPATCH
     auto infos = dsp::cpu::getInfos();
 
     if (infos.avx2 && infos.fma3_sse42) {
