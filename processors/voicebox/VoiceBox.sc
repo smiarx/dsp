@@ -9,3 +9,9 @@ ZC : UGen {
 		^this.multiNew('audio', in, dur).madd(mul, add)
 	}
 }
+
+PitchTracker : UGen {
+	*ar { arg in = 0.0;
+		^this.multiNew('audio', in)
+	}
+}

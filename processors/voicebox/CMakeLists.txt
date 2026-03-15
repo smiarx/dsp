@@ -1,5 +1,7 @@
 set(voicebox_sources
-    VoiceBox.cpp)
+    VoiceBox.cpp
+    PitchTracker.cpp
+)
 set(voicebox_sc_sources
     VoiceBox_SC.cpp)
 

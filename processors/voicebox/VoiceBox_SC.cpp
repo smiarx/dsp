@@ -63,10 +63,50 @@ static void zcCtor(ZCUnit *unit)
 
 //==================================================
 
+#include "PitchTracker.hpp"
+
+struct PitchTrackerUnit : public Unit {
+    processors::PitchTracker *pitchTracker_;
+};
+
+static void pitchTrackerNext(PitchTrackerUnit *unit, int inNumSamples);
+
+static void pitchTrackerCtor(PitchTrackerUnit *unit)
+{
+    SETCALC(pitchTrackerNext);
+    auto *pitchTracker = (processors::PitchTracker *)RTAlloc(
+        unit->mWorld, sizeof(processors::PitchTracker));
+    new (pitchTracker) processors::PitchTracker();
+    unit->pitchTracker_ = pitchTracker;
+    unit->pitchTracker_->prepare(static_cast<float>(SAMPLERATE));
+
+    ClearUnitIfMemFailed(pitchTracker);
+    ZOUT0(0) = 0.f;
+}
+
+static void pitchTrackerDtor(PitchTrackerUnit *unit)
+{
+    RTFree(unit->mWorld, unit->pitchTracker_);
+}
+
+void pitchTrackerNext(PitchTrackerUnit *unit, int inNumSamples)
+{
+    unit->pitchTracker_->process(&IN(0), &OUT(0), inNumSamples);
+    for (int i = 0; i < inNumSamples; ++i) {
+        OUT(0)[i] *= static_cast<float>(SAMPLERATE / 2.f);
+    }
+}
+
+//==================================================
+
 void loadVoiceBox()
 {
     (*ft->fDefineUnit)("VoiceBox", sizeof(VoiceBoxUnit),
                        (UnitCtorFunc)&voiceBoxCtor, (UnitDtorFunc)&voiceBoxDtor,
                        0);
     (*ft->fDefineUnit)("ZC", sizeof(ZCUnit), (UnitCtorFunc)&zcCtor, nullptr, 0);
+
+    (*ft->fDefineUnit)("PitchTracker", sizeof(PitchTrackerUnit),
+                       (UnitCtorFunc)&pitchTrackerCtor,
+                       (UnitDtorFunc)&pitchTrackerDtor, 0);
 }
