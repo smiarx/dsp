@@ -1,6 +1,4 @@
 #include "VoiceBox.h"
-#include <climits>
-#include <iostream>
 
 namespace processors
 {
@@ -10,42 +8,23 @@ inline namespace DSP_ARCH_NAMESPACE
 static inline float atune(float freq)
 {
     auto m  = 12.f * std::log2(freq / (440.f / 24000.f));
-    auto im = std::round(m / 6) * 6;
-    return std::pow(2.f, (im - m) / 12.f);
+    auto im = std::round(m / 3) * 3;
+    return 440.f / 24000.f * std::pow(2.f, (im) / 12.f);
 }
 
 void VoiceBox::prepare(float sampleRate)
 {
-    constexpr auto kAmpDecay = 0.002f;
-    ampFollower_.setRate(0.1f, static_cast<float>(kDecFactor) /
-                                   (kAmpDecay * sampleRate));
+    pitchTracker_.prepare(sampleRate);
 
-    // pitchShift_.setFreq(0.01f);
+    auto freqScale = 2.f / sampleRate;
+    dcblocker_.setFreq(50.f * freqScale);
 
-    decltype(ptLowpass_)::SOS kTfAnalog = {{{
-        {0.f, 0.f, 0.01021531f, 1.f, 0.26637237f, 0.05650064f},
-        {0.f, 0.f, 1.f, 1.f, 0.22581959f, 0.32709869f},
-        {0.f, 0.f, 1.f, 1.f, 0.15088783f, 0.70978212f},
-        {0.f, 0.f, 1.f, 1.f, 0.05298476f, 0.98038017f},
-    }}};
-    ptLowpass_.fromAnalog(kTfAnalog, kDecFactor * 2 * 600 / sampleRate);
-
-    zcOp_.setCutoff(2 * 10 / sampleRate);
+    sampleRate_ = sampleRate;
+    zffAnalysis_.setWindowSize(
+        static_cast<int>(sampleRate * kAnalysisWindowSize));
 }
 
-void VoiceBox::update(float forgetFactor, float warpIn, float warpOut,
-                      float ptop, float ptrho, float ptlambda, float shift)
-{
-    rls_.setForgetFactor(forgetFactor);
-    filter_.setWarpIn(warpIn);
-    filter_.setWarpOut(warpOut);
-    ptOp1_.setCoeff(ptop);
-    ptOp2_.setCoeff(ptop);
-    fastPitchTracker_.setRho(ptrho);
-    fastPitchTracker_.setLambda(ptlambda);
-    psola_.setShift(shift);
-    shift_ = shift;
-}
+void VoiceBox::update(float shift) { shift_ = shift; }
 
 void VoiceBox::process(const float *const *__restrict in,
                        float *const *__restrict out, int count)
@@ -57,126 +36,87 @@ void VoiceBox::process(const float *const *__restrict in,
         for (int i = 0; i < count; ++i) mout[i] = min[i];
     }
 
-    auto ctxt    = dsp::BufferContext(mout, count, buffer_);
-    auto ctxtDec = dsp::BufferContext(mout, count, bufferDec_);
+    auto ctxt = dsp::Context(mout, count);
+    CTXTRUN(ctxt) { dcblocker_.process(ctxt, dcblockerState_); };
 
-    decimate_.decimate(ctxt, ctxtDec, decimateDL_, decimateId_);
-    auto decBS = ctxtDec.getBlockSize();
+    auto pitch = pitchBuffer_;
+    while (count) {
+        auto blockSize = std::min(kMaxBlockSize, count);
 
-    // dsp::Noise<float> noise;
-    CTXTRUN(ctxtDec)
-    {
+        pitchTracker_.process(in, &pitch, blockSize);
 
-        // auto origFilter = filter_;
-        //  auto zcValue = zc_.process(ctxtDec) ? 1.f : 0.f;
-        //  zcOp_.process(dsp::Context(&zcValue), zcOpState_);
+        auto ctxt      = dsp::BufferContext(mout, blockSize, buffer_);
+        auto ctxtPitch = dsp::Context(pitch, blockSize);
 
-        auto x = ctxtDec.getInput();
-        ptLowpass_.process(ctxtDec, ptLowpassState_);
-        ptOp1_.process(ctxtDec, ptOp1St_);
+        CTXTRUN2(ctxt, ctxtPitch)
+        {
+            zffAnalysis_.process(ctxt, analysisDL_, [&, this](auto &marker) {
+                auto freq = ctxtPitch.getInput();
+                if (freq > 0.f) {
+                    auto trackedPeriod = 2.f / freq;
+                    while (marker.period_ > 1.05f * trackedPeriod) {
+                        auto lastMarker = zffAnalysis_.getMarker();
+                        auto newPosition =
+                            ctxt.modAdd(lastMarker.position_, trackedPeriod);
+                        zffAnalysis_.addMarker({newPosition, trackedPeriod});
+                        marker.period_ -= trackedPeriod;
+                    }
+                    if (marker.period_ > 0.95f * trackedPeriod) {
+                        auto lastMarker = zffAnalysis_.getMarker();
+                        marker.period_ +=
+                            0.9f * (trackedPeriod - marker.period_);
+                        marker.position_ =
+                            ctxt.modAdd(lastMarker.position_, marker.period_);
+                        return true;
+                    }
+                    return false;
+                }
+                return true;
+            });
+        };
 
-        auto amp = dsp::abs(ctxtDec.getInput());
-        amp *= amp;
-        ampFollower_.process(dsp::Context(&amp), ampFollowerState_);
-        // ptOp2_.process(ctxtDec, ptOp2St_);
-        // if (zcValue < 0.2) {
-        // pitchTracker_.process(ctxtDec, pitchTrackerState_);
-        // ctxtDec.setOutput(ctxtDec.getInput()*1000.f);
-        pitchTracker_.process(ctxtDec, pitchTrackerDL_);
+        CTXTRUN2(ctxt, ctxtPitch)
+        {
+            if (!voiced_ && ctxtPitch.getInput() > 0.f) {
+                // if there is no marker find one
+                if (zffAnalysis_.getNumMarkers() == 0) {
+                    auto period = 2.f / ctxtPitch.getInput();
+                    // find maximum peak
+                    float peakVal{};
+                    int peakId{};
+                    for (int i = 1; i < static_cast<int>(period); ++i) {
+                        auto val = analysisDL_.read(ctxt, i);
+                        if (val > peakVal) {
+                            peakId  = i;
+                            peakVal = val;
+                        }
+                    }
+                    zffAnalysis_.addMarker(
+                        {ctxt.idDiff(static_cast<float>(peakId)), period});
+                }
 
-        // auto freq = pitchTrackerState_.getFreq();
-        // if (amp > 0.005f) {
-
-        float period = 0.f;
-        if (chooseFastPitchTracker_) {
-            fastPitchTracker_.process(ctxtDec, fastPitchTrackerState_);
-            // std::cout << "fast:" << freq*12000 << "\n";
-            //
-
-            auto freq = fastPitchTrackerState_.getFreq();
-            freq      = dsp::max(freq, 50.f / 12000.f);
-            period    = 2.f / freq;
-            assert(period > 0);
-            // ctxtDec.setOutput(freq);
-            //
-            // auto shift = atune(freq);
-            // std::cout << "freq " << freq*12000.f << " - shift " << shift <<
-            // "\n";
-            psola_.setShift(shift_);
-
-            auto pole = std::abs(fastPitchTrackerState_.getPole());
-            pole *= pole;
-            ampFollower_.process(dsp::Context(&pole), poleFollowerState_);
-
-            if (poleFollowerState_ < ampFollowerState_ * 10000.f) {
-                std::cout << "fast stop\n";
-                chooseFastPitchTracker_ = false;
-                psola_.stop(ctxtDec);
-            } else {
-                //    //std::cout << "fast:" << freq*24000 << "\n";
-                //    //pitchShift_.setFreq(freq);
-                //    //ctxtDec.setOutput(freq);
+                // start psola synthesis
+                psola_.start(ctxt, zffAnalysis_);
+                voiced_ = true;
+            } else if (voiced_ && ctxtPitch.getInput() == 0.f) {
+                // stop psola synthesis
+                psola_.stop(ctxt);
+                zffAnalysis_.resetMarkers();
+                voiced_ = false;
             }
-        }
-
-        if (!chooseFastPitchTracker_) {
-            period = pitchTracker_.findPeak(0.95f);
-            assert(period >= 0);
-            if (period > 0.f) {
-
-                auto freq = 2.f / period;
-                freq      = dsp::max(freq, 50.f / 24000.f);
-
-                std::cout << "slow:" << freq * 12000 << "\n";
-                // std::cout << "slow:" << period << "\n";
-                chooseFastPitchTracker_ = true;
-                poleFollowerState_      = 5000;
-                fastPitchTrackerState_.setFreq(freq);
-
-                psola_.start(ctxtDec, period, pitchShiftDL_);
-            } else {
-                // pitchShift_.setShift(1);
-                //  ctxtDec.setOutput(0);
+            if (ctxtPitch.getInput() > 0.f) {
+                // psola_.setFreq(ctxtPitch.getInput() * shift_);
+                psola_.setFreq(atune(ctxtPitch.getInput() * shift_));
+                // psola_.setFreq(402.f/24000.f*shift_);
             }
-        }
+            psola_.process(ctxt, synthDL_, zffAnalysis_);
+        };
 
-        // pitchShift_.setShift(shift_);
-        // ctxtDec.setOutput(freq);
-        //}
-        // else
-        //{
-        //    pitchShift_.setShift(1);
-        //}
-
-        ctxtDec.setOutput(x);
-
-        rls_.process(ctxtDec, warpAState_, filter_);
-
-        //} else {
-        //    //filter_.analyze(ctxtDec, warpAState_);
-        //}
-
-        filter_.compensateResidualAnalyze(ctxtDec, warpAState_);
-
-        psola_.findMarkers(ctxtDec, pitchShiftDL_, period);
-        psola_.process(ctxtDec, pitchShiftDL_);
-
-        // ctxtDec.setOutput(noise.process()*0.1f);
-
-        filter_.compensateResidualReconstruct(ctxtDec, warpRState_);
-        // origFilter.reconstruct(ctxtDec, warpRState_);
-    };
-
-    // move data to end of buffer to avoid write conflict
-    for (int i = 0; i < decBS; ++i) {
-        mout[count - i - 1] = mout[decBS - i - 1];
+        count -= blockSize;
+        buffer_.nextBlock(ctxt);
+        mout += blockSize;
+        pitch += blockSize;
     }
-    auto ctxtInt = dsp::BufferContext(&mout[count - decBS], decBS, bufferDec_);
-    decimateId_ =
-        interpolate_.interpolate(ctxtInt, ctxt, interpolateDL_, decimateId_);
-
-    buffer_.nextBlock(ctxt);
-    bufferDec_.nextBlock(ctxtDec);
 }
 
 } // namespace DSP_ARCH_NAMESPACE
