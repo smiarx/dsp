@@ -40,6 +40,7 @@ set(test_sources
     Utils.cpp
     ZFF.cpp
     PSOLA.cpp
+    Notch.cpp
 )
 
 add_executable(tests ${test_sources})
