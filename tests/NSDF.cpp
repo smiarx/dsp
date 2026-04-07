@@ -107,3 +107,74 @@ TEST_CASE("NSDF")
         REQUIRE_THAT(peakPeriod, Catch::Matchers::WithinAbs(period, 5e-2));
     }
 }
+
+TEST_CASE("NSDFTrack")
+{
+    dsp::NSDFTrack<float, 8, 600> nsdf;
+    decltype(nsdf)::DL<0> dl;
+    dsp::Buffer<float, nextTo(dl)> buffer;
+    float bufferData[decltype(buffer)::kSize]{};
+    buffer.setData(bufferData);
+
+    constexpr auto kN = 1000;
+    float x[kN]{};
+
+    SECTION("Track period")
+    {
+        int period = 100;
+
+        auto phase = 0.f;
+        auto p     = static_cast<float>(period);
+        for (int n = 0; n < kN; ++n) {
+            if (n > period * 2 && n < kN - 500) {
+                p += 0.01f;
+            }
+            phase += 2 * dsp::constants<float>::pi / p;
+            x[n] = dsp::sin(phase);
+        }
+
+        nsdf.setPeriod(static_cast<float>(period));
+
+        dsp::BufferContext ctxt(x, kN, buffer);
+        int n = 0;
+        float peakx;
+        CTXTRUN(ctxt)
+        {
+            nsdf.process(ctxt, dl);
+            if (n > period * 2) {
+                auto peak = nsdf.updateTrack(ctxt, dl);
+                peakx     = peak.x;
+            }
+            ++n;
+        };
+        // has successfully tracked period
+        REQUIRE_THAT(peakx, Catch::Matchers::WithinAbs(p, 1e-2));
+    }
+
+    SECTION("Reset bin")
+    {
+        auto period = 100.f;
+        auto w      = 2.f * dsp::constants<float>::pi / period;
+        for (int n = 0; n < kN; ++n) {
+            x[n] = dsp::sin(w * static_cast<float>(n));
+        }
+
+        nsdf.setPeriod(period);
+
+        dsp::BufferContext ctxt(x, kN, buffer);
+        auto n = 0;
+        CTXTRUN(ctxt)
+        {
+            nsdf.process(ctxt, dl);
+            if (n == kN - 1) {
+                for (size_t k = 0; k < decltype(nsdf)::kSize; ++k) {
+                    auto bin1 = nsdf.getBin(k);
+                    nsdf.resetBin(k, ctxt, dl);
+                    auto bin2 = nsdf.getBin(k);
+                    REQUIRE_THAT(bin2, Catch::Matchers::WithinAbs(bin1, 1e-6));
+                }
+            }
+            ++n;
+        };
+    }
+}
