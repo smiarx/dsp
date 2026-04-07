@@ -154,5 +154,195 @@ template <typename T, size_t maxTau, size_t minTau = 2> class NSDF
     T lastPeak_{};
 };
 
+// ==============================================================
+// ========================= NSDF Track =========================
+// ==============================================================
+//
+template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
+{
+  public:
+    static constexpr auto kSize             = N;
+    static constexpr auto kMaximumPeakValue = T(.5);
+    static constexpr auto kMinimumPeakValue = T(-.5);
+
+    template <size_t Offset = 0> using DL = DelayLine<2 * MaxLength, Offset>;
+
+    void clear()
+    {
+        std::fill(std::begin(ac_), std::end(ac_), T(0));
+        std::fill(std::begin(energy_), std::end(energy_), T(0));
+    }
+
+    [[nodiscard]] auto getOffset() const { return offset_; }
+
+    void setPeriod(T period)
+    {
+        offset_ =
+            static_cast<size_t>(std::round(period - static_cast<T>(N) / T(2)));
+        offset_ = std::min(MaxLength - N / 2, offset_);
+    }
+
+    T getPeriod() const noexcept
+    {
+        return static_cast<T>(offset_) + static_cast<T>(N) / T(2);
+    }
+
+    template <class Ctxt, class DL> void process(Ctxt ctxt, DL &delayline)
+    {
+        auto x   = ctxt.getInput();
+        auto xsq = x * x;
+
+        auto vecCtxt             = ctxt.vec();
+        constexpr auto kIncrSize = decltype(vecCtxt)::kIncrSize;
+
+        auto nsdfId = [&](auto ctxt, size_t i) {
+            auto tau = id2tau(i);
+            auto e   = ctxt.load(energy_[i]);
+            auto ac  = ctxt.load(ac_[i]);
+            auto xt  = delayline.read(ctxt, static_cast<int>(tau));
+            auto x2t = delayline.read(ctxt, static_cast<int>(2 * tau));
+
+            // if vectorized we need to get double tau vector
+            // [t,t-1,t-2,t-3]*2 = [t,t-2,t-4,t-6]
+            // we use the even function to get the values
+            if constexpr (decltype(ctxt)::kIncrSize > 1) {
+                auto x2t2 = delayline.read(
+                    vecCtxt, static_cast<int>(2 * tau - kIncrSize));
+                x2t = dsp::even(x2t, x2t2);
+            }
+            e += xsq - x2t * x2t;
+            ac += (x - x2t) * xt;
+
+            using eT = decltype(e);
+            // prevent energy values from begin under 0;
+            e = dsp::blend(e < eT(0), eT(0), e);
+            ctxt.store(energy_[i], e);
+            ctxt.store(ac_[i], ac);
+        };
+
+        size_t i;
+        // do vectorized
+        for (i = 0; i < N - kIncrSize + 1; i += kIncrSize) {
+            nsdfId(vecCtxt, i);
+        }
+        // do scalar
+        for (; i < N; ++i) {
+            nsdfId(ctxt, i);
+        }
+
+        delayline.writeSafe(ctxt, x);
+    }
+
+    template <class Ctxt, class DL>
+    [[nodiscard]] auto updateTrack(Ctxt ctxt, DL delayline)
+    {
+        // find peak
+        auto maxAc     = ac_[0];
+        auto maxEnergy = energy_[0];
+        size_t maxId   = 0;
+        for (size_t i = 1; i < N; ++i) {
+            if (ac_[i] * maxEnergy > maxAc * energy_[i]) {
+                maxId     = i;
+                maxAc     = ac_[i];
+                maxEnergy = energy_[i];
+            }
+        }
+        auto maxPeriod = static_cast<T>(id2tau(maxId));
+
+        // interpolate peak
+        dsp::interp::PolyPoint<T> peak;
+        if (maxId > 0 && maxId < N - 1 && energy_[maxId + 1] > T(0) &&
+            energy_[maxId - 1] > T(0)) {
+            peak = extrema(interp::LagrangeParabolic{
+                getBin(maxId + 1), getBin(maxId), getBin(maxId - 1)});
+            peak.x += maxPeriod;
+        } else {
+            peak = {maxPeriod, kMinimumPeakValue};
+            return peak;
+        }
+
+        if (maxId < N / 2) {
+            shiftUp(ctxt, delayline);
+        } else if (maxId > N / 2 + 1) {
+            shiftDown(ctxt, delayline);
+        }
+
+        assert(!std::isnan(peak.x));
+
+        return peak;
+    }
+
+    [[nodiscard]] auto getBin(size_t id) const { return ac_[id] / energy_[id]; }
+
+    template <class Ctxt, class DL> void shiftUp(Ctxt ctxt, DL delayline)
+    {
+        if (offset_ + kSize + 1 >= MaxLength) {
+            return;
+        }
+        offset_ += 1;
+        for (size_t i = N - 1; i > 0; --i) {
+            ac_[i]     = ac_[i - 1];
+            energy_[i] = energy_[i - 1];
+        }
+        resetBin(0, ctxt, delayline);
+    }
+    template <class Ctxt, class DL> void shiftDown(Ctxt ctxt, DL delayline)
+    {
+        if (offset_ == 0) {
+            return;
+        }
+        offset_ -= 1;
+        for (size_t i = 0; i < N - 1; ++i) {
+            ac_[i]     = ac_[i + 1];
+            energy_[i] = energy_[i + 1];
+        }
+        resetBin(N - 1, ctxt, delayline);
+    }
+
+    template <class Ctxt, class DL>
+    void resetBin(size_t newId, Ctxt ctxt, DL delayline)
+    {
+        // load new bin
+        auto tau       = id2tau(newId);
+        energy_[newId] = {};
+        ac_[newId]     = {};
+
+        auto updateAc = [&](auto ctxt, auto t) {
+            auto xt  = delayline.read(ctxt, t);
+            auto x2t = delayline.read(ctxt, t + static_cast<int>(tau));
+
+            ac_[newId] += dsp::sum(xt * x2t);
+        };
+        // process vectorized
+        auto vctxt = ctxt.vec();
+        for (int t = static_cast<int>(tau - 1); t >= vctxt.getIncrSize() - 1;
+             t -= vctxt.getIncrSize()) {
+            updateAc(vctxt, t);
+        }
+        for (int t = static_cast<int>(tau % vctxt.getIncrSize()) - 1; t >= 0;
+             --t) {
+            updateAc(vctxt.scalar(), t);
+        }
+
+        if (newId == 0) {
+            auto x2t  = delayline.read(ctxt, static_cast<int>(2 * tau - 1));
+            auto x2t1 = delayline.read(ctxt, static_cast<int>(2 * tau - 2));
+            energy_[newId] = energy_[newId + 1] + x2t * x2t + x2t1 * x2t1;
+        } else {
+            auto x2t  = delayline.read(ctxt, static_cast<int>(2 * tau));
+            auto x2t1 = delayline.read(ctxt, static_cast<int>(2 * tau + 1));
+            energy_[newId] = energy_[newId - 1] - x2t * x2t - x2t1 * x2t1;
+        }
+    }
+
+  private:
+    auto tau2id(size_t tau) { return offset_ + N - tau; }
+    auto id2tau(size_t id) { return offset_ + N - id; }
+
+    size_t offset_{};
+    std::array<T, N> energy_{};
+    std::array<T, N> ac_{};
+};
+
 } // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp
