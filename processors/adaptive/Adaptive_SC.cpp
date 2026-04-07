@@ -2,6 +2,7 @@
 #include <dsp/core/Context.hpp>
 #include <dsp/filters/AdaptiveFilter.hpp>
 #include <dsp/filters/AllPass.hpp>
+#include <dsp/filters/Notch.hpp>
 
 struct RLSUnit : public Unit {
     float fbufnum_;
