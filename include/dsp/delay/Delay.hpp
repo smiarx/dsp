@@ -2,8 +2,8 @@
 
 #include <dsp/core/Context.hpp>
 #include <dsp/math/FastMath.hpp>
-#include <dsp/math/LinearAlgebra.hpp>
 #include <dsp/math/Interpolation.hpp>
+#include <dsp/math/LinearAlgebra.hpp>
 #include <dsp/utils/Utils.hpp>
 
 namespace dsp
@@ -263,14 +263,15 @@ template <typename T> class TapNoInterp
     void setDelay(int i, int id) { id_[i] = id; }
     void setDelay(const IntT &id) { id_ = id; }
 
+    auto getDelay() const { return load(id_); }
+
     template <class Ctxt, class DL>
     [[nodiscard]] auto read(Ctxt c, const DL &delayline) const
     {
         constexpr auto kWidth      = kTypeWidth<typename Ctxt::Type>;
         constexpr auto kDelayWidth = kTypeWidth<IntT>;
 
-        constexpr int kMinDelay = Ctxt::kIncrSize;
-        (void)kMinDelay;
+        constexpr int kMinDelay = Ctxt::kIncrSize - 1;
         assert(all(load(id_) >= kMinDelay &&
                    load(id_) <= static_cast<int>(DL::kLength - kMinDelay + 1)));
 
@@ -319,11 +320,16 @@ template <typename T> class TapLin : public TapNoInterp<T>
         fd_ = fd;
     }
 
+    auto getDelay() const
+    {
+        return toFloat<T>(TapNoInterp<T>::getDelay()) + load(fd_);
+    }
+
     template <class Ctxt, class DL> auto read(Ctxt c, DL &delayline) const
     {
         auto id = load(TapNoInterp<T>::id_);
 
-        assert(all(id > 0 &&
+        assert(all(id >= 0 &&
                    id <= static_cast<int>(DL::kLength - Ctxt::kIncrSize)));
 
         auto x0 = TapNoInterp<T>::read(c, delayline);
