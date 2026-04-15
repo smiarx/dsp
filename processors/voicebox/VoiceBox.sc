@@ -1,6 +1,6 @@
 VoiceBox : UGen {
-	*ar { arg in = 0.0, shift=1.0, mul=1.0, add=0.0;
-		^this.multiNew('audio', in, shift).madd(mul, add)
+	*ar { arg in = 0.0, shift=1.0, formantShift=1.0, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, shift, formantShift).madd(mul, add)
 	}
 }
 

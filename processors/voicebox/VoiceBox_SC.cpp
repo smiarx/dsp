@@ -27,7 +27,7 @@ static void voiceBoxDtor(VoiceBoxUnit *unit)
 
 void voiceBoxNext(VoiceBoxUnit *unit, int inNumSamples)
 {
-    unit->voicebox_->update(IN0(1));
+    unit->voicebox_->update(IN0(1), IN0(2));
     unit->voicebox_->process(&IN(0), &OUT(0), inNumSamples);
 }
 

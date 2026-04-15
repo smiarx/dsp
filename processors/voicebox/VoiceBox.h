@@ -1,6 +1,8 @@
 #pragma once
 
 #include "PitchTracker.hpp"
+#include "dsp/generators/Noise.hpp"
+#include <atomic>
 #include <dsp/analysis/ZFF.hpp>
 #include <dsp/pitch/PSOLA.hpp>
 
@@ -13,14 +15,27 @@ class VoiceBox
 {
   public:
     static constexpr auto kMaxBlockSize       = 512;
-    static constexpr auto kAnalysisWindowSize = 0.015f;
-    static constexpr auto kMaxAnalysisMarkers = 12;
-    VoiceBox() { buffer_.setData(bufferData_); }
+    static constexpr auto kAnalysisWindowSize = 0.025f;
+    static constexpr auto kMaxAnalysisMarkers = 32;
+    VoiceBox()
+    {
+        buffer_.setData(bufferData_);
+        constexpr auto kWarp = -0.757f;
+        rls_.setForgetFactor(0.9995f);
+    }
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
-    void update(float shift);
+    void update(float shift, float formantShift);
     void prepare(float sampleRate);
+
+    void setPitchShift(float shift);
+    void setFormantShift(float shift); 
+
+    [[nodiscard]] float getPitchShift() const { return shift_;}
+    [[nodiscard]] float getFormantShift() const { return formantShift_;}
+
+    [[nodiscard]] const std::atomic<float>& getAtomicFreq() const { return atomicFreq_;}
 
   private:
     bool voiced_{};
@@ -36,7 +51,17 @@ class VoiceBox
     dsp::ZFF<float, kMaxAnalysisMarkers> zffAnalysis_{};
     dsp::DelayLine<1200> analysisDL_{};
 
+    // RLS
+    static constexpr auto kOrder = 8;
+    dsp::Noise<float> noise_{};
+    dsp::RLS<float, kOrder> rls_{};
+    dsp::WarpedAdaptiveFilter<float, kOrder> filter_{};
+    decltype(filter_)::AnalyzeState warpAState1_{};
+    decltype(filter_)::AnalyzeState warpAState_{};
+    decltype(filter_)::ReconstructState warpRState_{};
+
     float shift_{1.f};
+    float formantShift_{1.f};
     dsp::PSOLA<float, 16> psola_{};
     dsp::DelayLine<10000, nextTo(analysisDL_)> synthDL_{};
 
@@ -44,6 +69,7 @@ class VoiceBox
     float bufferData_[decltype(buffer_)::kSize]{};
 
     float pitchBuffer_[kMaxBlockSize]{};
+    std::atomic<float> atomicFreq_;
 };
 } // namespace DSP_ARCH_NAMESPACE
 } // namespace processors

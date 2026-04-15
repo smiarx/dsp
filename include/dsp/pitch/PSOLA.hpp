@@ -5,6 +5,7 @@
 #include <dsp/cpu/infos.h>
 #include <dsp/delay/Delay.hpp>
 #include <dsp/resampling/Windows.hpp>
+#include <iostream>
 
 namespace dsp
 {
@@ -81,7 +82,7 @@ class PSOLA
         auto grainPos = ctxt.getId() - phase * period;
         delay         = ctxt.modDiff(grainPos, marker.position_);
 
-        if (delay < 0.f) return;
+        if(delay < T(0)) return;
 
         // std::cout << 48000.f*rate << "\n";
         Grain newGrain{phase, rate, delay};
@@ -93,30 +94,44 @@ class PSOLA
     template <class Ctxt, class Analysis>
     void start(Ctxt ctxt, Analysis analysis)
     {
-        state_       = kFadeIn;
-        fade_.value_ = std::max(-1.f, -fade_.value_);
-
         const auto &marker = analysis.getClosestMarker(ctxt);
         auto period        = marker.period_;
         // synthPhase_ = T(1) + ctxt.idDiff(marker.position_ + period) / period;
-        synthPhase_ =
-            T(1) + ctxt.idDiff(marker.position_ + period) /
-                       period; // - marker.period_*synthRate_/playRate_;
+        
+        if(state_ == kOff)
+        {
+            //synthPhase_ =
+            //    T(1) + ctxt.idDiff(marker.position_ + period) /
+            //               period; // - marker.period_*synthRate_/playRate_;
+            auto diffMarker = ctxt.idDiff(marker.position_);
+            synthPhase_ = (diffMarker-period)*synthRate_;
 
-        nGrains_ = 0;
-        addGrain(ctxt, analysis);
-        fade_.rate_ = grains_[0].rate_ * T(0.5);
+            //ensure phase is > -1
+            while(synthPhase_ < T(-1)) synthPhase_ += T(1);
+            //fade_.rate_ = synthRate_/(T(1)+synthPhase_);
+            fade_.value_ = -T(1) + synthRate_;
+        }
+        else
+        {
+            fade_.value_ = std::max(-1.f, -fade_.value_);
+            //fade_.rate_ = T(1)/period;
+        }
+        state_       = kFadeIn;
+
+
+        //addGrain(ctxt, analysis);
+        //fade_.rate_ = grains_[0].rate_ * T(0.5);
     }
 
     template <class Ctxt> void stop(Ctxt ctxt)
     {
         state_       = kFadeOut;
         fade_.value_ = std::max(0.f, -fade_.value_);
-        if (nGrains_ > 0) fade_.rate_ = grains_[0].rate_ * T(0.5);
-        else {
-            constexpr auto kDefaultFadeRate = T(0.02);
-            fade_.rate_                     = kDefaultFadeRate;
-        }
+        //if (nGrains_ > 0) fade_.rate_ = grains_[0].rate_;
+        //else {
+        //    constexpr auto kDefaultFadeRate = T(0.02);
+        //    fade_.rate_                     = kDefaultFadeRate;
+        //}
     }
 
     template <class Ctxt, class DL, class Analysis>
@@ -155,6 +170,7 @@ class PSOLA
             }
 
             x += grainValue * fadeValue;
+            //x += fadeValue;//
 
             grain.phase_ += grain.rate_ * playRate_;
             grain.delay_ += T(1) - playRate_;
@@ -162,14 +178,17 @@ class PSOLA
 
         T fadeValue;
         if (state_ == kFadeIn || state_ == kFadeOut) {
-            auto &value = fade_.value_;
-            value += fade_.rate_;
+            //fade_.value_ += fade_.rate_;
+            fade_.value_ += synthRate_;
+            auto value = fade_.value_;
+            value = std::max(T(-1), value);
             if (state_ == kFadeIn && value > T(0)) {
                 value  = T(0);
                 state_ = kOn;
             } else if (state_ == kFadeOut && value > T(1)) {
                 value  = T(1);
                 state_ = kOff;
+                nGrains_ = 0;
             }
             // TODO
             fadeValue = T(1) - Window::generate(value);
@@ -177,7 +196,13 @@ class PSOLA
             fadeValue = T(0);
         }
 
-        x += fadeValue * (ctxt.getInput() - x);
+        //x += fadeValue * (ctxt.getInput() - x);
+        x += fadeValue * (ctxt.getInput());
+
+        static T lastValue = 0.f;
+        if(std::abs(lastValue - x) > 0.5f)
+            std::cout << "hello\n";
+        lastValue = x;
 
         ctxt.setOutput(x);
 
@@ -191,9 +216,9 @@ class PSOLA
     // generating
     State state_{kOff};
     struct Fade {
-        float value_;
+        float value_{1};
         float rate_;
-    } fade_;
+    } fade_{};
     size_t nGrains_{};
     std::array<Grain, MaxGrains> grains_{};
 

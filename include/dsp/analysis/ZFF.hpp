@@ -37,13 +37,16 @@ template <typename T, size_t MaxMarkers = 4> class ZFF
     static constexpr bool defaultCallback(const Marker &) { return true; }
 
     template <class Ctxt>
-    const auto &getClosestMarker(Ctxt ctxt, T playRate = T(1))
+    auto &getClosestMarker(Ctxt ctxt, T playRate = T(1))
     {
         auto foundId = markerId_;
         while (ctxt.idDiff(markers_[foundId].position_) -
                    markers_[foundId].period_ * (playRate - T(1)) <
                T(0)) {
             foundId = (foundId - 1 + MaxMarkers) % MaxMarkers;
+
+            // going full circle
+            if(foundId == markerId_) assert(false);
         }
         return markers_[foundId];
     }
@@ -58,6 +61,10 @@ template <typename T, size_t MaxMarkers = 4> class ZFF
     }
 
     const auto &getMarker(size_t id = 0) const
+    {
+        return markers_[(markerId_ + MaxMarkers - id) % MaxMarkers];
+    }
+    auto &getMarker(size_t id = 0) 
     {
         return markers_[(markerId_ + MaxMarkers - id) % MaxMarkers];
     }

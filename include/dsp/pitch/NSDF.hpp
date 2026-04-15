@@ -171,9 +171,11 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
         std::fill(std::begin(energy_), std::end(energy_), T(0));
     }
 
+    [[nodiscard]] auto getOffset() const { return offset_;}
+
     void setPeriod(T period)
     {
-        offset_ = static_cast<size_t>(period - static_cast<float>(N) / T(2));
+        offset_ = static_cast<size_t>(std::round(period - static_cast<float>(N) / T(2)));
     }
 
     template <class Ctxt, class DL> void process(Ctxt ctxt, DL &delayline)
@@ -236,26 +238,27 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
                 maxEnergy = energy_[i];
             }
         }
+        auto maxPeriod = static_cast<T>(id2tau(maxId));
 
         // interpolate peak
         dsp::interp::PolyPoint<T> peak;
-        if (maxId > 0 && maxId < N - 1) {
+        if (maxId > 0 && maxId < N - 1 && energy_[maxId+1] > T(0) && energy_[maxId-1] > T(0)) {
             peak = extrema(interp::LagrangeParabolic{
                 getBin(maxId + 1), getBin(maxId), getBin(maxId - 1)});
-            peak.x += static_cast<T>(id2tau(maxId));
+            peak.x += maxPeriod;
         } else {
-            peak = {static_cast<T>(id2tau(maxId)), maxAc / maxEnergy};
+            peak = {maxPeriod, maxAc / maxEnergy};
         }
 
         size_t newId;
-        if (maxId < N / 4) {
+        if (maxId < N / 2) {
             offset_ += 1;
             for (size_t i = N - 1; i > 0; --i) {
                 ac_[i]     = ac_[i - 1];
                 energy_[i] = energy_[i - 1];
             }
             newId = 0;
-        } else if (maxId > N - 1 - N / 4) {
+        } else if (maxId > N/2 +1) {
             offset_ -= 1;
             for (size_t i = 0; i < N - 1; ++i) {
                 ac_[i]     = ac_[i + 1];
@@ -266,11 +269,13 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
             return peak;
         }
 
+        assert(!std::isnan(peak.x));
+
         resetBin(newId, ctxt, delayline);
         return peak;
     }
 
-    [[nodiscard]] auto getBin(size_t id) { return ac_[id] / energy_[id]; }
+    [[nodiscard]] auto getBin(size_t id) const { return ac_[id] / energy_[id]; }
 
     template <class Ctxt, class DL>
     void resetBin(size_t newId, Ctxt ctxt, DL delayline)
