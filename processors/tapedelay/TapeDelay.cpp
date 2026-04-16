@@ -13,9 +13,9 @@ inline namespace DSP_ARCH_NAMESPACE
 {
 TapeDelay::FadeLut *TapeDelay::fadeLut;
 
-void TapeDelay::update(float delay, float feedback, float cutlowpass,
-                       float cuthighpass, float saturation, float drift,
-                       Mode mode, float drywet, int blockSize)
+void TapeDelay::update(seconds delay, float feedback, Hz cutlowpass,
+                       Hz cuthighpass, float saturation, float drift, Mode mode,
+                       float drywet, int blockSize)
 {
     if (delay != delay_) {
         setDelay(delay, blockSize);
@@ -37,27 +37,31 @@ void TapeDelay::update(float delay, float feedback, float cutlowpass,
     setDryWet(drywet, blockSize);
 }
 
-void TapeDelay::setDelay(float delay, int blockSize)
+void TapeDelay::setDelay(seconds delay, int blockSize)
 {
     delay_ = delay;
 
-    delay *= sampleRate_;
+    auto delaySamples = sampleRate_.secsToSamples(delay);
     // limits;
-    delay = std::max(delay, 0.f);
+    delaySamples = dsp::max(delaySamples, 0._samplesf);
     if (mode_ == kReverse) {
-        delay = std::min(delay, kMaxDelay * kDefaultSampleRate /
-                                    kReverseDelayMaxRatio);
+        delaySamples =
+            dsp::min(delaySamples, kDefaultSampleRate.secsToSamples(kMaxDelay) /
+                                       kReverseDelayMaxRatio);
     } else {
-        delay =
-            std::min(delay, decltype(buffer_)::kSize * (1.f - kSpeedModAmp));
+        delaySamples = dsp::min(
+            delaySamples, dsp::time::Samples<type>{decltype(buffer_)::kSize} *
+                              (1.f - kSpeedModAmp));
     }
     // set new target speed
-    targetSpeed_ = 1.f / delay * static_cast<float>(TapePosition::kUnity);
+    targetSpeed_ =
+        1.f / delaySamples.get() * static_cast<float>(TapePosition::kUnity);
 
     setDrift(getDrift(), blockSize);
 
     maxBlockSizeWithDelay_ = std::min(
-        maxBlockSize_, static_cast<int>(delay / (1.f - drift_ * kSpeedModAmp)));
+        maxBlockSize_,
+        static_cast<int>((delaySamples / (1.f - drift_ * kSpeedModAmp)).get()));
 }
 
 void TapeDelay::setDrift(float drift, int blockSize)
@@ -67,18 +71,18 @@ void TapeDelay::setDrift(float drift, int blockSize)
                   1.f / static_cast<float>(blockSize));
 }
 
-void TapeDelay::setCutLowPass(float cutlowpass, int /*blockSize*/)
+void TapeDelay::setCutLowPass(Hz cutlowpass, int /*blockSize*/)
 {
     cutlowpass_ = cutlowpass;
-    auto freq   = cutlowpass_ * freqScale_;
-    lpf_.setFreq(dsp::freq::NyquistRatio{freq});
+    auto freq   = sampleRate_.hzToAngular(cutlowpass_);
+    lpf_.setFreq(freq);
 }
 
-void TapeDelay::setCutHiPass(float cuthighpass, int /*blockSize*/)
+void TapeDelay::setCutHiPass(Hz cuthighpass, int /*blockSize*/)
 {
     cuthighpass_ = cuthighpass;
-    auto freq    = cuthighpass_ * freqScale_;
-    hpf_.setFreq(dsp::freq::NyquistRatio{freq});
+    auto freq    = sampleRate_.hzToAngular(cuthighpass_);
+    hpf_.setFreq(freq);
 }
 
 void TapeDelay::setSaturation(float saturation, int blockSize)

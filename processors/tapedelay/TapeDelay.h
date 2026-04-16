@@ -2,6 +2,7 @@
 
 #include <dsp/control/Smoother.hpp>
 #include <dsp/core/Buffer.hpp>
+#include <dsp/core/SampleRate.hpp>
 #include <dsp/delay/Delay.hpp>
 #include <dsp/delay/TapeDelay.hpp>
 #include <dsp/filters/VAFilters.hpp>
@@ -20,6 +21,8 @@ namespace processors
 inline namespace DSP_ARCH_NAMESPACE
 {
 
+using namespace dsp::units;
+
 class TapeDelay
 {
   public:
@@ -27,21 +30,25 @@ class TapeDelay
     using type               = float;
     using mtype              = dsp::multi<type, kN>;
 
+    using Hz      = dsp::freq::Hz<type>;
+    using seconds = dsp::time::Seconds<type>;
+
     static constexpr auto kMaxBlockSize      = 512;
-    static constexpr type kDefaultSampleRate = 48000;
-    static constexpr type kMaxDelay          = type(TAPEDELAY_MAX_DELAY);
+    static constexpr auto kDefaultSampleRate = dsp::SampleRate{48000._Hzf};
+    static constexpr auto kMaxDelay =
+        dsp::time::Seconds<type>(TAPEDELAY_MAX_DELAY);
 
     static constexpr type kReverseDelayMaxRatio =
         type(TAPEDELAY_REVERSE_MAX_RATIO);
 
-    static constexpr type kSpeedSmoothTime = 0.7f;
-    static constexpr type kSpeedModFreq    = 0.242f;
-    static constexpr type kSpeedModAmp     = 0.02f;
+    static constexpr auto kSpeedSmoothTime = 0.7_sf;
+    static constexpr auto kSpeedModFreq    = 0.242_Hzf;
+    static constexpr auto kSpeedModAmp     = 0.02f;
 
     static constexpr auto kKernelSize = 4;
 
     static constexpr auto kDelayBufSize =
-        static_cast<size_t>(kDefaultSampleRate * kMaxDelay);
+        static_cast<size_t>(kDefaultSampleRate.secsToSamples(kMaxDelay).get());
 
     // lookup table for cross fading between two taps
     static constexpr auto kFadeSize = 2048;
@@ -77,10 +84,10 @@ class TapeDelay
     void free(Free free = std::free);
 
     // getters
-    [[nodiscard]] float getDelay() const { return delay_; }
+    [[nodiscard]] float getDelay() const { return delay_.get(); }
     [[nodiscard]] float getDrift() const { return drift_; }
-    [[nodiscard]] float getCutLowPass() const { return cutlowpass_; }
-    [[nodiscard]] float getCutHiPass() const { return cuthighpass_; }
+    [[nodiscard]] float getCutLowPass() const { return cutlowpass_.get(); }
+    [[nodiscard]] float getCutHiPass() const { return cuthighpass_.get(); }
     [[nodiscard]] float getSaturation() const
     {
         return dsp::getlane<0>(saturation_.getTarget());
@@ -90,28 +97,27 @@ class TapeDelay
     [[nodiscard]] Mode getMode() const { return mode_; }
 
     // setters
-    void setDelay(float delay, int blockSize);
+    void setDelay(seconds delay, int blockSize);
     void setDrift(float drift, int blockSize);
-    void setCutLowPass(float cutlowpass, int blockSize);
-    void setCutHiPass(float cuthighpass, int blockSize);
+    void setCutLowPass(Hz cutlowpass, int blockSize);
+    void setCutHiPass(Hz cuthighpass, int blockSize);
     void setSaturation(float saturation, int blockSize);
     void setFeedback(float feedback, int blockSize);
     void setDryWet(float drywet, int blockSize);
     void setMode(Mode mode, int blockSize);
 
-    void update(float delay, float feedback, float cutlowpass,
-                float cuthighpass, float saturation, float drift, Mode mode,
-                float drywet, int blockSize);
+    void update(seconds delay, float feedback, Hz cutlowpass, Hz cuthighpass,
+                float saturation, float drift, Mode mode, float drywet,
+                int blockSize);
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
   private:
-    type freqScale_{2.f / kDefaultSampleRate};
-    type sampleRate_{1.f / kDefaultSampleRate};
+    dsp::SampleRate<type> sampleRate_{kDefaultSampleRate};
     int maxBlockSize_{};
     int maxBlockSizeWithDelay_{};
 
-    type delay_{};
+    seconds delay_{0._sf};
     type feedback_{};
     dsp::ControlSmoother<mtype, true> feedbackCompensated_{};
     type drywet_{};
@@ -169,12 +175,12 @@ class TapeDelay
     mtype postgain_{1};
 
     // low pass filter
-    type cutlowpass_{};
+    Hz cutlowpass_{0._Hzf};
     dsp::va::SVF<mtype, dsp::va::kLowPass> lpf_{};
     decltype(lpf_)::State lpfMem_{};
 
     // high pass filter
-    float cuthighpass_{0.f};
+    Hz cuthighpass_{0._Hzf};
     dsp::va::SVF<mtype, dsp::va::kHighPass> hpf_{};
     decltype(hpf_)::State hpfMem_{};
 
@@ -188,15 +194,14 @@ class TapeDelay
 template <class ReAlloc>
 void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
-    sampleRate_        = sampleRate;
-    auto invSampleRate = 1.f / sampleRate;
-    freqScale_         = 2.f * invSampleRate;
-    maxBlockSize_      = std::min(blockSize, kMaxBlockSize);
+    sampleRate_   = dsp::SampleRate{dsp::freq::Hz{sampleRate}};
+    maxBlockSize_ = std::min(blockSize, kMaxBlockSize);
 
     speedSmooth_ =
-        1.f - std::pow(0.001f, 1.f / kSpeedSmoothTime * invSampleRate);
+        1.f - std::pow(0.001f,
+                       1.f / sampleRate_.secsToSamples(kSpeedSmoothTime).get());
 
-    speedLFO_.setFreq(dsp::freq::NyquistRatio{freqScale_ * kSpeedModFreq});
+    speedLFO_.setFreq(sampleRate_.hzToNyquistRatio(kSpeedModFreq));
 
     // alloc ressources
     x_ = (mtype *)realloc(x_,
