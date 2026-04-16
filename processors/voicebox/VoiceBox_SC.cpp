@@ -27,13 +27,46 @@ static void voiceBoxDtor(VoiceBoxUnit *unit)
 
 void voiceBoxNext(VoiceBoxUnit *unit, int inNumSamples)
 {
-    unit->voicebox_->update(IN0(1), IN0(2), IN0(3), IN0(4));
+    unit->voicebox_->update(IN0(1), IN0(2), IN0(3), IN0(4), IN0(5), IN0(6),
+                            IN0(7));
     unit->voicebox_->process(&IN(0), &OUT(0), inNumSamples);
 }
+
+//===========================================================
+
+#include <dsp/analysis/ZeroCrossing.hpp>
+#include <dsp/filters/OnePole.hpp>
+
+struct ZCUnit : public Unit {
+    dsp::OnePole<float> op_;
+    decltype(op_)::State opState_;
+    dsp::ZeroCrossing<float> zc_;
+};
+
+static void zcNext(ZCUnit *unit, int inNumSamples)
+{
+    unit->op_.setRate(0.1f, 1.f / static_cast<float>(IN0(1) * SAMPLERATE));
+    for (int n = 0; n < inNumSamples; ++n) {
+        float v = unit->zc_.process(dsp::Context(&IN(0)[n])) ? 1.f : 0.f;
+        unit->op_.process(dsp::Context(&v), unit->opState_);
+        OUT(0)[n] = v;
+    };
+}
+
+static void zcCtor(ZCUnit *unit)
+{
+    SETCALC(zcNext);
+    unit->op_      = {};
+    unit->opState_ = {};
+    unit->zc_      = {};
+}
+
+//==================================================
 
 void loadVoiceBox()
 {
     (*ft->fDefineUnit)("VoiceBox", sizeof(VoiceBoxUnit),
                        (UnitCtorFunc)&voiceBoxCtor, (UnitDtorFunc)&voiceBoxDtor,
                        0);
+    (*ft->fDefineUnit)("ZC", sizeof(ZCUnit), (UnitCtorFunc)&zcCtor, nullptr, 0);
 }
