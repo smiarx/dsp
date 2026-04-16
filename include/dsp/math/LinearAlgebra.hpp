@@ -291,6 +291,11 @@ template <typename T, size_t H, size_t W> class Matrix
         i += kHOffset;
         data_[i / kSIMDSize][j][i % kSIMDSize] = value;
     }
+    T &get(size_t i, size_t j = 0)
+    {
+        i += kHOffset;
+        return data_[i / kSIMDSize][j][i % kSIMDSize];
+    }
     const T &get(size_t i, size_t j = 0) const
     {
         i += kHOffset;
@@ -378,6 +383,10 @@ template <typename T, size_t N> class Vector : public Matrix<T, N, 1>
     T operator[](size_t i) { return Mat::get(i, 0); }
 
     [[nodiscard]] auto getSIMD(size_t i, size_t j = 0) const
+    {
+        return Mat::getSIMD(i, j);
+    }
+    [[nodiscard]] auto &getSIMD(size_t i, size_t j = 0)
     {
         return Mat::getSIMD(i, j);
     }
