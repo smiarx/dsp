@@ -13,17 +13,6 @@ template <typename T, size_t N> struct alignas(sizeof(T) * N) multi;
 
 //=============================================================
 
-// ismulti
-template <typename T> struct IsMulti {
-    static constexpr bool value = false;
-};
-template <typename T, size_t N> struct IsMulti<multi<T, N>> {
-    static constexpr bool value = true;
-};
-template <typename T> constexpr bool kIsMulti = IsMulti<T>::value;
-
-//=============================================================
-
 // base type
 template <typename T> struct BaseType {
     using type = T;
