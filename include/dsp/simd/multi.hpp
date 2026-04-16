@@ -243,7 +243,7 @@ template <typename T> const auto *asBatch(const T *ptr)
 }
 
 // load and store functions
-template <typename T> always_inline T load(T x) { return x; }
+template <typename T> always_inline constexpr T load(T x) { return x; }
 template <typename T> always_inline void store(T &dest, T val) { dest = val; }
 
 template <typename T, size_t N> always_inline auto load(const multi<T, N> &mval)
