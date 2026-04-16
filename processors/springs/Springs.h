@@ -186,7 +186,7 @@ class Springs
     dsp::Buffer<dsp::mfloat<2>, kInBufSize> bufferOut_;
 
     dsp::DelayLine<kLoopLength / 2> predelaydl_;
-    dsp::SmootherLin<mtype> predelay_{};
+    dsp::SmootherLin<mtype> predelay_{1};
     dsp::TapLin<mtype> predelayTap_{};
 
     dsp::ControlSmoother<type> loopGain_{};
