@@ -31,7 +31,8 @@ class TapeDelay
     static constexpr type kDefaultSampleRate = 48000;
     static constexpr type kMaxDelay          = type(TAPEDELAY_MAX_DELAY);
 
-    static constexpr type kReverseDelayMaxRatio = type(TAPEDELAY_REVERSE_MAX_RATIO);
+    static constexpr type kReverseDelayMaxRatio =
+        type(TAPEDELAY_REVERSE_MAX_RATIO);
 
     static constexpr type kSpeedSmoothTime = 0.7f;
     static constexpr type kSpeedModFreq    = 0.242f;
@@ -195,7 +196,7 @@ void TapeDelay::prepare(float sampleRate, int blockSize, ReAlloc realloc)
     speedSmooth_ =
         1.f - std::pow(0.001f, 1.f / kSpeedSmoothTime * invSampleRate);
 
-    speedLFO_.setFreq({freqScale_ * kSpeedModFreq});
+    speedLFO_.setFreq(dsp::freq::NyquistRatio{freqScale_ * kSpeedModFreq});
 
     // alloc ressources
     x_ = (mtype *)realloc(x_,

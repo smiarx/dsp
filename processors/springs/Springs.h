@@ -256,7 +256,7 @@ void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 
     /* loop size modulation */
     mtype freq = dsp::load(kLoopModFreq) * freqScale_;
-    loopMod_.setFreq(freq);
+    loopMod_.setFreq(dsp::freq::NyquistRatio{freq});
 
     // alloc ressources
     x_ = (mtype *)realloc(x_,

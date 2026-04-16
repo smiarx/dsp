@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <dsp/core/Units.hpp>
 #include <dsp/math/FastMath.hpp>
 
 namespace dsp::lfo
@@ -15,20 +16,23 @@ template <SampleType T> class Sine
      * */
   public:
     Sine() = default;
-    Sine(const T &freq) { setFreq(freq); }
-    Sine(const T &freq, const T &phase) { setFreq(freq, phase); }
-
-    void setFreq(const T &freq)
+    Sine(const freq::NyquistRatio<T> &freq) { setFreq(freq); }
+    Sine(const freq::NyquistRatio<T> &freq, const T &phase)
     {
-        auto w_2 = dsp::constants<T>::pi / 2 * load(freq);
+        setFreq(freq, phase);
+    }
+
+    void setFreq(const freq::NyquistRatio<T> &freq)
+    {
+        auto w_2 = dsp::constants<T>::pi / 2 * load(freq.get());
         a_       = dsp::sin(w_2) * 2;
     }
 
-    void setFreq(const T &freq, const T &phase)
+    void setFreq(const freq::NyquistRatio<T> &freq, const T &phase)
     {
         setFreq(freq);
 
-        auto w_2   = dsp::constants<T>::pi / 2 * load(freq);
+        auto w_2   = dsp::constants<T>::pi / 2 * load(freq.get());
         auto scale = T(1) / dsp::cos(w_2);
 
         auto wphase = load(phase) * constants<T>::pi * 2;
@@ -70,8 +74,12 @@ template <SampleType T> class Parabolic
     Parabolic() = default;
 
     /** @brief Constructor with initial phase */
-    Parabolic(const T &freq) { setFreq(freq); }
-    Parabolic(const T &freq, const iT &phase) : phase_(phase) { setFreq(freq); }
+    Parabolic(const freq::NyquistRatio<T> &freq) { setFreq(freq); }
+    Parabolic(const freq::NyquistRatio<T> &freq, const iT &phase) :
+        phase_(phase)
+    {
+        setFreq(freq);
+    }
 
     /** @brief Sets the initial phase for the oscillator. */
     /** @param phase Initial phase to set. */
@@ -80,9 +88,9 @@ template <SampleType T> class Parabolic
     /** @brief Sets the frequency for the oscillator. */
     /** @param freq Frequency from [0,1] where 1 is the Nyquist frequency
      */
-    void setFreq(const T &freq)
+    void setFreq(const freq::NyquistRatio<T> &freq)
     {
-        auto f = load(freq);
+        auto f = load(freq.get());
         assert(all(f >= 0 && f <= 1));
         freq_ = toInt(f * 4 * kUnity);
     }

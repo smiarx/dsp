@@ -4,16 +4,19 @@
 #include <catch2/generators/catch_generators_random.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <dsp/core/SampleRate.hpp>
 #include <dsp/modulation/LFO.hpp>
 
 using namespace Catch::Matchers;
+using namespace dsp::units;
 
 template <typename T, int N = 200>
-static void testSine(const T &freq, const T &phase = {})
+static void testSine(const dsp::freq::NyquistRatio<T> &freq,
+                     const T &phase = {})
 {
     dsp::lfo::Sine<T> lfo(freq, phase);
 
-    auto f = dsp::load(freq);
+    auto f = dsp::load(freq.get());
     auto p = dsp::load(phase);
     // run lfo
     for (int i = 0; i < N - 100; ++i) {
@@ -31,27 +34,37 @@ static void testSine(const T &freq, const T &phase = {})
 
 TEST_CASE("LFO Sine", "[dsp][lfo][sine]")
 {
-    SECTION("float") { testSine(0.001f); }
-    SECTION("float with phase") { testSine(0.005f, 0.684f); }
-    SECTION("float x 2") { testSine<dsp::mfloat<2>>({0.002f, 0.003f}); }
+    SECTION("float") { testSine(0.001_nyquistf); }
+    SECTION("float with phase") { testSine(0.005_nyquistf, 0.684f); }
+    SECTION("float x 2")
+    {
+        testSine(dsp::freq::NyquistRatio<dsp::mfloat<2>>({0.002f, 0.003f}));
+    }
     SECTION("float x 2 with phase")
     {
-        testSine<dsp::mfloat<2>>({0.0002339f, 0.000332f}, {0.3982f, 0.9883f});
+        testSine(
+            dsp::freq::NyquistRatio<dsp::mfloat<2>>({0.0002339f, 0.000332f}),
+            {0.3982f, 0.9883f});
     }
-    SECTION("double x 2") { testSine<dsp::mdouble<2>>({0.000212, 0.0008}); }
+    SECTION("double x 2")
+    {
+        testSine(dsp::freq::NyquistRatio<dsp::mdouble<2>>({0.000212, 0.0008}));
+    }
     SECTION("float x 4")
     {
-        testSine<dsp::mfloat<4>>({0.00143f, 0.0008f, 0.0032f, 0.0011f});
+        testSine(dsp::freq::NyquistRatio<dsp::mfloat<4>>(
+            {0.00143f, 0.0008f, 0.0032f, 0.0011f}));
     }
 
-    SECTION("long run") { testSine<double, 48000>(0.000354); }
+    SECTION("long run") { testSine<double, 48000>(0.000354_nyquist); }
 }
 
-template <typename T, int N = 52> static void testParabolic(const T &freq)
+template <typename T, int N = 52>
+static void testParabolic(const dsp::freq::NyquistRatio<T> &freq)
 {
     dsp::lfo::Parabolic<T> lfo(freq);
 
-    auto f = dsp::load(freq);
+    auto f = dsp::load(freq.get());
     // run lfo
     for (int k = 0; k < N; ++k) {
         auto x = lfo.process();
@@ -70,6 +83,6 @@ template <typename T, int N = 52> static void testParabolic(const T &freq)
 
 TEST_CASE("LFO Parabolic", "[dsp][lfo][parabolic]")
 {
-    testParabolic<float>(0.0004f);
-    testParabolic<double>(0.005f);
+    testParabolic<float>(0.0004_nyquistf);
+    testParabolic<double>(0.005_nyquist);
 }
