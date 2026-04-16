@@ -38,12 +38,13 @@ template <class Base, bool hasRes> void filterCtor(Filter<Base, hasRes> *unit)
     }
 
     unit->freq = IN0(1);
-    float freq = unit->freq * static_cast<float>(SAMPLEDUR) * 2.f;
+    auto freq  = dsp::freq::NyquistRatio{unit->freq *
+                                         static_cast<float>(SAMPLEDUR) * 2.f};
     if constexpr (hasRes) {
         unit->res    = IN0(2);
-        unit->filter = Base({freq}, {unit->res});
+        unit->filter = Base(freq, {unit->res});
     } else {
-        unit->filter = Base({freq});
+        unit->filter = Base(freq);
     }
     unit->state = {};
 
@@ -68,12 +69,13 @@ void filterNextA(Filter<Base, hasRes> *unit, int inNumSamples)
     auto *in  = IN(0);
     auto *out = OUT(0);
     for (int n = 0; n < inNumSamples; ++n) {
-        float freq = IN(1)[n] * static_cast<float>(SAMPLEDUR) * 2.f;
+        auto freq = dsp::freq::NyquistRatio{
+            IN(1)[n] * static_cast<float>(SAMPLEDUR) * 2.f};
         if constexpr (hasRes) {
             float res    = IN0(2);
-            unit->filter = Base({freq}, {res});
+            unit->filter = Base(freq, {res});
         } else {
-            unit->filter = Base({freq});
+            unit->filter = Base(freq);
         }
 
         float x = *in;
@@ -88,13 +90,14 @@ template <class Base, bool hasRes>
 void filterNext(Filter<Base, hasRes> *unit, int inNumSamples)
 {
     if (unit->freq != IN0(1)) {
-        float freq = IN0(1) * static_cast<float>(SAMPLEDUR) * 2.f;
+        auto freq = dsp::freq::NyquistRatio{
+            IN0(1) * static_cast<float>(SAMPLEDUR) * 2.f};
         if constexpr (hasRes) {
             float res    = IN0(2);
-            unit->filter = Base({freq}, {res});
+            unit->filter = Base(freq, {res});
             unit->res    = res;
         } else {
-            unit->filter = Base({freq});
+            unit->filter = Base(freq);
         }
         unit->freq = IN0(1);
     } else {

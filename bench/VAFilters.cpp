@@ -7,21 +7,22 @@
 #include <dsp/core/Context.hpp>
 #include <dsp/filters/VAFilters.hpp>
 
-#define BENCHMARK_FILTER(Name, Type)                        \
-    {                                                       \
-        dsp::va::Name<ft, dsp::va::k##Type> filter;         \
-        decltype(filter)::State state;                      \
-        auto freq = GENERATE(take(1, random(0.f, 1.f)));    \
-        filter.setFreq({freq, freq});                       \
-        BENCHMARK(#Type)                                    \
-        {                                                   \
-            CTXTRUN(ctxt) { filter.process(ctxt, state); }; \
-        };                                                  \
+#define BENCHMARK_FILTER(Name, Type)                                     \
+    {                                                                    \
+        dsp::va::Name<ft, dsp::va::k##Type> filter;                      \
+        decltype(filter)::State state;                                   \
+        auto freq =                                                      \
+            dsp::freq::Angular<ft>{GENERATE(take(1, random(0.f, 1.f)))}; \
+        filter.setFreq(freq);                                            \
+        BENCHMARK(#Type)                                                 \
+        {                                                                \
+            CTXTRUN(ctxt) { filter.process(ctxt, state); };              \
+        };                                                               \
     }
 
-constexpr size_t kK     = 2;
-constexpr size_t kN     = 512;
-using ft                = dsp::mfloat<kK>;
+constexpr size_t kK = 2;
+constexpr size_t kN = 512;
+using ft            = dsp::mfloat<kK>;
 static ft x[kN];
 TEST_CASE("VA Filters", "[dsp][vafilters]")
 {

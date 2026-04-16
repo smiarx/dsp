@@ -94,7 +94,7 @@ void Springs::setFreq(float freq, int blockSize)
         auto fM = static_cast<float>(rateFactor);
 
         auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
-        dcblocker_.setFreq(dcblockfreq);
+        dcblocker_.setFreq(dsp::freq::NyquistRatio{dcblockfreq});
 
         // we changed the feedbackloop delay with a smooth rate equal to it's
         // value
@@ -179,7 +179,7 @@ void Springs::setTone(float tone, int /*blockSize*/)
                   static_cast<float>(rateFactor_);
     static constexpr auto kMaxEqPeak = 0.95f;
     eqPeak                           = std::min(kMaxEqPeak, eqPeak);
-    eq_.setFreq(eqPeak);
+    eq_.setFreq(dsp::freq::NyquistRatio{eqPeak});
     eq_.setBandWidth(kEqBandWidth);
 }
 
@@ -391,7 +391,9 @@ void Springs::process(const float *const *__restrict in,
             eq_.process(ctxtdec, eqState_);
 
             if (lowpassFreqs_.isActive()) {
-                lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.step(ctxtdec));
+                lowpass_.fromAnalog(
+                    kSosAnalog,
+                    dsp::freq::NyquistRatio{lowpassFreqs_.step(ctxtdec)});
             }
             lowpass_.process(ctxtdec, lowpassState_);
         };
@@ -449,7 +451,8 @@ void Springs::process(const float *const *__restrict in,
     loopGain_.reset();
     if (lowpassFreqs_.isActive()) {
         lowpassFreqs_.reset();
-        lowpass_.fromAnalog(kSosAnalog, lowpassFreqs_.get());
+        lowpass_.fromAnalog(kSosAnalog,
+                            dsp::freq::NyquistRatio{lowpassFreqs_.get()});
     }
 }
 

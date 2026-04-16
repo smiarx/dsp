@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dsp/core/Context.hpp>
+#include <dsp/core/Units.hpp>
 #include <dsp/math/FastMath.hpp>
 
 namespace dsp::va
@@ -32,16 +33,16 @@ template <SampleType T, FilterType FT = kLowPass> class OnePole
         State() : std::array<T, 1>{} {}
     };
 
-    OnePole(const T &freq)
+    template <freq::SampleRateIndependent Freq> OnePole(const Freq &freq)
     {
         static_assert(FT == kLowPass || FT == kHighPass || FT == kAllPass);
         setFreq(freq);
     }
     OnePole() = default;
 
-    void setFreq(const T &freq)
+    template <freq::SampleRateIndependent Freq> void setFreq(const Freq &freq)
     {
-        auto gain = warpGain(freq);
+        auto gain = static_cast<T>(freq::warp(freq));
         gain_     = gain / (load(T(1)) + gain);
     }
 
@@ -99,15 +100,21 @@ template <SampleType T, FilterType FT = kLowPass> class SVF
         State() : std::array<T, 2>{} {}
     };
 
-    SVF(const T &freq, const T &res) { setFreq(freq, res); }
+    template <freq::SampleRateIndependent Freq>
+    SVF(const Freq &freq, const T &res)
+    {
+        setFreq(freq, res);
+    }
     SVF() = default;
 
-    void setFreq(const T &freq, const T &res)
+    template <freq::SampleRateIndependent Freq>
+    void setFreq(const Freq &freq, const T &res)
     {
-        gain_ = warpGain(freq);
+        gain_ = static_cast<T>(freq::warp(freq));
         setRes(res);
     }
-    void setFreq(const T &freq)
+
+    template <freq::SampleRateIndependent Freq> void setFreq(const Freq &freq)
     {
         static constexpr auto kDefaultRes = dsp::constants<T>::sqrt1_2;
         T res                             = kDefaultRes;
@@ -222,9 +229,15 @@ template <SampleType T, FilterType FT = kLowPass> class Ladder
     using State = std::array<typename OP::State, 4>;
 
     Ladder() = default;
-    Ladder(const T &freq, const T &res) : onepole_(freq) { setFreq(freq, res); }
 
-    void setFreq(const T &freq, const T &res = 0.f)
+    template <freq::SampleRateIndependent Freq>
+    Ladder(const Freq &freq, const T &res) : onepole_(freq)
+    {
+        setFreq(freq, res);
+    }
+
+    template <freq::SampleRateIndependent Freq>
+    void setFreq(const Freq &freq, const T &res = 0.f)
     {
         onepole_.setFreq(freq);
         setRes(res);

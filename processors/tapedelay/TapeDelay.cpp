@@ -71,14 +71,14 @@ void TapeDelay::setCutLowPass(float cutlowpass, int /*blockSize*/)
 {
     cutlowpass_ = cutlowpass;
     auto freq   = cutlowpass_ * freqScale_;
-    lpf_.setFreq({freq, freq});
+    lpf_.setFreq(dsp::freq::NyquistRatio{freq});
 }
 
 void TapeDelay::setCutHiPass(float cuthighpass, int /*blockSize*/)
 {
     cuthighpass_ = cuthighpass;
     auto freq    = cuthighpass_ * freqScale_;
-    hpf_.setFreq({freq, freq});
+    hpf_.setFreq(dsp::freq::NyquistRatio{freq});
 }
 
 void TapeDelay::setSaturation(float saturation, int blockSize)

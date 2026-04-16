@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dsp/core/Units.hpp"
 #include <dsp/core/Context.hpp>
 #include <dsp/math/FastMath.hpp>
 #include <dsp/utils/Utils.hpp>
@@ -185,12 +186,13 @@ class IIRFilter
     PROCESSBLOCK_
 
     // convert from analog scipy sos filter type
-    void fromAnalog(const SOS &sos, const T &freq)
+    template <freq::SampleRateIndependent Freq>
+    void fromAnalog(const SOS &sos, const Freq &freq)
     {
         static_assert(!Normalized);
 
         /* bilinear transform */
-        auto c   = tan(dsp::constants<T>::pi * bT(0.5) * load(freq));
+        auto c   = static_cast<T>(freq::warp(freq));
         auto csq = c * c;
 
         auto factor = biquad_.fromAnalog(sos.sos0, c, csq);
@@ -236,12 +238,14 @@ class IIRFilter
     }
 
   public:
-    void butterworthLP(const T &freq)
+    template <freq::SampleRateIndependent Freq>
+    void butterworthLP(const Freq &freq)
     {
         constexpr SOS kSos = butterworthTF<false>();
         fromAnalog(kSos, freq);
     }
-    void butterworthHP(const T &freq)
+    template <freq::SampleRateIndependent Freq>
+    void butterworthHP(const Freq &freq)
     {
         constexpr SOS kSos = butterworthTF<true>();
         fromAnalog(kSos, freq);

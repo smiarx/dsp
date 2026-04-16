@@ -12,9 +12,11 @@ inline namespace DSP_ARCH_NAMESPACE
 // NOLINTBEGIN (readability-identifier-naming)
 template <typename T> struct constants {
     using F                       = baseType<T>;
+    static constexpr auto twopi   = F(6.28318530717958647693);
     static constexpr auto pi      = F(3.14159265358979323846);
     static constexpr auto pi_2    = F(1.57079632679489661923);
     static constexpr auto pi_4    = F(0.78539816339744830962);
+    static constexpr auto invPi   = F(0.31830988618379067154);
     static constexpr auto sqrt1_2 = F(0.70710678118654752440);
 };
 

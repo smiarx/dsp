@@ -5,6 +5,7 @@
 #include <dsp/filters/IIRFilter.hpp>
 
 using namespace Catch::Matchers;
+using namespace dsp::units;
 
 TEST_CASE("IIR Filter")
 {
@@ -21,7 +22,7 @@ TEST_CASE("IIR Filter")
         // x[0] = 1;
         SECTION("Low pass")
         {
-            filter.butterworthLP(0.04);
+            filter.butterworthLP(0.04_nyquist);
             // python scipy:
             // signal.sosfilt(signal.butter(4, 0.04, 'lp', output='sos'), x)
             expect = {
@@ -37,7 +38,7 @@ TEST_CASE("IIR Filter")
         }
         SECTION("High pass")
         {
-            filter.butterworthHP(0.421);
+            filter.butterworthHP(0.421_nyquist);
             // python scipy:
             // signal.sosfilt(signal.butter(4, 0.421, 'hp', output='sos'), x)
             expect = {1.49267352e-01,  -5.04891597e-01, 4.93240000e-01,
@@ -62,7 +63,7 @@ TEST_CASE("IIR Filter")
                  2.76709389e-01, 9.86968702e-01},
             }}};
 
-            filter.fromAnalog(sosba, 0.1282);
+            filter.fromAnalog(sosba, 0.1282_nyquist);
             // python scipy:
             // signal.sosfilt(signal.ellip(4, 1, 100, 0.1282, 'lowpass',
             // output='sos'),x)
@@ -113,7 +114,7 @@ TEST_CASE("IIR Filter")
                1.00000000e+00f, 8.56632296e-02f, 8.87002581e-01f},
               {1.00000000e+00f, 0.00000000e+00f, 1.54738183e+00f,
                1.00000000e+00f, 2.54903201e-02f, 9.98088979e-01f}}}};
-        filter.fromAnalog(sosba, 0.1f);
+        filter.fromAnalog(sosba, 0.1_nyquist);
 
         // python scipy:
         // x = np.zeros(30);
@@ -150,7 +151,8 @@ TEST_CASE("IIR Filter")
         // x[0] = 1;
         SECTION("Low pass")
         {
-            filter.butterworthLP({0.01f, 0.1f, 0.2f, 0.543f});
+            filter.butterworthLP(
+                dsp::freq::NyquistRatio<ft>({0.01f, 0.1f, 0.2f, 0.543f}));
             // python scipy:
             // signal.sosfilt(signal.butter(8, 0.01, 'lp', output='sos'), x)
             // signal.sosfilt(signal.butter(8, 0.1, 'lp', output='sos'), x)
@@ -209,7 +211,8 @@ TEST_CASE("IIR Filter")
                   {0.f, 0.f, 1.f, 1.f, 0.15088783f, 0.70978212f},
                   {0.f, 0.f, 1.f, 1.f, 0.05298476f, 0.98038017f}}}};
 
-            filter.fromAnalog(sosba, {0.232f, 0.1291f, 0.348f, 0.0123f});
+            filter.fromAnalog(sosba, dsp::freq::NyquistRatio<ft>(
+                                         {0.232f, 0.1291f, 0.348f, 0.0123f}));
             // python scipy:
             // signal.sosfilt(signal.cheby1(8, 2, 0.232, output='sos'),x)
             // signal.sosfilt(signal.cheby1(8, 2, 0.1291, output='sos'),x)
