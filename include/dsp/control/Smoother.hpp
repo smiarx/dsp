@@ -10,7 +10,7 @@ namespace dsp
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-template <typename T, bool Vectorize = false> class ControlSmoother
+template <SampleType T, bool Vectorize = false> class ControlSmoother
 {
     /* smooth control values between audio blocks */
     using outT                   = std::conditional_t<Vectorize, batch<T>, T>;
@@ -90,7 +90,7 @@ template <typename T, bool Vectorize = false> class ControlSmoother
     bool active_{false};
 };
 
-template <typename T> class SmootherExp
+template <SampleType T> class SmootherExp
 {
     using bt = baseType<T>;
 
@@ -110,7 +110,7 @@ template <typename T> class SmootherExp
     bt coef_{};
 };
 
-template <typename T> class SmootherLin
+template <SampleType T> class SmootherLin
 {
   public:
     SmootherLin() = default;
@@ -134,7 +134,7 @@ template <typename T> class SmootherLin
         return load(value_);
     }
 
-    [[nodiscard]] auto isActive() const { return count_ > 0;}
+    [[nodiscard]] auto isActive() const { return count_ > 0; }
 
   private:
     T value_{};

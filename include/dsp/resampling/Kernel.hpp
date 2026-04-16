@@ -26,7 +26,7 @@ template <int A, class Window> class Sinc
 
 } // namespace kernels
 
-template <typename T, class Kernel, size_t LutSize>
+template <SampleType T, class Kernel, size_t LutSize>
 class TapKernel : public TapLin<baseType<T>>
 {
   private:

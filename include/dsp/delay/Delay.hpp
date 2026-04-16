@@ -100,7 +100,7 @@ template <size_t L, int Off> class DelayLine
     template <class Ctxt> auto tail(Ctxt c) const { return read(c, kLength); }
 };
 
-template <typename T, size_t L = 1, int Off = 0> class CopyDelayLine
+template <SampleType T, size_t L = 1, int Off = 0> class CopyDelayLine
 {
   public:
     static_assert(L > 0, "Length must be bigger than 0");
@@ -242,7 +242,7 @@ template <int D> struct TapFix<D> {
         return delayline.read(c, D);
     }
 };
-template <typename T> class TapNoInterp
+template <SampleType T> class TapNoInterp
 {
     /* Tap that can read at any point in de delay line, without interpolation */
   public:
@@ -280,7 +280,7 @@ template <typename T> class TapNoInterp
     IntT id_;
 };
 
-template <typename T> class TapLin : public TapNoInterp<T>
+template <SampleType T> class TapLin : public TapNoInterp<T>
 {
     /* Tap that can read at any point in de delay line, with linear
      * interpolation */
@@ -328,7 +328,7 @@ template <typename T> class TapLin : public TapNoInterp<T>
     T fd_;
 };
 
-template <typename T> class TapCubic : public TapLin<T>
+template <SampleType T> class TapCubic : public TapLin<T>
 {
     /* Tap that can read at any point in the delay line, with cubic
      * interpolation */

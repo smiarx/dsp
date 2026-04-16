@@ -12,11 +12,11 @@ inline namespace DSP_ARCH_NAMESPACE
 {
 
 // second order section
-template <typename T> struct SOS {
+template <Numeric T> struct SOS {
     T b2, b1, b0, a2, a1, a0;
 };
 
-template <typename T, size_t K> class NormalizedBiquadSeries
+template <SampleType T, size_t K> class NormalizedBiquadSeries
 {
     /* biquad iir filter in series
      * all biquads have b0 == 1
@@ -105,7 +105,8 @@ template <typename T, size_t K> class NormalizedBiquadSeries
     multi<T, K> a_[2]{};
 };
 
-template <typename T> static constexpr auto getBiquadSizeFromOrder(size_t order)
+template <SampleType T>
+static constexpr auto getBiquadSizeFromOrder(size_t order)
 {
     order /= 2;
     constexpr auto kMaxK = DSP_MAX_VEC_SIZE / sizeof(T);
@@ -113,7 +114,7 @@ template <typename T> static constexpr auto getBiquadSizeFromOrder(size_t order)
     return nextPow2(order);
 }
 
-template <typename T, size_t Order, bool Normalized = false>
+template <SampleType T, size_t Order, bool Normalized = false>
 class IIRFilter
     : public IIRFilter<
           T, Order - std::min(Order, 2 * getBiquadSizeFromOrder<T>(Order)),
@@ -253,7 +254,7 @@ class IIRFilter
     Biquad biquad_;
 };
 
-template <typename T> class IIRFilter<T, 0, true>
+template <SampleType T> class IIRFilter<T, 0, true>
 {
   protected:
     struct SOS {

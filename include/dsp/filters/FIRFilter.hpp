@@ -23,7 +23,7 @@ namespace dsp
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-template <typename T, size_t Order> class FIRFilter
+template <SampleType T, size_t Order> class FIRFilter
 {
   public:
     static constexpr auto kPad    = DSP_PADDING_VEC_SIZE / sizeof(T);
@@ -90,7 +90,7 @@ template <typename T, size_t Order> class FIRFilter
     std::array<T, kPaddedLength> b_ = {};
 };
 
-template <typename T, size_t Order, size_t M,
+template <SampleType T, size_t Order, size_t M,
           class Window = windows::Kaiser<140>>
 class FIRDecimate
 {
@@ -204,7 +204,7 @@ class FIRDecimate
 
 
  */
-template <typename T, size_t Order, size_t L,
+template <SampleType T, size_t Order, size_t L,
           class Window = windows::Kaiser<140>>
 class FIRInterpolate
 {

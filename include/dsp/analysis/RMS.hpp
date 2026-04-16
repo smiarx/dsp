@@ -15,7 +15,7 @@ namespace dsp
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-template <typename T, size_t Size, size_t Overlap = 0> class RMS
+template <SampleType T, size_t Size, size_t Overlap = 0> class RMS
 {
   public:
     static constexpr size_t kShift         = Size - Overlap;
@@ -65,7 +65,7 @@ template <typename T, size_t Size, size_t Overlap = 0> class RMS
 };
 
 /* no overlap */
-template <typename T, size_t Size> class RMS<T, Size>
+template <SampleType T, size_t Size> class RMS<T, Size>
 {
   public:
     template <class Ctxt, class Stack>

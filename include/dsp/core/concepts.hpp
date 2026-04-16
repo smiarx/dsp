@@ -48,5 +48,17 @@ concept IsSimd = kIsSimd<T>;
 template <typename T>
 concept IsSimdMask = kIsSimdMask<T>;
 
+//=============================================================
+
+template <typename T>
+concept MonoSampleType = FloatNumeric<T>;
+
+template <typename T>
+concept MultiChannelSampleType =
+    (kIsSimd<T> || kIsMulti<T>) && MonoSampleType<typename T::basetype>;
+
+template <typename T>
+concept SampleType = MonoSampleType<T> || MultiChannelSampleType<T>;
+
 } // namespace DSP_ARCH_NAMESPACE
 } // namespace dsp

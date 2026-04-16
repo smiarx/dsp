@@ -10,7 +10,7 @@ template <class... T> class List
 {
 };
 
-template <typename T, class Tap = TapTail> class AllPass
+template <SampleType T, class Tap = TapTail> class AllPass
 {
     /* Implement a Allpass filter with coeff a
      * template:
@@ -53,7 +53,7 @@ template <typename T, class Tap = TapTail> class AllPass
     Tap tap_;
 };
 
-template <typename T, class TapOut = TapTail, class TapIn = TapTail>
+template <SampleType T, class TapOut = TapTail, class TapIn = TapTail>
 class TapAllPass : public TapOut
 {
   public:
@@ -90,7 +90,7 @@ class TapAllPass : public TapOut
     AllPass<T, TapIn> allpass_;
 };
 
-template <typename T>
+template <SampleType T>
 class TapAllPass<T, TapNoInterp<T>, TapTail> : TapNoInterp<T>
 {
   public:
@@ -135,7 +135,7 @@ class TapAllPass<T, TapNoInterp<T>, TapTail> : TapNoInterp<T>
     AllPass<T, TapIn> allpass_;
 };
 
-template <typename T> class AllPass2
+template <SampleType T> class AllPass2
 {
     /* 2nd order allpass */
 

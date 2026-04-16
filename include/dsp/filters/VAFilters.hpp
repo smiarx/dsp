@@ -20,12 +20,12 @@ enum FilterType {
     kNotch,
 };
 
-template <typename T> static constexpr auto warpGain(const T &freq)
+template <SampleType T> static constexpr auto warpGain(const T &freq)
 {
     return tan(dsp::constants<T>::pi * load(freq) * T(0.5));
 }
 
-template <typename T, FilterType FT = kLowPass> class OnePole
+template <SampleType T, FilterType FT = kLowPass> class OnePole
 {
   public:
     struct State : public std::array<T, 1> {
@@ -89,7 +89,7 @@ template <typename T, FilterType FT = kLowPass> class OnePole
     T gain_;
 };
 
-template <typename T, FilterType FT = kLowPass> class SVF
+template <SampleType T, FilterType FT = kLowPass> class SVF
 {
   public:
     static constexpr bool kNormalizedBandPass =
@@ -215,7 +215,7 @@ template <typename T, FilterType FT = kLowPass> class SVF
     std::conditional_t<kNormalizedBandPass, T, Empty> inputGain_;
 };
 
-template <typename T, FilterType FT = kLowPass> class Ladder
+template <SampleType T, FilterType FT = kLowPass> class Ladder
 {
   public:
     using OP    = OnePole<T, FT>;

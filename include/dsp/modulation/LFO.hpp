@@ -8,7 +8,7 @@ namespace dsp::lfo
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-template <typename T> class Sine
+template <SampleType T> class Sine
 {
     /* second modified coupled-form oscillator as seen in dattorro effect design
      * part.3
@@ -57,7 +57,7 @@ template <typename T> class Sine
  * Computation use Q30 fixed point representation for phase x on 32bits
  * integers. Thus phase automaticaly wraps around 2 to -2.
  */
-template <typename T> class Parabolic
+template <SampleType T> class Parabolic
 {
   public:
     using iT = intType<T>;
