@@ -48,7 +48,8 @@ template <typename F> static constexpr auto db2gain(F db)
     return pow(F(10), db / F(20));
 }
 
-template <typename F> static constexpr auto expScale(F min, F max, F x)
+template <typename T, typename U>
+static constexpr auto expScale(T min, T max, U x)
 {
     return min * std::pow(max / min, x);
 }

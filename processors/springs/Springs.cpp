@@ -27,7 +27,7 @@ static constexpr dsp::IIRFilter<Springs::mtype, 10>::SOS kSosAnalog = {{{
     {0.f, 0.f, 1.f, 1.f, 0.03395162f, 0.98730422f},
 }}};
 
-void Springs::update(float r, float freq, float td, float t60, float tone,
+void Springs::update(float r, Hz freq, seconds td, seconds t60, float tone,
                      float chaos, float scatter, float width, float drywet,
                      int blockSize)
 {
@@ -66,9 +66,9 @@ auto Springs::getDownSampledBlockSize(int blockSize) const
     return (blockSize + rate - 1 - (rate - decimateId_) % rate) / rate;
 }
 
-void Springs::setFreq(float freq, int blockSize)
+void Springs::setFreq(Hz freq, int blockSize)
 {
-    auto freqScaled = freq * freqScale_;
+    auto freqScaled = sampleRate_.hzToNyquistRatio(freq);
     auto rateFactor = static_cast<unsigned int>(kDecimateMaxFreq / freqScaled);
     rateFactor = std::min(rateFactor, static_cast<unsigned int>(kMaxDecimate));
 
@@ -76,9 +76,9 @@ void Springs::setFreq(float freq, int blockSize)
 
     auto fFactor = 1.f + (kFreqFactor.load() - 1.f) * getScatterFactor();
     auto freqs   = freqScaled * fFactor;
-    freqs        = dsp::min(mtype(0.995f).load(), freqs);
-    freqs        = dsp::max(mtype(0.005f).load(), freqs);
-    auto freqsAP = dsp::batch<mtype>::simdtype::convert(freqs);
+    freqs        = dsp::min(dsp::freq::NyquistRatio<mtype>(0.995f), freqs);
+    freqs        = dsp::max(dsp::freq::NyquistRatio<mtype>(0.005f), freqs);
+    auto freqsAP = dsp::batch<mtype>::simdtype::convert(freqs.get());
 
     if (r_ < 0) {
         freqsAP /= 2;
@@ -89,12 +89,11 @@ void Springs::setFreq(float freq, int blockSize)
     freq_              = freq;
 
     if (rateFactor != oldRateFactor) {
-        decimateId_ = 0;
+        downSampleRate_ = sampleRate_ / static_cast<float>(rateFactor);
+        decimateId_     = 0;
 
-        auto fM = static_cast<float>(rateFactor);
-
-        auto dcblockfreq = kDcBlockFreq * freqScale_ * fM;
-        dcblocker_.setFreq(dsp::freq::NyquistRatio{dcblockfreq});
+        auto dcblockfreq = downSampleRate_.hzToAngular(kDcBlockFreq);
+        dcblocker_.setFreq(dcblockfreq);
 
         // we changed the feedbackloop delay with a smooth rate equal to it's
         // value
@@ -113,7 +112,7 @@ void Springs::setFreq(float freq, int blockSize)
     allpass_.setCoeff1(allpassCoeff1_.get());
 
     // set new frequencies to lowpass filter
-    lowpassFreqs_.set(freqs, smoothRate);
+    lowpassFreqs_.set(freqs.get(), smoothRate);
 }
 
 void Springs::setRes(float r, int blockSize)
@@ -139,27 +138,28 @@ void Springs::setRes(float r, int blockSize)
     setNStages();
 }
 
-void Springs::setTd(float td, int blockSize, float smoothSeconds)
+void Springs::setTd(seconds td, int blockSize, seconds smoothSeconds)
 {
-    td_            = td;
-    float sampleTd = td * sampleRate_ / static_cast<float>(rateFactor_);
+    td_           = td;
+    auto sampleTd = downSampleRate_.secsToSamples(td);
 
     // prevent from going higher than buffer size
-    sampleTd = std::min(sampleTd, kMaxLoopLengthSeconds * kDefaultSamplerRate *
-                                      kDefaultSamplerRate / sampleRate_);
+    auto maxSampleTd = kDefaultSampleRate.secsToSamples(kMaxLoopLengthSeconds) *
+                       (kDefaultSampleRate / sampleRate_);
+    sampleTd         = dsp::min(sampleTd, maxSampleTd);
 
     auto loopFactor = 1.f + (kLoopTdFactor.load() - 1.f) * getScatterFactor();
     auto loopTd     = sampleTd * loopFactor;
     auto loopModAmp = loopTd * kLoopModFactor;
-    loopChaosMod_   = loopTd * 0.07f * dsp::pow(chaos_, 2.5f);
+    loopChaosMod_   = loopTd.get() * 0.07f * dsp::pow(chaos_, 2.5f);
     // predelay is floored because because we don't want unwanted filtering from
     // linear interpolation
-    auto predelayT = dsp::toFloat<float>(dsp::toInt(loopTd * .5f));
+    auto predelayT = dsp::toFloat<float>(dsp::toInt((loopTd * .5f).get()));
 
-    auto smoothLength = static_cast<int>(
-        sampleRate_ / static_cast<float>(rateFactor_) * smoothSeconds);
-    loopTd_.set(loopTd, smoothLength);
-    loopModAmp_.set(loopModAmp, smoothLength);
+    auto smoothSamples = sampleRate_.secsToSamples(smoothSeconds);
+    auto smoothLength  = static_cast<int>(smoothSamples.get());
+    loopTd_.set(loopTd.get(), smoothLength);
+    loopModAmp_.set(loopModAmp.get(), smoothLength);
     predelay_.set(predelayT, smoothLength / 2);
 
     setT60(t60_, blockSize);
@@ -175,15 +175,15 @@ void Springs::setTone(float tone, int /*blockSize*/)
 {
     tone_ = tone;
 
-    auto eqPeak = dsp::expScale(kToneMin, kToneMax, tone) * freqScale_ *
-                  static_cast<float>(rateFactor_);
-    static constexpr auto kMaxEqPeak = 0.95f;
-    eqPeak                           = std::min(kMaxEqPeak, eqPeak);
-    eq_.setFreq(dsp::freq::NyquistRatio{eqPeak});
+    auto toneHz                      = dsp::expScale(kToneMin, kToneMax, tone);
+    auto eqPeak                      = sampleRate_.hzToNyquistRatio(toneHz);
+    static constexpr auto kMaxEqPeak = 0.95_nyquistf;
+    eqPeak                           = dsp::min(kMaxEqPeak, eqPeak);
+    eq_.setFreq(eqPeak);
     eq_.setBandWidth(kEqBandWidth);
 }
 
-void Springs::setT60(float t60, int blockSize)
+void Springs::setT60(seconds t60, int blockSize)
 {
     t60_                      = t60;
     auto downSampledBlockSize = getDownSampledBlockSize(blockSize);
@@ -258,8 +258,9 @@ void Springs::process(const float *const *__restrict in,
 
     auto noise = loopChaosNoise_.process();
     noise *= loopChaosMod_;
-    loopChaos_.set(noise, static_cast<int>(sampleRate_ * kChaosSmoothTime /
-                                           static_cast<float>(rateFactor_)));
+    loopChaos_.set(noise,
+                   static_cast<int>(
+                       downSampleRate_.secsToSamples(kChaosSmoothTime).get()));
 
     while (count) {
 

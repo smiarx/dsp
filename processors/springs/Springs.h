@@ -2,6 +2,7 @@
 
 #include <dsp/control/Smoother.hpp>
 #include <dsp/core/Buffer.hpp>
+#include <dsp/core/SampleRate.hpp>
 #include <dsp/filters/AllPass.hpp>
 #include <dsp/filters/IIRFilter.hpp>
 #include <dsp/filters/VAFilters.hpp>
@@ -25,6 +26,8 @@ namespace processors
 inline namespace DSP_ARCH_NAMESPACE
 {
 
+using namespace dsp::units;
+
 class Springs
 {
   public:
@@ -32,18 +35,21 @@ class Springs
     using type               = float;
     using mtype              = dsp::multi<type, kN>;
 
-    static constexpr type kDefaultSamplerRate = 48000.;
+    using Hz      = dsp::freq::Hz<type>;
+    using seconds = dsp::time::Seconds<type>;
+
+    static constexpr dsp::SampleRate<type> kDefaultSampleRate{48000._Hzf};
 
     static constexpr auto kMaxBlockSize         = 512;
     static constexpr auto kMaxDecimate          = 8;
-    static constexpr type kMaxLoopLengthSeconds = 0.2f;
-    static constexpr type kLoopLengthSeconds    = 0.25f;
-    static constexpr auto kLoopLength =
-        static_cast<int>(kLoopLengthSeconds * kDefaultSamplerRate);
+    static constexpr auto kMaxLoopLengthSeconds = 0.2_sf;
+    static constexpr auto kLoopLengthSeconds    = 0.25_sf;
+    static constexpr auto kLoopLength           = static_cast<size_t>(
+        kDefaultSampleRate.secsToSamples(kLoopLengthSeconds).get());
     static constexpr auto kCascadeL = 160;
 
-    static constexpr type kDecimateMaxFreq = 0.78f;
-    static constexpr type kDcBlockFreq     = 10.f;
+    static constexpr auto kDecimateMaxFreq = 0.78_nyquistf;
+    static constexpr auto kDcBlockFreq     = 10._Hzf;
 
     static constexpr type kEqBandWidth = 5.f;
 
@@ -51,16 +57,17 @@ class Springs
 
     static constexpr type kNonLinearityGain = 0.2f;
 
-    static constexpr type kToneMin = 80.f;
-    static constexpr type kToneMax = 5000.f;
+    static constexpr auto kToneMin = 80._Hzf;
+    static constexpr auto kToneMax = 5000._Hzf;
 
-    static constexpr type kChaosSmoothTime = 0.2f;
+    static constexpr auto kChaosSmoothTime = 200._msf;
 
     static constexpr mtype kFreqFactor   = {0.98f, 1.02f, 0.97f, 1.03f};
     static constexpr mtype kRFactor      = {1.08f, 0.97f, 1.05f, 0.98f};
     static constexpr mtype kLoopTdFactor = {
         0.8293183583208989f, 1.1876863056468745f, 0.94273342f, 1.2432815625f};
-    static constexpr mtype kLoopModFreq   = {0.2f, 0.4f, 0.2f, 0.3f};
+    static constexpr auto kLoopModFreq =
+        dsp::freq::Hz<mtype>{{0.2f, 0.4f, 0.2f, 0.3f}};
     static constexpr mtype kLoopModFactor = {0.0035f, 0.002f, 0.0038f, 0.0027f};
     static constexpr type kLoopRippleGain = 0.016f;
 
@@ -94,26 +101,26 @@ class Springs
     // getters
     [[nodiscard]] float getDryWet() const { return drywet_; }
     [[nodiscard]] float getWidth() const { return width_; }
-    [[nodiscard]] float getFreq() const { return freq_; }
+    [[nodiscard]] float getFreq() const { return freq_.get(); }
     [[nodiscard]] float getR() const { return r_; }
-    [[nodiscard]] float getTd() const { return td_; }
+    [[nodiscard]] float getTd() const { return td_.get(); }
     [[nodiscard]] float getChaos() const { return chaos_; }
-    [[nodiscard]] float getT60() const { return t60_; }
+    [[nodiscard]] float getT60() const { return t60_.get(); }
     [[nodiscard]] float getTone() const { return tone_; }
 
     // setters
-    void setFreq(float freq, int blockSize);
+    void setFreq(Hz freq, int blockSize);
     void setRes(float r, int blockSize);
-    void setTd(float td, int blockSize, float smoothSeconds = 0.05f);
+    void setTd(seconds td, int blockSize, seconds smoothSeconds = 0.05_sf);
     void setChaos(float chaos, int blockSize);
-    void setT60(float t60, int blockSize);
+    void setT60(seconds t60, int blockSize);
     void setTone(float tone, int blockSize);
     void setScatter(float scatter, int blockSize);
     void setDryWet(float drywet, int blockSize);
     void setWidth(float width, int blockSize);
 
     // update
-    void update(float r, float freq, float td, float t60, float tone,
+    void update(float r, Hz freq, seconds td, seconds t60, float tone,
                 float chaos, float scatter, float width, float drywet,
                 int blockSize);
 
@@ -126,16 +133,16 @@ class Springs
     [[nodiscard]] auto getDownSampledBlockSize(int blockSize) const;
 
     unsigned int rateFactor_{1};
-    type sampleRate_{kDefaultSamplerRate};
-    type freqScale_{2.f / kDefaultSamplerRate};
+    dsp::SampleRate<type> sampleRate_{kDefaultSampleRate};
+    dsp::SampleRate<type> downSampleRate_{kDefaultSampleRate};
     int maxBlockSize_{};
 
     type drywet_{0.f};
     type width_{1.f};
     type r_{0.f};
-    type freq_{0.f};
-    type td_{0.f};
-    type t60_{0.f};
+    dsp::freq::Hz<type> freq_{0._Hzf};
+    dsp::time::Seconds<type> td_{0._sf};
+    dsp::time::Seconds<type> t60_{0._sf};
     type tone_{0.f};
     type chaos_{0.f};
     type scatter_{1.f};
@@ -250,13 +257,11 @@ class Springs
 template <class ReAlloc>
 void Springs::prepare(float sampleRate, int blockSize, ReAlloc realloc)
 {
-    sampleRate_   = sampleRate;
-    freqScale_    = 2.f / sampleRate;
+    sampleRate_.set(dsp::freq::Hz{sampleRate});
     maxBlockSize_ = std::min(blockSize, kMaxBlockSize);
 
     /* loop size modulation */
-    mtype freq = dsp::load(kLoopModFreq) * freqScale_;
-    loopMod_.setFreq(dsp::freq::NyquistRatio{freq});
+    loopMod_.setFreq(sampleRate_.hzToNyquistRatio(kLoopModFreq));
 
     // alloc ressources
     x_ = (mtype *)realloc(x_,
