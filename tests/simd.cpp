@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <dsp/math/math.hpp>
 #include <dsp/simd/multi.hpp>
 #include <dsp/simd/simd.hpp>
-#include <dsp/simd/simd_math.hpp>
 
 using namespace Catch::Matchers;
 
