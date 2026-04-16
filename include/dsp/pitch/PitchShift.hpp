@@ -1,11 +1,13 @@
 #pragma once
 
 #include <dsp/delay/Delay.hpp>
+#include <dsp/resampling/Kernel.hpp>
+#include <dsp/resampling/Windows.hpp>
 #include <dsp/simd/multi.hpp>
 
 namespace dsp
 {
-template <typename T> class PitchShift : TapCubic<T>
+template <typename T> class PitchShift
 {
     using IntT = intType<T>;
 
@@ -28,15 +30,17 @@ template <typename T> class PitchShift : TapCubic<T>
 
     template <class Ctxt, class DL> void process(Ctxt ctxt, DL delayline)
     {
-        delayline.write(ctxt, ctxt.getInput());
+        delayline.writeSafe(ctxt, ctxt.getInput());
 
         delay_ += T(1) - dsp::load(shift_);
 
-        delay_ = dsp::blend(delay_ < T(2), delay_ + period_, delay_);
-        delay_ = dsp::blend(delay_ > period_ + T(2), delay_ - period_, delay_);
+        delay_ = dsp::blend(delay_ < T(5), delay_ + period_, delay_);
+        delay_ = dsp::blend(delay_ > period_ + T(5), delay_ - period_, delay_);
 
-        TapCubic<T>::setDelay(delay_);
-        auto x = TapCubic<T>::read(ctxt, delayline);
+        Tap tap;
+        tap.setDelay(delay_);
+        auto x = tap.read(ctxt, delayline, shift_);
+        // auto x = tap.read(ctxt, delayline);
         ctxt.setOutput(x);
     }
 
@@ -44,5 +48,8 @@ template <typename T> class PitchShift : TapCubic<T>
     T delay_{2};
     T period_{};
     T shift_{T(1)};
+
+    using Tap =
+        dsp::TapKernel<T, dsp::kernels::Sinc<3, dsp::windows::Kaiser<140>>, 64>;
 };
 } // namespace dsp
