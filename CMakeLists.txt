@@ -62,6 +62,6 @@ else()
     $<$<CONFIG:RELEASE>: -ffast-math -funsafe-math-optimizations -ffp-contract=fast>
 )
 endif()
-target_compile_features(dsp_compile_options INTERFACE cxx_std_17)
+target_compile_features(dsp_compile_options INTERFACE cxx_std_20)
 
 add_subdirectory(processors/)
