@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include <dsp/core/concepts.hpp>
 #include <dsp/simd/simd.hpp>
 
 namespace dsp
@@ -30,120 +31,98 @@ simd<T, N> always_inline operator/(T s, simd<T, N> x)
     return simd<T, N>(s) / x;
 }
 
-template <typename T> always_inline auto get(T x, [[maybe_unused]] size_t i)
+template <Numeric T> always_inline T get(T x, [[maybe_unused]] size_t i)
 {
     return x;
 }
-template <typename T, size_t N> always_inline auto get(simd<T, N> x, size_t i)
-{
-    return x.get(i);
-}
+template <IsSimd S> always_inline auto get(S x, size_t i) { return x.get(i); }
 
-template <size_t Id, size_t K = 1, typename T> always_inline auto getlane(T x)
+template <size_t Id, size_t K = 1, typename T> always_inline T getlane(T x)
 {
     return x;
 }
-template <size_t Id, size_t K = 1, typename T, size_t N>
-always_inline auto getlane(simd<T, N> x)
+template <size_t Id, size_t K = 1, IsSimd S> always_inline auto getlane(S x)
 {
     return x.template getlane<Id, K>();
 }
 
 ////////////////////// max ////////////////////////
-template <typename T> always_inline T max(T x, T y) { return std::max(x, y); }
-template <typename T, size_t N>
-always_inline simd<T, N> max(simd<T, N> x, simd<T, N> y)
-{
-    return x.max(y);
-}
+template <Numeric T> always_inline T max(T x, T y) { return std::max(x, y); }
+template <IsSimd S> always_inline S max(S x, S y) { return x.max(y); }
 
 ////////////////////// min ////////////////////////
-template <typename T> always_inline T min(T x, T y) { return std::min(x, y); }
-template <typename T, size_t N>
-always_inline simd<T, N> min(simd<T, N> x, simd<T, N> y)
-{
-    return x.min(y);
-}
+template <Numeric T> always_inline T min(T x, T y) { return std::min(x, y); }
+template <IsSimd S> always_inline S min(S x, S y) { return x.min(y); }
 
 ////////////////////// abs ////////////////////////
-template <typename T> always_inline T abs(T x) { return std::abs(x); }
-template <typename T, size_t N> always_inline simd<T, N> abs(simd<T, N> x)
-{
-    return x.abs();
-}
+template <Numeric T> always_inline T abs(T x) { return std::abs(x); }
+template <IsSimd S> always_inline S abs(S x) { return x.abs(); }
 
 ////////////////////// shift ////////////////////////
-template <int Shift, typename T> always_inline T shift([[maybe_unused]] T x)
+template <int Shift, Numeric T> always_inline T shift([[maybe_unused]] T x)
 {
-    return Shift == 0 ? x : 0;
+    return Shift == 0 ? x : T(0);
 }
-template <int Shift, typename T, size_t N>
-always_inline simd<T, N> shift(simd<T, N> x)
+template <int Shift, IsSimd S> always_inline S shift(S x)
 {
     return x.template shift<Shift>();
 }
 
 ////////////////////// sum ////////////////////////
-template <typename T> always_inline T sum(T x) { return x; }
-template <typename T, size_t N> always_inline T sum(simd<T, N> x)
-{
-    return x.sum();
-}
+template <Numeric T> always_inline T sum(T x) { return x; }
+template <IsSimd T> always_inline auto sum(T x) { return x.sum(); }
 ////////////////////// product ////////////////////////
-template <size_t K = 1, typename T> always_inline T product(T x)
+template <size_t K = 1, Numeric T> always_inline T product(T x)
 {
     static_assert(K == 1);
     return x;
 }
-template <size_t K = 1, typename T, size_t N>
-always_inline auto product(simd<T, N> x)
+template <size_t K = 1, IsSimd S> always_inline auto product(S x)
 {
     return x.template product<K>();
 }
 
-template <size_t K, typename T> always_inline auto reduce(T x)
+template <size_t K, Numeric T> always_inline auto reduce(T x)
 {
     static_assert(K == 1);
     return x;
 }
-template <size_t K, typename T, size_t N>
-always_inline auto reduce(simd<T, N> x)
+template <size_t K, IsSimd S> always_inline auto reduce(S x)
 {
     return x.template reduce<K>();
 }
 
-template <size_t K, typename T, size_t N> always_inline auto flip(simd<T, N> x)
+template <size_t K, IsSimd S> always_inline auto flip(S x)
 {
     return x.template flip<K>();
 }
 
-template <size_t K = 1, typename T, size_t N>
-always_inline auto prefix(simd<T, N> x)
+template <size_t K = 1, IsSimd S> always_inline auto prefix(S x)
 {
     return x.template prefix<K>();
 }
 
 /////////////////// duplicate ////////////////////////////
-template <size_t K, typename T> always_inline auto duplicate(T x)
+template <size_t K, Numeric T> always_inline auto duplicate(T x)
 {
     if constexpr (K == 1) return x;
     else
         return simd<T, K>(x);
 }
-template <size_t K, typename T, size_t N>
-always_inline auto duplicate(simd<T, N> x)
+template <size_t K, IsSimd S> always_inline auto duplicate(S x)
 {
     return x.template duplicate<K>();
 }
 
 /////////////////// push ////////////////////////////
-template <typename P, typename O>
+template <Numeric P, Numeric O>
 [[nodiscard]] always_inline auto push(P /*x*/, O y)
 {
     return y;
 }
-template <typename T, size_t N, typename O>
-[[nodiscard]] always_inline auto push(simd<T, N> x, O y)
+template <IsSimd S, typename O>
+    requires Numeric<O> or IsSimd<O>
+[[nodiscard]] always_inline auto push(S x, O y)
 {
     return x.push(y);
 }
@@ -151,26 +130,19 @@ template <typename T, size_t N, typename O>
 /////////////////// Logic ////////////////////////////
 
 /////////////////// any ////////////////////////////
-template <typename T> always_inline T any(T x) { return x; }
-template <typename T, size_t N> always_inline auto any(simdmask<T, N> x)
-{
-    return x.any();
-}
+always_inline bool any(bool x) { return x; }
+template <IsSimdMask M> always_inline bool any(M x) { return x.any(); }
 
 /////////////////// all ////////////////////////////
-template <typename T> always_inline T all(T x) { return x; }
-template <typename T, size_t N> always_inline auto all(simdmask<T, N> x)
-{
-    return x.all();
-}
+always_inline bool all(bool x) { return x; }
+template <IsSimdMask S> always_inline bool all(S x) { return x.all(); }
 
 /////////////////// blend ////////////////////////////
-template <typename T> always_inline T blend(bool b, T x, T y)
+template <Numeric T> always_inline T blend(bool b, T x, T y)
 {
     return b ? x : y;
 }
-template <typename T1, typename T2, size_t N>
-always_inline auto blend(simdmask<T1, N> m, simd<T2, N> x, simd<T2, N> y)
+template <IsSimdMask M, IsSimd S> always_inline S blend(M m, S x, S y)
 {
     return m.blend(x, y);
 }
@@ -178,19 +150,17 @@ always_inline auto blend(simdmask<T1, N> m, simd<T2, N> x, simd<T2, N> y)
 /////////////////// Convert ////////////////////////////
 
 /////////////////// int ////////////////////////////
-template <typename T> always_inline auto toInt(T x)
+template <Numeric T> always_inline auto toInt(T x)
 {
     return static_cast<int32_t>(x);
 }
-template <typename T, size_t N> always_inline auto toInt(simd<T, N> x)
-{
-    return x.toInt();
-}
-template <typename T> always_inline auto toFloat(int32_t x)
+template <IsSimd S> always_inline auto toInt(S x) { return x.toInt(); }
+template <FloatNumeric T> always_inline auto toFloat(int32_t x)
 {
     return static_cast<T>(x);
 }
-template <typename T, size_t N> always_inline auto toFloat(simd<int32_t, N> x)
+template <FloatNumeric T, size_t N>
+always_inline auto toFloat(simd<int32_t, N> x)
 {
     return x.template toFloat<T>();
 }
@@ -198,48 +168,29 @@ template <typename T, size_t N> always_inline auto toFloat(simd<int32_t, N> x)
 /////////////////// Math ////////////////////////////
 
 ////////////////////// exp ////////////////////////
-template <typename T> always_inline T exp(T x) { return std::exp(x); }
-template <typename T, size_t N> always_inline simd<T, N> exp(simd<T, N> x)
-{
-    return x.map(std::exp);
-}
+template <Numeric T> always_inline T exp(T x) { return std::exp(x); }
+template <IsSimd S> always_inline S exp(S x) { return x.map(std::exp); }
 
 ////////////////////// log ////////////////////////
-template <typename T> always_inline T log(T x) { return std::log(x); }
-template <typename T, size_t N> always_inline simd<T, N> log(simd<T, N> x)
-{
-    return x.map(std::log);
-}
+template <Numeric T> always_inline T log(T x) { return std::log(x); }
+template <IsSimd S> always_inline S log(S x) { return x.map(std::log); }
 
 ////////////////////// sqrt ////////////////////////
-template <typename T> always_inline T sqrt(T x) { return std::sqrt(x); }
-template <typename T, size_t N> always_inline simd<T, N> sqrt(simd<T, N> x)
-{
-    return x.sqrt();
-}
+template <Numeric T> always_inline T sqrt(T x) { return std::sqrt(x); }
+template <IsSimd S> always_inline S sqrt(S x) { return x.sqrt(); }
 
 ////////////////////// signbit ////////////////////////
-template <typename T> always_inline auto signbit(T x)
-{
-    return std::signbit(x);
-}
-template <typename T, size_t N> always_inline auto signbit(simd<T, N> x)
-{
-    return x.signbit();
-}
+template <Numeric T> always_inline auto signbit(T x) { return std::signbit(x); }
+template <IsSimd S> always_inline auto signbit(S x) { return x.signbit(); }
 
 ////////////////////// pow ////////////////////////
-template <typename T> always_inline T pow(T x, T y) { return std::pow(x, y); }
-template <typename T, size_t N>
-always_inline simd<T, N> pow(simd<T, N> x, simd<T, N> y)
-{
-    return x.map(std::pow, y);
-}
-template <typename T, size_t N> always_inline simd<T, N> pow(simd<T, N> x, T y)
+template <Numeric T> always_inline T pow(T x, T y) { return std::pow(x, y); }
+template <IsSimd S> always_inline S pow(S x, S y) { return x.map(std::pow, y); }
+template <Numeric T, size_t N> always_inline simd<T, N> pow(simd<T, N> x, T y)
 {
     return x.map(std::pow, simd<T, N>(y));
 }
-template <typename T, size_t N> always_inline simd<T, N> pow(T x, simd<T, N> y)
+template <Numeric T, size_t N> always_inline simd<T, N> pow(T x, simd<T, N> y)
 {
     return simd<T, N>(x).map(std::pow, y);
 }
@@ -247,66 +198,39 @@ template <typename T, size_t N> always_inline simd<T, N> pow(T x, simd<T, N> y)
 /////////////////// Trig ///////////////////////////
 
 ////////////////////// sin ////////////////////////
-template <typename T> always_inline T sin(T x) { return std::sin(x); }
-template <typename T, size_t N> always_inline simd<T, N> sin(simd<T, N> x)
-{
-    return x.map(std::sin);
-}
+template <Numeric T> always_inline T sin(T x) { return std::sin(x); }
+template <IsSimd S> always_inline S sin(S x) { return x.map(std::sin); }
 
 ////////////////////// cos ////////////////////////
-template <typename T> always_inline T cos(T x) { return std::cos(x); }
-template <typename T, size_t N> always_inline simd<T, N> cos(simd<T, N> x)
-{
-    return x.map(std::cos);
-}
+template <Numeric T> always_inline T cos(T x) { return std::cos(x); }
+template <IsSimd S> always_inline S cos(S x) { return x.map(std::cos); }
 
 ////////////////////// tan ////////////////////////
-template <typename T> always_inline T tan(T x) { return std::tan(x); }
-template <typename T, size_t N> always_inline simd<T, N> tan(simd<T, N> x)
-{
-    return x.map(std::tan);
-}
+template <Numeric T> always_inline T tan(T x) { return std::tan(x); }
+template <IsSimd S> always_inline S tan(S x) { return x.map(std::tan); }
 
 ////////////////////// asin ////////////////////////
-template <typename T> always_inline T asin(T x) { return std::asin(x); }
-template <typename T, size_t N> always_inline simd<T, N> asin(simd<T, N> x)
-{
-    return x.map(std::asin);
-}
+template <Numeric T> always_inline T asin(T x) { return std::asin(x); }
+template <IsSimd S> always_inline S asin(S x) { return x.map(std::asin); }
 
 ////////////////////// acos ////////////////////////
-template <typename T> always_inline T acos(T x) { return std::acos(x); }
-template <typename T, size_t N> always_inline simd<T, N> acos(simd<T, N> x)
-{
-    return x.map(std::acos);
-}
+template <Numeric T> always_inline T acos(T x) { return std::acos(x); }
+template <IsSimd S> always_inline S acos(S x) { return x.map(std::acos); }
 
 ////////////////////// atan ////////////////////////
-template <typename T> always_inline T atan(T x) { return std::atan(x); }
-template <typename T, size_t N> always_inline simd<T, N> atan(simd<T, N> x)
-{
-    return x.map(std::atan);
-}
+template <Numeric T> always_inline T atan(T x) { return std::atan(x); }
+template <IsSimd S> always_inline S atan(S x) { return x.map(std::atan); }
 
 ////////////////////// cosh ////////////////////////
-template <typename T> always_inline T cosh(T x) { return std::cosh(x); }
-template <typename T, size_t N> always_inline simd<T, N> cosh(simd<T, N> x)
-{
-    return x.map(std::cosh);
-}
+template <Numeric T> always_inline T cosh(T x) { return std::cosh(x); }
+template <IsSimd S> always_inline S cosh(S x) { return x.map(std::cosh); }
 
 ////////////////////// sinh ////////////////////////
-template <typename T> always_inline T sinh(T x) { return std::sinh(x); }
-template <typename T, size_t N> always_inline simd<T, N> sinh(simd<T, N> x)
-{
-    return x.map(std::sinh);
-}
+template <Numeric T> always_inline T sinh(T x) { return std::sinh(x); }
+template <IsSimd S> always_inline S sinh(S x) { return x.map(std::sinh); }
 
 ////////////////////// tanh ////////////////////////
-template <typename T> always_inline T tanh(T x) { return std::tanh(x); }
-template <typename T, size_t N> always_inline simd<T, N> tanh(simd<T, N> x)
-{
-    return x.map(std::tanh);
-}
+template <Numeric T> always_inline T tanh(T x) { return std::tanh(x); }
+template <IsSimd S> always_inline S tanh(S x) { return x.map(std::tanh); }
 
 } // namespace dsp
