@@ -3,6 +3,7 @@
 
 #include "Springs_SC.h"
 #include "TapeDelay_SC.h"
+#include "voicebox/VoiceBox_SC.h"
 
 extern void loadFilters();
 
@@ -18,6 +19,7 @@ PluginLoad(Processors)
         loadTapeDelayAVX2();
         loadSpringsAVX2();
         loadFilters();
+        loadVoiceBox();
         return;
     }
 #endif
@@ -25,4 +27,5 @@ PluginLoad(Processors)
     loadTapeDelay();
     loadSprings();
     loadFilters();
+    loadVoiceBox();
 }
