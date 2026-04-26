@@ -41,6 +41,7 @@ set(test_sources
     PSOLA.cpp
     ZFF.cpp
     Notch.cpp
+    Amplitude.cpp
 )
 
 add_executable(tests ${test_sources})
