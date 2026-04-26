@@ -179,6 +179,7 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
     {
         offset_ =
             static_cast<size_t>(std::round(period - static_cast<T>(N) / T(2)));
+        offset_ = std::min(MaxLength - N / 2, offset_);
     }
 
     T getPeriod() const noexcept
