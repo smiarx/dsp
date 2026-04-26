@@ -55,7 +55,11 @@ void VoiceBox::update(float shift, float formantShift)
     }
 }
 
-void VoiceBox::setPitchShift(float shift) { shift_ = shift; }
+void VoiceBox::setPitchShift(float shift)
+{
+    shift_ = shift;
+    psola_.setShift(shift);
+}
 
 void VoiceBox::setFormantShift(float formantShift)
 {
@@ -157,7 +161,7 @@ void VoiceBox::process(const float *const *__restrict in,
             static float v = 0.f;
             voiced[n]      = v += 0.002f * (voiced[n] - v);
             if (ctxtPitch.getInput() > 1e-6f) {
-                psola_.setFreq(ctxtPitch.getInput() * shift_);
+                psola_.setFreq(ctxtPitch.getInput());
                 // psola_.setFreq(atune(ctxtPitch.getInput() * shift_));
                 // psola_.setFreq(400.f/24000.f*shift_);
             }

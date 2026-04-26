@@ -41,6 +41,8 @@ class PSOLA
         synthRate_ = freq * T(0.5);
     }
 
+    void setShift(T shift) { shift_ = shift; }
+
     void setPlayRate(T rate)
     {
         assert(rate > T(0));
@@ -72,7 +74,7 @@ class PSOLA
         assert(period > T(0));
         rate = T(1) / period;
 
-        phase = -T(1) + synthPhase_ + marker.period_ * synthRate_ / playRate_;
+        phase = -T(1) + synthPhase_ + shift_ / playRate_;
 
         //  center position of grain
         auto grainPos = ctxt.getId() - phase * period;
@@ -92,34 +94,20 @@ class PSOLA
     {
         const auto &marker = analysis.getClosestMarker(ctxt);
         auto period        = marker.period_;
-        // synthPhase_ = T(1) + ctxt.idDiff(marker.position_ + period) / period;
 
         if (state_ == kOff) {
-            // synthPhase_ =
-            //     T(1) + ctxt.idDiff(marker.position_ + period) /
-            //                period; // - marker.period_*synthRate_/playRate_;
             auto diffMarker = ctxt.idDiff(marker.position_);
-            synthPhase_     = (diffMarker - period) * synthRate_;
+            synthPhase_     = (diffMarker - period) * synthRate_ * shift_;
 
             // ensure phase is > -1
             while (synthPhase_ < T(-1)) synthPhase_ += T(1);
-            // fade_.rate_ = synthRate_/(T(1)+synthPhase_);
-            fade_.value_ = -T(1) + synthPhase_;
         }
         state_ = kOn;
-
-        // addGrain(ctxt, analysis);
-        // fade_.rate_ = grains_[0].rate_ * T(0.5);
     }
 
     template <class Ctxt> void stop(Ctxt ctxt)
     {
         state_ = kWaitingForLastGrains;
-        // if (nGrains_ > 0) fade_.rate_ = grains_[0].rate_;
-        // else {
-        //     constexpr auto kDefaultFadeRate = T(0.02);
-        //     fade_.rate_                     = kDefaultFadeRate;
-        // }
     }
 
     template <class Ctxt, class DL, class Analysis>
@@ -132,9 +120,7 @@ class PSOLA
             return;
         }
 
-        const auto &marker = analysis.getClosestMarker(ctxt, playRate_);
-        auto currentPhase =
-            synthPhase_ + marker.period_ * synthRate_ / playRate_;
+        auto currentPhase = synthPhase_ + shift_ / playRate_;
         if (currentPhase > T(1)) {
             synthPhase_ -= T(1);
             if (state_ == kOn) {
@@ -177,7 +163,7 @@ class PSOLA
         ctxt.setOutput(x);
 
         // increment synth phase
-        synthPhase_ += synthRate_;
+        synthPhase_ += synthRate_ * shift_;
     }
 
   private:
@@ -185,15 +171,13 @@ class PSOLA
 
     // generating
     State state_{kOff};
-    struct Fade {
-        float value_{1};
-        float rate_;
-    } fade_{};
     size_t nGrains_{};
     std::array<Grain, MaxGrains> grains_{};
 
     T synthPhase_{};
     T playRate_{1};
+
+    T shift_{1};
 };
 
 } // namespace DSP_ARCH_NAMESPACE
