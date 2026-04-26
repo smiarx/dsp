@@ -60,6 +60,30 @@ static void zcCtor(ZCUnit *unit)
     unit->zc_      = {};
 }
 
+//===========================================================
+
+#include <dsp/math/HMM.hpp>
+
+struct HMMUnit : public Unit {
+    dsp::HMM2<float> hmm_;
+};
+
+static void hmmNext(HMMUnit *unit, int inNumSamples)
+{
+    unit->hmm_.setTransition(IN0(1));
+    for (int n = 0; n < inNumSamples; ++n) {
+        float in = IN(0)[n];
+        unit->hmm_.process(in, 1.f - in);
+        OUT(0)[n] = unit->hmm_.getState();
+    };
+}
+
+static void hmmCtor(HMMUnit *unit)
+{
+    SETCALC(hmmNext);
+    unit->hmm_ = {IN0(1)};
+}
+
 //==================================================
 
 #include "PitchTracker.hpp"
@@ -104,6 +128,8 @@ void loadVoiceBox()
                        (UnitCtorFunc)&voiceBoxCtor, (UnitDtorFunc)&voiceBoxDtor,
                        0);
     (*ft->fDefineUnit)("ZC", sizeof(ZCUnit), (UnitCtorFunc)&zcCtor, nullptr, 0);
+    (*ft->fDefineUnit)("HMM", sizeof(HMMUnit), (UnitCtorFunc)&hmmCtor, nullptr,
+                       0);
 
     (*ft->fDefineUnit)("PitchTracker", sizeof(PitchTrackerUnit),
                        (UnitCtorFunc)&pitchTrackerCtor,

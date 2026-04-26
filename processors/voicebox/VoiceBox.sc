@@ -10,6 +10,12 @@ ZC : UGen {
 	}
 }
 
+HMM : UGen {
+	*ar { arg in = 0.0, transition=0.5, mul=1.0, add=0.0;
+		^this.multiNew('audio', in, transition).madd(mul, add)
+	}
+}
+
 PitchTracker : UGen {
 	*ar { arg in = 0.0;
 		^this.multiNew('audio', in)
