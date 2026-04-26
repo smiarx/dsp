@@ -37,17 +37,17 @@ void voiceBoxNext(VoiceBoxUnit *unit, int inNumSamples)
 #include <dsp/filters/OnePole.hpp>
 
 struct ZCUnit : public Unit {
-    dsp::OnePole<float> op_;
-    decltype(op_)::State opState_;
+    // dsp::OnePole<float> op_;
+    // decltype(op_)::State opState_;
     dsp::ZeroCrossing<float> zc_;
 };
 
 static void zcNext(ZCUnit *unit, int inNumSamples)
 {
-    unit->op_.setRate(0.1f, 1.f / static_cast<float>(IN0(1) * SAMPLERATE));
+    // unit->op_.setRate(0.1f, 1.f / static_cast<float>(IN0(1) * SAMPLERATE));
     for (int n = 0; n < inNumSamples; ++n) {
         float v = unit->zc_.process(dsp::Context(&IN(0)[n])) ? 1.f : 0.f;
-        unit->op_.process(dsp::Context(&v), unit->opState_);
+        // unit->op_.process(dsp::Context(&v), unit->opState_);
         OUT(0)[n] = v;
     };
 }
@@ -55,9 +55,9 @@ static void zcNext(ZCUnit *unit, int inNumSamples)
 static void zcCtor(ZCUnit *unit)
 {
     SETCALC(zcNext);
-    unit->op_      = {};
-    unit->opState_ = {};
-    unit->zc_      = {};
+    // unit->op_      = {};
+    // unit->opState_ = {};
+    unit->zc_ = {};
 }
 
 //===========================================================
@@ -114,7 +114,8 @@ static void pitchTrackerDtor(PitchTrackerUnit *unit)
 
 void pitchTrackerNext(PitchTrackerUnit *unit, int inNumSamples)
 {
-    unit->pitchTracker_->process(&IN(0), &OUT(0), inNumSamples);
+    float *out[] = {OUT(0), OUT(1)};
+    unit->pitchTracker_->process(&IN(0), out, inNumSamples);
     for (int i = 0; i < inNumSamples; ++i) {
         OUT(0)[i] *= static_cast<float>(SAMPLERATE / 2.f);
     }

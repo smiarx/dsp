@@ -16,8 +16,18 @@ HMM : UGen {
 	}
 }
 
-PitchTracker : UGen {
-	*ar { arg in = 0.0;
-		^this.multiNew('audio', in)
-	}
+PitchTracker : MultiOutUGen
+{
+    *ar
+    {
+		arg in;
+        ^this.multiNew('audio', in);
+    }
+
+    init
+    {
+        arg... theInputs;
+        inputs = theInputs;
+        ^this.initOutputs(2, rate);
+    }
 }

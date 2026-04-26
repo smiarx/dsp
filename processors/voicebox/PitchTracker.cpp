@@ -14,8 +14,9 @@ template <typename T> static inline bool closeTo(T x, T y, T thresh)
 void PitchTracker::prepare(float sampleRate)
 {
     auto freqScale = 2.f / sampleRate;
+    freqScale_     = freqScale;
 
-    softLowpass_.setFreq(80.f * freqScale);
+    softLowpass_.setFreq(180.f * freqScale);
 
     // decimate nyquist filter
     // scipy.signal.cheby1(8,3,1,analog=True,output='sos')
@@ -27,16 +28,39 @@ void PitchTracker::prepare(float sampleRate)
 
     nyquistFilter_.fromAnalog(kSosAnalog, freqScale * 1200);
 
-    zeroCrossingFollower_.setRate(0.01f, 1.f / (0.002f * sampleRate));
+    constexpr auto kAmpFollowerUp   = 0.0002f;
+    constexpr auto kAmpFollowerDown = 0.01f;
+    ampFollower_.setRate(0.1f, kAmpFollowerUp * sampleRate,
+                         kAmpFollowerDown * sampleRate);
 
-    ampFollower_.setRate(0.01f, 1.f / (0.005f * sampleRate));
+    constexpr auto kZcFollowerUp   = 0.002f;
+    constexpr auto kZcFollowerDown = 0.005f;
+    zeroCrossingFollower_.setRate(0.1f, kZcFollowerUp * sampleRate,
+                                  kZcFollowerDown * sampleRate);
+
+    smoothFreq_.setFreq(60 * freqScale);
 }
 
-float PitchTracker::findNSDFPeriod(float zeroCrossing)
+void PitchTracker::setRange(Range range)
 {
-    constexpr auto kK = 0.98f;
+    switch (range) {
+    default:
+    case Range::kHigh:
+        softLowpass_.setFreq(180.f * freqScale_);
+        autoCorrecationThreshold_ = 0.84f;
+        break;
+    case Range::kLow:
+        softLowpass_.setFreq(80.f * freqScale_);
+        autoCorrecationThreshold_ = 0.97f;
+        break;
+    }
+}
 
-    auto nPeaks = nsdf_.updatePeaks(1e-5f);
+dsp::interp::PolyPoint<float> PitchTracker::findNSDFPeriod()
+{
+    auto k = autoCorrecationThreshold_;
+
+    auto nPeaks = nsdf_.updatePeaks(1e-8f);
     auto peaks  = nsdf_.getPeaks();
 
     // find max peak
@@ -51,15 +75,11 @@ float PitchTracker::findNSDFPeriod(float zeroCrossing)
 
         // find best peak
         // TODO change fixed value
-        if (peaks[i].y >= kK * maxPeak.y && peaks[i].x > 5.f) {
+        if (peaks[i].y >= k * maxPeak.y && peaks[i].x > 5.f) {
             auto y      = peaks[i].y;
             auto period = peaks[i].x;
 
-            // set emission probability
-            y = std::max(0.f, y - 0.1f);
-            y /= (0.5f - 0.1f);
-
-            bool hasJumped = false;
+            // check harmonic jump
             if (voiced_ && downPeriod_ > 0.f) {
                 auto ratio = downPeriod_ / period;
 
@@ -130,156 +150,203 @@ float PitchTracker::findNSDFPeriod(float zeroCrossing)
                     }
                     harmonicJumpCounter_ = 0;
                     harmonicJumpType_    = kNoJump;
-                    hasJumped            = true;
                 }
             }
-
-            auto diffPeriod = std::max(
-                0.f, 1.5f - std::abs(period - downPeriod_) / downPeriod_);
-            y *= diffPeriod;
-            downPeriod_ = period;
-
-            y *= std::max(0.f, 1.f - (zeroCrossing - 0.1f) / 0.5f);
-
-            y = std::min(1.f, y);
-            hmm2_.process(y, 1.f - y);
-#ifndef NDEBUG
-            // std::cout << "{" << period << ", " << peaks[i].y << "}\t"
-            //           << zeroCrossing << " \t" << hmm2_.getState() << "\t";
-            // std::cout << "[";
-            // for (int j = 0; j < nPeaks; ++j) {
-            //     std::cout << "{" << peaks[j].x << ", " << peaks[j].y << "}";
-            // }
-            // std::cout << "] \n";
-#endif
-            if (hmm2_.getState() > 0.5f) {
-                if (hasJumped && voiced_) {
-                    // init tracking
-                    period_        = period * kDecFactor;
-                    nConfirmPitch_ = 3 * static_cast<int>(std::ceil(period_));
-                    nsdfTrack_.clear();
-                    std::fill(std::begin(bufferData_), std::end(bufferData_),
-                              0.f);
-                    nsdfTrack_.setPeriod(period_);
-                }
-                return period;
-            }
-            return 0.f;
+            return {period, y};
         }
     }
 
-    return 0.f;
+    return {};
 }
 
 void PitchTracker::process(const float *const *__restrict in,
                            float *const *__restrict out, int count)
 {
     const float *min = *in;
-    float *mout      = *out;
+    float *pitchOut  = out[0];
+    float *voicedOut = out[1];
 
-    if (min != mout) {
-        for (int i = 0; i < count; ++i) mout[i] = min[i];
+    if (min != pitchOut) {
+        for (int i = 0; i < count; ++i) pitchOut[i] = min[i];
+    }
+    if (min != voicedOut) {
+        for (int i = 0; i < count; ++i) voicedOut[i] = min[i];
     }
 
     while (count) {
         auto blockSize = std::min(count, kMaxBlockSize);
         count -= blockSize;
 
-        auto ctxt   = dsp::BufferContext(mout, blockSize, buffer_);
-        auto ctxtZc = dsp::Context(zeroCrossingBuffer_, blockSize);
+        auto ctxtPitch  = dsp::BufferContext(pitchOut, blockSize, buffer_);
+        auto ctxtVoiced = dsp::Context(voicedOut, blockSize);
 
-        // compute zero crossing
-        CTXTRUN2(ctxt, ctxtZc)
+        CTXTRUN(ctxtPitch)
         {
-            auto zc = zeroCrossing_.process(ctxt) == 0 ? 0.f : 1.f;
-            zeroCrossingFollower_.process(dsp::Context(&zc),
-                                          zeroCrossingFollowerState_);
-            ctxtZc.setOutput(zc);
+            nyquistFilter_.process(ctxtPitch, nyquistFilterState_);
         };
 
-        CTXTRUN(ctxt) { softLowpass_.process(ctxt, softLowpassState_); };
+        // compute voiced probability
+        CTXTRUN2(ctxtPitch, ctxtVoiced)
+        {
+            // follow input amplitude
+            auto energy = ctxtVoiced.getInput();
+            energy *= energy;
+            ampFollower_.process(dsp::Context(&energy), ampState_);
 
-        CTXTRUN(ctxt) { nyquistFilter_.process(ctxt, nyquistFilterState_); };
+            // follow low filtered amplitude
+            auto lowEnergy = ctxtPitch.getInput();
+            lowEnergy *= lowEnergy;
+            ampFollower_.process(dsp::Context(&lowEnergy), ampFilteredState_);
 
-        for (int n = 0; n < blockSize; ++n) {
+            // follow zero crossing
+            auto zc = zeroCrossing_.process(ctxtVoiced) == 0 ? 0.f : 1.f;
+            zeroCrossingFollower_.process(dsp::Context(&zc),
+                                          zeroCrossingFollowerState_);
 
-            auto amp = ctxt.getInput();
-            amp      = std::abs(amp);
-            ampFollower_.process(dsp::Context(&amp), ampFollowerState_);
+            constexpr auto kEnergyProb0 = 0.0001f;
+            constexpr auto kEnergyProb1 = 0.005f;
+            auto hasEnergy =
+                (energy - kEnergyProb0) / (kEnergyProb1 - kEnergyProb0);
+            hasEnergy = std::clamp(hasEnergy, 0.f, 1.f);
 
-            if (decimateId_ == 0) {
-                bufferDec_.nextId(1);
-                auto ctxtDec = dsp::BufferContext(ctxt, bufferDec_);
-                nsdf_.process(ctxtDec, nsdfDL_);
-                if (!voiced_) {
-                    auto period = findNSDFPeriod(zeroCrossingBuffer_[n]);
-                    period_     = kDecFactor * period;
+            constexpr auto kEnergyRatioProb0 = 0.04f;
+            constexpr auto kEnergyRatioProb1 = 0.20f;
+            constexpr auto kEpsEnergy        = 0.000001f;
+            auto energyRatio  = lowEnergy / (energy + kEpsEnergy);
+            auto hasLowEnergy = (energyRatio - kEnergyRatioProb0) /
+                                (kEnergyRatioProb1 - kEnergyRatioProb0);
+            hasLowEnergy      = std::max(0.f, hasLowEnergy);
 
-                    if (period > 0) {
-                        voiced_ = true;
-                        nConfirmPitch_ =
-                            3 * static_cast<int>(std::ceil(period_));
-                        nsdfTrack_.clear();
-                        std::fill(std::begin(bufferData_),
-                                  std::end(bufferData_), 0.f);
-                        nsdfTrack_.setPeriod(period_);
-                    }
-                } else if (nConfirmPitch_ > 0) {
-                    auto period = findNSDFPeriod(zeroCrossingBuffer_[n]);
+            constexpr auto kZCProb0 = 0.8f;
+            constexpr auto kZCProb1 = 0.2f;
+            auto hasZc              = (zc - kZCProb0) / (kZCProb1 - kZCProb0);
+            hasZc                   = std::clamp(hasZc, 0.f, 1.f);
 
-                    if (period > 0.f) {
-                        downPeriod_ = period;
-                        period_     = kDecFactor * period;
-                    } else {
-                        std::cout << "stop in test\n";
-                        voiced_     = false;
-                        decimateId_ = (decimateId_ + 1) % kDecFactor;
-                    }
-                }
-            }
+            auto voicedProb = hasEnergy * hasLowEnergy; //*hasZc;
 
+            ctxtVoiced.setOutput(voicedProb);
+        };
+
+        // lowpass on signal to soften high harmonics
+        CTXTRUN(ctxtPitch)
+        {
+            softLowpass_.process(ctxtPitch, softLowpassState_);
+        };
+
+        CTXTRUN2(ctxtPitch, ctxtVoiced)
+        {
             if (voiced_) {
-                nsdfTrack_.process(ctxt, nsdfTrackDL_);
+                nsdfTrack_.process(ctxtPitch, nsdfTrackDL_);
 
                 if (nConfirmPitch_ > 0) {
-                    auto freq = 2.f / period_;
-                    assert(!std::isnan(freq));
-                    ctxt.setOutput(freq);
+                    // update voiced probability
+                    auto voicedProb = ctxtVoiced.getInput();
+                    voicedProb *= downProb_;
+                    voicedProb = std::clamp(voicedProb, 0.f, 1.f);
+                    voicedProb *= 0.99f;
+                    voicedProb = hmm2_.process(voicedProb, 1.f - voicedProb);
+                    ctxtVoiced.setOutput(voicedProb);
                     --nConfirmPitch_;
-                } else {
-                    auto peak = nsdfTrack_.updateTrack(ctxt, nsdfTrackDL_);
-                    auto freq = 2.f / peak.x;
-                    assert(!std::isnan(freq));
-                    ctxt.setOutput(freq);
 
-                    // probability
-                    auto y = peak.y;
-                    y      = (y + 0.25f) * 2.f;
-                    // auto zc = zeroCrossingBuffer_[n];
-                    // y *= std::max(0.f, 1.f - (zc - 0.1f) / 0.4f);
-                    y *= std::min(1.f, amp * 1e2f);
-                    if (y < 0.5f) {
-#ifndef NDEBUG
-                        std::cout << "stop " << peak.y << " amp:" << amp
-                                  << "\n";
-#endif
-                        voiced_ = false;
-                        // reset hmm
-                        hmm2_.reset();
+                    if (voicedProb < 0.2f) {
+                        voiced_              = false;
                         harmonicJumpCounter_ = 0;
                         harmonicJumpType_    = kNoJump;
-                        downPeriod_          = 0.f;
-                        ctxt.setOutput(0.f);
+                        std::cout << "stop confirm " << downProb_ << "\n";
+                    }
+                } else if (nConfirmPitch_ == 0) {
+                    auto peak = nsdfTrack_.updateTrack(ctxtPitch, nsdfTrackDL_);
+                    period_   = peak.x;
+
+                    if (peak.y < 0.1f) {
+                        std::cout << "stop track " << peak.y << "\n";
+                        voiced_ = false;
+                        // reset hmm
+                        harmonicJumpCounter_ = 0;
+                        harmonicJumpType_    = kNoJump;
+                        downPeriod_          = period_ / kDecFactor;
+                        downProb_            = 0.6f;
+                    } else {
+                        auto voicedProb = ctxtVoiced.getInput();
+                        voicedProb      = std::clamp(voicedProb, 0.f, 1.f);
+                        voicedProb *= 0.99f;
+                        voicedProb =
+                            hmm2_.process(voicedProb, 1.f - voicedProb);
+                        ctxtVoiced.setOutput(voicedProb);
                     }
                 }
-            } else {
-                ctxt.setOutput(0);
             }
 
+            if (decimateId_ == 0) {
+                // advance decimated buffer
+                bufferDec_.nextId(1);
+                auto ctxtDec = dsp::BufferContext(ctxtPitch, bufferDec_);
+                nsdf_.process(ctxtDec, nsdfDL_);
+
+                if (!voiced_ || nConfirmPitch_ > 0) {
+                    auto peak = findNSDFPeriod();
+
+                    // compute probability of peak
+                    constexpr auto kPeakProb0 = -0.1f;
+                    constexpr auto kPeakProb1 = 0.45f;
+                    auto hasPeak =
+                        (peak.y - kPeakProb0) / (kPeakProb1 - kPeakProb0);
+                    hasPeak = std::max(0.f, hasPeak);
+
+                    constexpr auto kDriftProb0 = 3.f;
+                    constexpr auto kDriftProb1 = 0.2f;
+                    auto drift = downPeriod_ > 0.f
+                                     ? std::abs(peak.x - downPeriod_)
+                                     : 0.f;
+                    auto hasDrift =
+                        (drift - kDriftProb0) / (kDriftProb1 - kDriftProb0);
+                    hasDrift = std::clamp(hasDrift, 0.f, 1.f);
+
+                    if (peak.x < 4.f) {
+                        downProb_ = 0.f;
+                    } else {
+                        downPeriod_ = peak.x;
+                        period_     = kDecFactor * downPeriod_;
+                        downProb_   = hasPeak * hasDrift;
+                    }
+                }
+            }
+
+            if (!voiced_) {
+                // update voiced probability
+                auto voicedProb = ctxtVoiced.getInput();
+                voicedProb *= downProb_;
+                voicedProb = std::clamp(voicedProb, 0.f, 1.f);
+                voicedProb *= 0.99f;
+                voicedProb = hmm2_.process(voicedProb, 1.f - voicedProb);
+                ctxtVoiced.setOutput(voicedProb);
+
+                if (voicedProb > 0.8f) {
+                    std::cout << "start " << period_ << "\n";
+                    voiced_        = true;
+                    nConfirmPitch_ = 3 * static_cast<int>(std::ceil(period_));
+                    nsdfTrack_.clear();
+                    std::fill(std::begin(bufferData_), std::end(bufferData_),
+                              0.f);
+                    nsdfTrack_.setPeriod(period_);
+                }
+            }
+
+            else {
+            }
+
+            auto freq = period_ > 0.f ? 2.f / period_ : 0.f;
+            // TODO smooth req but reset when entering a new voiced sequence
+            // smoothFreq_.process(dsp::Context(&freq), smoothFreqState_);
+            ctxtPitch.setOutput(freq);
+
             decimateId_ = (decimateId_ + 1) % kDecFactor;
-            ctxt.next(1);
-        }
+        };
+
         buffer_.nextId(blockSize);
+
+        pitchOut += blockSize;
+        voicedOut += blockSize;
     }
 }
 

@@ -17,12 +17,13 @@ class VoiceBox
     static constexpr auto kMaxBlockSize       = 512;
     static constexpr auto kAnalysisWindowSize = 0.025f;
     static constexpr auto kMaxAnalysisMarkers = kMaxBlockSize;
+
     VoiceBox()
     {
         buffer_.setData(bufferData_);
-        constexpr auto kWarp = -0.757f;
         rls_.setForgetFactor(0.9995f);
     }
+
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
@@ -31,9 +32,11 @@ class VoiceBox
 
     void setPitchShift(float shift);
     void setFormantShift(float shift);
+    void setRange(PitchTracker::Range range);
 
     [[nodiscard]] float getPitchShift() const { return shift_; }
     [[nodiscard]] float getFormantShift() const { return formantShift_; }
+    [[nodiscard]] auto getRange() const { return pitchTracker_.getRange(); }
 
     [[nodiscard]] const std::atomic<float> &getAtomicFreq() const
     {
@@ -72,6 +75,7 @@ class VoiceBox
     float bufferData_[decltype(buffer_)::kSize]{};
 
     float pitchBuffer_[kMaxBlockSize]{};
+    float voicedBuffer_[kMaxBlockSize]{};
     std::atomic<float> atomicFreq_;
 };
 } // namespace DSP_ARCH_NAMESPACE

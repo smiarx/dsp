@@ -39,7 +39,7 @@ void VoiceBox::prepare(float sampleRate)
           {1.f, 0.f, 0.30865828f, 1.f, 1.82865434f, 1.51789266f},
           {1.f, 0.f, 0.69134172f, 1.f, 1.82865434f, 1.51789266f},
           {1.f, 0.f, 0.96193977f, 1.f, 1.82865434f, 1.51789266f}}}};
-    dcblocker_.fromAnalog(kSosAnalog, 60.f * freqScale);
+    dcblocker_.fromAnalog(kSosAnalog, 40.f * freqScale);
 }
 
 void VoiceBox::update(float shift, float formantShift)
@@ -61,6 +61,11 @@ void VoiceBox::setFormantShift(float formantShift)
     filter_.setWarpOut(barkScale(sampleRate_ / formantShift));
 }
 
+void VoiceBox::setRange(PitchTracker::Range range)
+{
+    pitchTracker_.setRange(range);
+}
+
 void VoiceBox::process(const float *const *__restrict in,
                        float *const *__restrict out, int count)
 {
@@ -74,20 +79,26 @@ void VoiceBox::process(const float *const *__restrict in,
     auto ctxt = dsp::Context(mout, count);
     CTXTRUN(ctxt) { dcblocker_.process(ctxt, dcblockerState_); };
 
-    auto pitch = pitchBuffer_;
+    auto pitch  = pitchBuffer_;
+    auto voiced = voicedBuffer_;
     while (count) {
         auto blockSize = std::min(kMaxBlockSize, count);
 
-        pitchTracker_.process(in, &pitch, blockSize);
+        float *pitchTrackOut[] = {pitch, voiced};
+        pitchTracker_.process(in, pitchTrackOut, blockSize);
 
         // set pitch atomic value to last pitch computed
-        atomicFreq_.store(pitch[blockSize - 1] * sampleRate_ * 0.5f);
+        auto storeFreq = pitch[blockSize - 1] * sampleRate_ * 0.5f;
+        storeFreq      = voiced[blockSize - 1] > 0.95f ? storeFreq : 0.f;
+        atomicFreq_.store(storeFreq);
 
-        auto ctxt      = dsp::BufferContext(mout, blockSize, buffer_);
-        auto ctxtPitch = dsp::Context(pitch, blockSize);
+        auto ctxt       = dsp::BufferContext(mout, blockSize, buffer_);
+        auto ctxtPitch  = dsp::Context(pitch, blockSize);
+        auto ctxtVoiced = dsp::Context(voiced, blockSize);
 
         CTXTRUN(ctxtPitch) { auto p = ctxtPitch.getInput(); };
 
+        int n = 0;
         CTXTRUN2(ctxt, ctxtPitch)
         {
             zffAnalysis_.process(ctxt, analysisDL_, [&, this](auto &marker) {
@@ -95,7 +106,7 @@ void VoiceBox::process(const float *const *__restrict in,
                 auto freq = ctxtPitch.getInput();
                 assert(marker.period_ >= 0.f);
 
-                if (freq > 0.f) {
+                if (voiced[n] > 0.4f) {
                     // ctxt.setOutput(ctxt.getInput()+2.f);
                     auto trackedPeriod = 2.f / freq;
                     while (marker.period_ > 1.1f * trackedPeriod) {
@@ -133,16 +144,18 @@ void VoiceBox::process(const float *const *__restrict in,
                 }
                 return true;
             });
+            ++n;
         };
 
+        n = 0;
         CTXTRUN2(ctxt, ctxtPitch)
         {
-            if (ctxtPitch.getInput() > 0.f) {
+            if (ctxtPitch.getInput() > 1e-6f) {
                 psola_.setFreq(ctxtPitch.getInput() * shift_);
                 // psola_.setFreq(atune(ctxtPitch.getInput() * shift_));
                 // psola_.setFreq(400.f/24000.f*shift_);
             }
-            if (!voiced_ && ctxtPitch.getInput() > 0.f) {
+            if (!voiced_ && voiced[n] > 0.4f) {
                 //// if there is no marker find one
                 // if (zffAnalysis_.getNumMarkers() == 0) {
                 //     auto period = 2.f / ctxtPitch.getInput();
@@ -167,14 +180,13 @@ void VoiceBox::process(const float *const *__restrict in,
                 // start psola synthesis
                 psola_.start(ctxt, zffAnalysis_);
                 voiced_ = true;
-            } else if (voiced_ && ctxtPitch.getInput() == 0.f) {
+            } else if (voiced_ && voiced[n] < 0.2f) {
                 // stop psola synthesis
                 psola_.stop(ctxt);
                 // zffAnalysis_.resetMarkers();
                 voiced_ = false;
             }
             auto x = ctxt.getInput();
-            synthDL_.write(ctxt, x);
 
             // x += noise_.process()*0.002f;
             // rls_.process(dsp::Context{&x}, warpAState1_, filter_);
@@ -188,14 +200,21 @@ void VoiceBox::process(const float *const *__restrict in,
             // cpyFilter.reconstruct(ctxt, warpRState_);
 
             psola_.process(ctxt, synthDL_, zffAnalysis_);
+            static float v = 0.f;
+            v += 0.001f * (voiced[n] - v);
+            x += (ctxt.getInput() - x) * v;
+            ctxt.setOutput(x);
 
             // ctxt.setOutput(noise_.process()*0.2f);
+
+            ++n;
         };
 
         count -= blockSize;
         buffer_.nextBlock(ctxt);
         mout += blockSize;
         pitch += blockSize;
+        voiced += blockSize;
     }
 }
 

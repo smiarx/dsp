@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dsp/filters/Amplitude.hpp"
 #include <dsp/analysis/ZeroCrossing.hpp>
 #include <dsp/core/Buffer.hpp>
 #include <dsp/filters/AdaptiveFilter.hpp>
@@ -31,9 +32,20 @@ class PitchTracker
 
     void prepare(float sampleRate);
 
-    float findNSDFPeriod(float zeroCrossing);
+    enum class Range {
+        kLow,
+        kMedium,
+        kHigh,
+    };
+
+    void setRange(Range range);
+    [[nodiscard]] Range getRange() const noexcept { return range_; }
 
   private:
+    Range range_{Range::kHigh};
+
+    dsp::interp::PolyPoint<float> findNSDFPeriod();
+
     dsp::va::OnePole<float, dsp::va::kLowPass> softLowpass_{};
     decltype(softLowpass_)::State softLowpassState_{};
 
@@ -44,15 +56,14 @@ class PitchTracker
     // decimate
     int decimateId_{};
 
-    // amp follower
-    dsp::OnePole<float> ampFollower_{};
-    decltype(ampFollower_)::State ampFollowerState_{};
+    float downPeriod_{};
+    float downProb_{1.f};
+    float period_{};
 
     // nsdf
     dsp::NSDF<float, 120> nsdf_{};
     decltype(nsdf_)::DL<0> nsdfDL_{};
-    float downPeriod_{};
-    float period_{};
+    float autoCorrecationThreshold_{0.84f};
 
     enum HarmonicJump {
         kJumpOctaveDown,
@@ -63,22 +74,30 @@ class PitchTracker
     } harmonicJumpType_{kNoJump};
     int harmonicJumpCounter_{};
 
+    // voiced detection
+    dsp::Amplitude<float> ampFollower_{};
+    decltype(ampFollower_)::State ampState_{};
+    decltype(ampFollower_)::State ampFilteredState_{};
     // zero crossing voicing detection
     dsp::ZeroCrossing<float> zeroCrossing_{};
-    dsp::OnePole<float> zeroCrossingFollower_{};
+    dsp::Amplitude<float> zeroCrossingFollower_{};
     decltype(zeroCrossingFollower_)::State zeroCrossingFollowerState_{};
-    float zeroCrossingBuffer_[kMaxBlockSize]{};
-    // voicing detection
+
     dsp::HMM2<float> hmm2_{0.92f};
 
     // track
-    dsp::NSDFTrack<float, 32, 960> nsdfTrack_{};
+    dsp::NSDFTrack<float, 8, 960> nsdfTrack_{};
     decltype(nsdfTrack_)::DL<0> nsdfTrackDL_{};
+
+    dsp::va::SVF<float, dsp::va::kLowPass> smoothFreq_{};
+    decltype(smoothFreq_)::State smoothFreqState_{};
 
     bool voiced_{};
     int nConfirmPitch_{};
 
-    dsp::Buffer<float, nextTo(nsdfDL_) + kMaxBlockSize> bufferDec_;
+    float freqScale_;
+
+    dsp::Buffer<float, nextTo(nsdfDL_) + kMaxBlockSize> bufferDec_{};
     std::array<float, decltype(bufferDec_)::kSize> bufferDecData_{};
 
     dsp::Buffer<float, nextTo(nsdfTrackDL_) + kMaxBlockSize> buffer_;
