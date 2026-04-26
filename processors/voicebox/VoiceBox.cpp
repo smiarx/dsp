@@ -161,7 +161,7 @@ void VoiceBox::process(const float *const *__restrict in,
                 voiced_ = true;
             } else if (voiced_ && voiced[n] < kPsolaHysteresisStop) {
                 // stop psola synthesis
-                psola_.stop(ctxt);
+                psola_.stop();
                 voiced_ = false;
             }
             if (voiced[n] > kGrainGenHysteresisStop) {

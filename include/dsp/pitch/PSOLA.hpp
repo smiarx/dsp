@@ -77,12 +77,11 @@ class PSOLA
         phase = -T(1) + synthPhase_ + shift_ / playRate_;
 
         //  center position of grain
-        auto grainPos = ctxt.getId() - phase * period;
+        auto grainPos = static_cast<T>(ctxt.getId()) - phase * period;
         delay         = ctxt.modDiff(grainPos, marker.position_);
 
         if (delay < T(0)) return;
 
-        // std::cout << 48000.f*rate << "\n";
         Grain newGrain{phase, rate, delay};
 
         grains_[nGrains_] = newGrain;
@@ -105,10 +104,7 @@ class PSOLA
         state_ = kOn;
     }
 
-    template <class Ctxt> void stop(Ctxt ctxt)
-    {
-        state_ = kWaitingForLastGrains;
-    }
+    void stop() { state_ = kWaitingForLastGrains; }
 
     template <class Ctxt, class DL, class Analysis>
     void process(Ctxt ctxt, DL delayline, Analysis analysis)
