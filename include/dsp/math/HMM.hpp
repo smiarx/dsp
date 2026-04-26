@@ -13,14 +13,13 @@ template <typename T> class HMM2
   public:
     HMM2(T transition) : transition_{transition} {}
 
+    void setTransition(T transition) { transition_ = transition; }
+
     T getState() const { return state_; };
 
-    void reset()
-    {
-        state_ = 0.f;
-    }
+    void reset() { state_ = 0.f; }
 
-    void process(T observation1, T observation2)
+    T process(T observation1, T observation2)
     {
         auto st  = state_ * transition_;
         auto ps2 = state_ + transition_ - st -
@@ -30,6 +29,7 @@ template <typename T> class HMM2
         auto ps2o = observation2 * ps2;  // probability state2 given observation
 
         state_ = ps1o / (ps1o + ps2o);
+        return state_;
     }
 
   private:
