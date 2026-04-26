@@ -161,7 +161,9 @@ template <typename T, size_t maxTau, size_t minTau = 2> class NSDF
 template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
 {
   public:
-    static constexpr auto kSize = N;
+    static constexpr auto kSize             = N;
+    static constexpr auto kMaximumPeakValue = T(.5);
+    static constexpr auto kMinimumPeakValue = T(-.5);
 
     template <size_t Offset = 0> using DL = DelayLine<2 * MaxLength, Offset>;
 
@@ -171,11 +173,12 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
         std::fill(std::begin(energy_), std::end(energy_), T(0));
     }
 
-    [[nodiscard]] auto getOffset() const { return offset_;}
+    [[nodiscard]] auto getOffset() const { return offset_; }
 
     void setPeriod(T period)
     {
-        offset_ = static_cast<size_t>(std::round(period - static_cast<float>(N) / T(2)));
+        offset_ = static_cast<size_t>(
+            std::round(period - static_cast<float>(N) / T(2)));
     }
 
     template <class Ctxt, class DL> void process(Ctxt ctxt, DL &delayline)
@@ -242,12 +245,14 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
 
         // interpolate peak
         dsp::interp::PolyPoint<T> peak;
-        if (maxId > 0 && maxId < N - 1 && energy_[maxId+1] > T(0) && energy_[maxId-1] > T(0)) {
+        if (maxId > 0 && maxId < N - 1 && energy_[maxId + 1] > T(0) &&
+            energy_[maxId - 1] > T(0)) {
             peak = extrema(interp::LagrangeParabolic{
                 getBin(maxId + 1), getBin(maxId), getBin(maxId - 1)});
             peak.x += maxPeriod;
         } else {
-            peak = {maxPeriod, maxAc / maxEnergy};
+            peak = {maxPeriod, kMinimumPeakValue};
+            return peak;
         }
 
         size_t newId;
@@ -258,7 +263,7 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
                 energy_[i] = energy_[i - 1];
             }
             newId = 0;
-        } else if (maxId > N/2 +1) {
+        } else if (maxId > N / 2 + 1) {
             offset_ -= 1;
             for (size_t i = 0; i < N - 1; ++i) {
                 ac_[i]     = ac_[i + 1];
@@ -266,6 +271,11 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
             }
             newId = N - 1;
         } else {
+            return peak;
+        }
+
+        if (offset_ + kSize / 2 >= MaxLength || offset_ - kSize / 2 == 0) {
+            peak.y = kMinimumPeakValue;
             return peak;
         }
 
