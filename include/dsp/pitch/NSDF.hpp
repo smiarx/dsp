@@ -257,6 +257,9 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
 
         size_t newId;
         if (maxId < N / 2) {
+            if (offset_ + kSize + 1 >= MaxLength) {
+                return peak;
+            }
             offset_ += 1;
             for (size_t i = N - 1; i > 0; --i) {
                 ac_[i]     = ac_[i - 1];
@@ -264,6 +267,9 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
             }
             newId = 0;
         } else if (maxId > N / 2 + 1) {
+            if (offset_ == 0) {
+                return peak;
+            }
             offset_ -= 1;
             for (size_t i = 0; i < N - 1; ++i) {
                 ac_[i]     = ac_[i + 1];
@@ -274,14 +280,15 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
             return peak;
         }
 
-        if (offset_ + kSize / 2 >= MaxLength || offset_ - kSize / 2 == 0) {
+        resetBin(newId, ctxt, delayline);
+
+        if (offset_ + kSize >= MaxLength || offset_ == 0) {
             peak.y = kMinimumPeakValue;
             return peak;
         }
 
         assert(!std::isnan(peak.x));
 
-        resetBin(newId, ctxt, delayline);
         return peak;
     }
 
