@@ -29,14 +29,14 @@ void PitchTracker::prepare(float sampleRate)
 
     zeroCrossingFollower_.setRate(0.01f, 1.f / (0.002f * sampleRate));
 
-    ampFollower_.setRate(0.01f, 1.f/(0.005f*sampleRate));
+    ampFollower_.setRate(0.01f, 1.f / (0.005f * sampleRate));
 }
 
 float PitchTracker::findNSDFPeriod(float zeroCrossing)
 {
     constexpr auto kK = 0.98f;
 
-    auto nPeaks = nsdf_.updatePeaks(1e-7f);
+    auto nPeaks = nsdf_.updatePeaks(1e-5f);
     auto peaks  = nsdf_.getPeaks();
 
     // find max peak
@@ -61,11 +61,11 @@ float PitchTracker::findNSDFPeriod(float zeroCrossing)
 
             bool hasJumped = false;
             if (voiced_ && downPeriod_ > 0.f) {
-                auto ratio        = downPeriod_ / period;
+                auto ratio = downPeriod_ / period;
 
                 HarmonicJump jump = kNoJump;
                 float mult        = 1.f;
-                auto newId = i;
+                auto newId        = i;
                 if (closeTo(ratio, 2.f, 0.5f)) {
                     std::cout << "harmonic jump *2\n";
                     jump = kJumpOctaveUp;
@@ -83,21 +83,17 @@ float PitchTracker::findNSDFPeriod(float zeroCrossing)
                     newId -= 1;
                 }
 
-                if(jump != kNoJump)
-                {
+                if (jump != kNoJump) {
                     auto multPeriod = mult * period;
-                    if(newId < nPeaks && newId >= 0)
-                    {
-                        auto newPeriod  = peaks[newId].x;
+                    if (newId < nPeaks && newId >= 0) {
+                        auto newPeriod = peaks[newId].x;
                         if (closeTo((newPeriod - multPeriod) / period, 0.f,
                                     0.2f)) {
                             period = newPeriod;
                         } else {
                             period = multPeriod;
                         }
-                    }
-                    else
-                    {
+                    } else {
                         period = multPeriod;
                     }
 
@@ -138,30 +134,29 @@ float PitchTracker::findNSDFPeriod(float zeroCrossing)
                 }
             }
 
-            auto diffPeriod =
-                std::max(0.f, 1.5f - std::abs(period - downPeriod_) * 0.1f);
+            auto diffPeriod = std::max(
+                0.f, 1.5f - std::abs(period - downPeriod_) / downPeriod_);
             y *= diffPeriod;
             downPeriod_ = period;
 
-            y *= std::max(0.f, 1.f - (zeroCrossing - 0.1f) / 0.3f);
+            y *= std::max(0.f, 1.f - (zeroCrossing - 0.1f) / 0.5f);
 
             y = std::min(1.f, y);
             hmm2_.process(y, 1.f - y);
 #ifndef NDEBUG
-            //std::cout << "{" << period << ", " << peaks[i].y << "}\t"
-            //          << zeroCrossing << " \t" << hmm2_.getState() << "\t";
-            //std::cout << "[";
-            //for (int j = 0; j < nPeaks; ++j) {
-            //    std::cout << "{" << peaks[j].x << ", " << peaks[j].y << "}";
-            //}
-            //std::cout << "] \n";
+            // std::cout << "{" << period << ", " << peaks[i].y << "}\t"
+            //           << zeroCrossing << " \t" << hmm2_.getState() << "\t";
+            // std::cout << "[";
+            // for (int j = 0; j < nPeaks; ++j) {
+            //     std::cout << "{" << peaks[j].x << ", " << peaks[j].y << "}";
+            // }
+            // std::cout << "] \n";
 #endif
             if (hmm2_.getState() > 0.5f) {
                 if (hasJumped && voiced_) {
                     // init tracking
-                    period_ = period * kDecFactor;
-                    nConfirmPitch_ =
-                        3 * static_cast<int>(std::ceil(period_));
+                    period_        = period * kDecFactor;
+                    nConfirmPitch_ = 3 * static_cast<int>(std::ceil(period_));
                     nsdfTrack_.clear();
                     std::fill(std::begin(bufferData_), std::end(bufferData_),
                               0.f);
@@ -209,7 +204,7 @@ void PitchTracker::process(const float *const *__restrict in,
         for (int n = 0; n < blockSize; ++n) {
 
             auto amp = ctxt.getInput();
-            amp = std::abs(amp);
+            amp      = std::abs(amp);
             ampFollower_.process(dsp::Context(&amp), ampFollowerState_);
 
             if (decimateId_ == 0) {
@@ -218,7 +213,7 @@ void PitchTracker::process(const float *const *__restrict in,
                 nsdf_.process(ctxtDec, nsdfDL_);
                 if (!voiced_) {
                     auto period = findNSDFPeriod(zeroCrossingBuffer_[n]);
-                    period_ = kDecFactor * period;
+                    period_     = kDecFactor * period;
 
                     if (period > 0) {
                         voiced_ = true;
@@ -258,14 +253,15 @@ void PitchTracker::process(const float *const *__restrict in,
                     ctxt.setOutput(freq);
 
                     // probability
-                    auto y  = peak.y;
-                    y       = (y + 0.25f) * 2.f;
-                    //auto zc = zeroCrossingBuffer_[n];
-                    //y *= std::max(0.f, 1.f - (zc - 0.1f) / 0.4f);
-                    y *= std::min(1.f, amp*1e2f);
+                    auto y = peak.y;
+                    y      = (y + 0.25f) * 2.f;
+                    // auto zc = zeroCrossingBuffer_[n];
+                    // y *= std::max(0.f, 1.f - (zc - 0.1f) / 0.4f);
+                    y *= std::min(1.f, amp * 1e2f);
                     if (y < 0.5f) {
 #ifndef NDEBUG
-                        std::cout << "stop " << peak.y << " amp:" << amp << "\n";
+                        std::cout << "stop " << peak.y << " amp:" << amp
+                                  << "\n";
 #endif
                         voiced_ = false;
                         // reset hmm

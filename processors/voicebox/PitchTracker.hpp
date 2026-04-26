@@ -1,7 +1,6 @@
 #pragma once
 
-#include "dsp/analysis/ZeroCrossing.hpp"
-#include "dsp/filters/Notch.hpp"
+#include <dsp/analysis/ZeroCrossing.hpp>
 #include <dsp/core/Buffer.hpp>
 #include <dsp/filters/AdaptiveFilter.hpp>
 #include <dsp/filters/IIRFilter.hpp>
@@ -62,7 +61,7 @@ class PitchTracker
         kJump3rdHarmonicUp,
         kNumJumps,
     } harmonicJumpType_{kNoJump};
-    int harmonicJumpCounter_ {};
+    int harmonicJumpCounter_{};
 
     // zero crossing voicing detection
     dsp::ZeroCrossing<float> zeroCrossing_{};
@@ -73,7 +72,7 @@ class PitchTracker
     dsp::HMM2<float> hmm2_{0.92f};
 
     // track
-    dsp::NSDFTrack<float, 16, 960> nsdfTrack_{};
+    dsp::NSDFTrack<float, 32, 960> nsdfTrack_{};
     decltype(nsdfTrack_)::DL<0> nsdfTrackDL_{};
 
     bool voiced_{};

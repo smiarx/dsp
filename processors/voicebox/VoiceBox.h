@@ -16,7 +16,7 @@ class VoiceBox
   public:
     static constexpr auto kMaxBlockSize       = 512;
     static constexpr auto kAnalysisWindowSize = 0.025f;
-    static constexpr auto kMaxAnalysisMarkers = 32;
+    static constexpr auto kMaxAnalysisMarkers = kMaxBlockSize;
     VoiceBox()
     {
         buffer_.setData(bufferData_);
@@ -30,19 +30,22 @@ class VoiceBox
     void prepare(float sampleRate);
 
     void setPitchShift(float shift);
-    void setFormantShift(float shift); 
+    void setFormantShift(float shift);
 
-    [[nodiscard]] float getPitchShift() const { return shift_;}
-    [[nodiscard]] float getFormantShift() const { return formantShift_;}
+    [[nodiscard]] float getPitchShift() const { return shift_; }
+    [[nodiscard]] float getFormantShift() const { return formantShift_; }
 
-    [[nodiscard]] const std::atomic<float>& getAtomicFreq() const { return atomicFreq_;}
+    [[nodiscard]] const std::atomic<float> &getAtomicFreq() const
+    {
+        return atomicFreq_;
+    }
 
   private:
     bool voiced_{};
     float sampleRate_{};
 
     // preprocess
-    dsp::va::OnePole<float, dsp::va::kHighPass> dcblocker_{};
+    dsp::IIRFilter<float, 8> dcblocker_{};
     decltype(dcblocker_)::State dcblockerState_{};
 
     // pitch tracking

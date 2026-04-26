@@ -25,7 +25,6 @@ void VoiceBox::prepare(float sampleRate)
     pitchTracker_.prepare(sampleRate);
 
     auto freqScale = 2.f / sampleRate;
-    dcblocker_.setFreq(50.f * freqScale);
 
     sampleRate_ = sampleRate;
     zffAnalysis_.setWindowSize(
@@ -33,12 +32,19 @@ void VoiceBox::prepare(float sampleRate)
 
     filter_.setWarpIn(barkScale(sampleRate));
     filter_.setWarpOut(barkScale(sampleRate));
+
+    /* signal.cheby2(8,80,1,"high", analog=True, output="sos") */
+    static constexpr decltype(dcblocker_)::SOS kSosAnalog = {
+        {{{1.f, 0.f, 0.03806023f, 1.f, 2.15704486f, 1.24729461f},
+          {1.f, 0.f, 0.30865828f, 1.f, 1.82865434f, 1.51789266f},
+          {1.f, 0.f, 0.69134172f, 1.f, 1.82865434f, 1.51789266f},
+          {1.f, 0.f, 0.96193977f, 1.f, 1.82865434f, 1.51789266f}}}};
+    dcblocker_.fromAnalog(kSosAnalog, 60.f * freqScale);
 }
 
 void VoiceBox::update(float shift, float formantShift)
 {
-    if (shift != getPitchShift())
-    {
+    if (shift != getPitchShift()) {
         setPitchShift(shift);
     }
     if (formantShift != getFormantShift()) {
@@ -46,16 +52,13 @@ void VoiceBox::update(float shift, float formantShift)
     }
 }
 
-void VoiceBox::setPitchShift(float shift)
-{
-    shift_ = shift;
-}
+void VoiceBox::setPitchShift(float shift) { shift_ = shift; }
 
 void VoiceBox::setFormantShift(float formantShift)
 {
-        formantShift_ = formantShift;
-        psola_.setPlayRate(formantShift);
-        filter_.setWarpOut(barkScale(sampleRate_ / formantShift));
+    formantShift_ = formantShift;
+    psola_.setPlayRate(formantShift);
+    filter_.setWarpOut(barkScale(sampleRate_ / formantShift));
 }
 
 void VoiceBox::process(const float *const *__restrict in,
@@ -78,14 +81,12 @@ void VoiceBox::process(const float *const *__restrict in,
         pitchTracker_.process(in, &pitch, blockSize);
 
         // set pitch atomic value to last pitch computed
-        atomicFreq_.store(pitch[blockSize-1]*sampleRate_*0.5f);
+        atomicFreq_.store(pitch[blockSize - 1] * sampleRate_ * 0.5f);
 
         auto ctxt      = dsp::BufferContext(mout, blockSize, buffer_);
         auto ctxtPitch = dsp::Context(pitch, blockSize);
 
-        CTXTRUN(ctxtPitch) {
-            auto p = ctxtPitch.getInput();
-        };
+        CTXTRUN(ctxtPitch) { auto p = ctxtPitch.getInput(); };
 
         CTXTRUN2(ctxt, ctxtPitch)
         {
@@ -124,7 +125,6 @@ void VoiceBox::process(const float *const *__restrict in,
                         marker.position_ =
                             ctxt.modAdd(lastMarker.position_, marker.period_);
                         assert(marker.period_ > 0.f);
-                        assert(marker.period_ < 1000);
 
                         // ctxt.setOutput(ctxt.getInput()+2.f);
                         return true;
@@ -144,21 +144,21 @@ void VoiceBox::process(const float *const *__restrict in,
             }
             if (!voiced_ && ctxtPitch.getInput() > 0.f) {
                 //// if there is no marker find one
-                //if (zffAnalysis_.getNumMarkers() == 0) {
-                //    auto period = 2.f / ctxtPitch.getInput();
-                //    // find maximum peak
-                //    float peakVal{};
-                //    int peakId{};
-                //    for (int i = 1; i < static_cast<int>(period); ++i) {
-                //        auto val = analysisDL_.read(ctxt, i);
-                //        if (val > peakVal) {
-                //            peakId  = i;
-                //            peakVal = val;
-                //        }
-                //    }
-                //    zffAnalysis_.addMarker(
-                //        {ctxt.idDiff(static_cast<float>(peakId)), period});
-                //}
+                // if (zffAnalysis_.getNumMarkers() == 0) {
+                //     auto period = 2.f / ctxtPitch.getInput();
+                //     // find maximum peak
+                //     float peakVal{};
+                //     int peakId{};
+                //     for (int i = 1; i < static_cast<int>(period); ++i) {
+                //         auto val = analysisDL_.read(ctxt, i);
+                //         if (val > peakVal) {
+                //             peakId  = i;
+                //             peakVal = val;
+                //         }
+                //     }
+                //     zffAnalysis_.addMarker(
+                //         {ctxt.idDiff(static_cast<float>(peakId)), period});
+                // }
 
                 // set period of last marker
                 auto period = 2.f / ctxtPitch.getInput();
