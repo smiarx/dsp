@@ -170,7 +170,6 @@ class PSOLA
 
             x += grainValue * fadeValue;
 
-            auto phase = grain.phase_;
             grain.phase_ += grain.rate_ * playRate_;
             grain.delay_ += T(1) - playRate_;
         }
