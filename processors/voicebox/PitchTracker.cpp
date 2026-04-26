@@ -157,7 +157,8 @@ dsp::interp::PolyPoint<float> PitchTracker::findNSDFPeriod()
         }
     }
 
-    return {};
+    constexpr auto kMinPeakY = -.5f;
+    return {0, kMinPeakY};
 }
 
 float PitchTracker::smoothVoicedProbability(float p)
