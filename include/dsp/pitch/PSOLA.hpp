@@ -5,7 +5,6 @@
 #include <dsp/cpu/infos.h>
 #include <dsp/delay/Delay.hpp>
 #include <dsp/resampling/Windows.hpp>
-#include <iostream>
 
 namespace dsp
 {
@@ -24,9 +23,8 @@ class PSOLA
 
     enum State {
         kOff,
-        kFadeIn,
+        kWaitingForLastGrains,
         kOn,
-        kFadeOut,
     };
 
     struct Grain {
@@ -48,8 +46,6 @@ class PSOLA
         assert(rate > T(0));
         playRate_ = rate;
     }
-
-    const auto &getFade() const { return fade_; }
 
     auto getState() const { return state_; }
 
@@ -109,11 +105,8 @@ class PSOLA
             while (synthPhase_ < T(-1)) synthPhase_ += T(1);
             // fade_.rate_ = synthRate_/(T(1)+synthPhase_);
             fade_.value_ = -T(1) + synthPhase_;
-        } else {
-            fade_.value_ = std::max(-1.f, -fade_.value_);
-            // fade_.rate_ = T(1)/period;
         }
-        state_ = kFadeIn;
+        state_ = kOn;
 
         // addGrain(ctxt, analysis);
         // fade_.rate_ = grains_[0].rate_ * T(0.5);
@@ -121,10 +114,7 @@ class PSOLA
 
     template <class Ctxt> void stop(Ctxt ctxt)
     {
-        state_                          = kFadeOut;
-        fade_.value_                    = std::max(0.f, -fade_.value_);
-        constexpr auto kDefaultFadeRate = T(0.02);
-        fade_.rate_                     = kDefaultFadeRate;
+        state_ = kWaitingForLastGrains;
         // if (nGrains_ > 0) fade_.rate_ = grains_[0].rate_;
         // else {
         //     constexpr auto kDefaultFadeRate = T(0.02);
@@ -135,7 +125,10 @@ class PSOLA
     template <class Ctxt, class DL, class Analysis>
     void process(Ctxt ctxt, DL delayline, Analysis analysis)
     {
+        delayline.write(ctxt, ctxt.getInput());
+
         if (state_ == kOff) {
+            ctxt.setOutput(T(0));
             return;
         }
 
@@ -144,7 +137,9 @@ class PSOLA
             synthPhase_ + marker.period_ * synthRate_ / playRate_;
         if (currentPhase > T(1)) {
             synthPhase_ -= T(1);
-            addGrain(ctxt, analysis);
+            if (state_ == kOn) {
+                addGrain(ctxt, analysis);
+            }
         }
 
         auto x = T(0);
@@ -155,6 +150,12 @@ class PSOLA
                 // delete grain (swap last)
                 grains_[gId] = grains_[--nGrains_];
                 --gId;
+
+                // stop if waiting for last grains
+                if (nGrains_ == 0 && state_ == kWaitingForLastGrains) {
+                    state_ = kOff;
+                }
+
                 continue;
             }
 
@@ -168,42 +169,11 @@ class PSOLA
             }
 
             x += grainValue * fadeValue;
-            // x += fadeValue;//
 
+            auto phase = grain.phase_;
             grain.phase_ += grain.rate_ * playRate_;
             grain.delay_ += T(1) - playRate_;
         }
-
-        T fadeValue;
-        if (state_ == kFadeIn || state_ == kFadeOut) {
-            // fade_.value_ += fade_.rate_;
-            if (state_ == kFadeIn) {
-                fade_.value_ += synthRate_ * T(.5);
-            } else if (state_ == kFadeOut) {
-                fade_.value_ += fade_.rate_;
-            }
-            auto value = fade_.value_;
-            value      = std::max(T(-1), value);
-            if (state_ == kFadeIn && value > T(0)) {
-                value  = T(0);
-                state_ = kOn;
-            } else if (state_ == kFadeOut && value > T(1)) {
-                value    = T(1);
-                state_   = kOff;
-                nGrains_ = 0;
-            }
-            // TODO
-            fadeValue = T(1) - Window::generate(value);
-        } else {
-            fadeValue = T(0);
-        }
-
-        // x += fadeValue * (ctxt.getInput() - x);
-        x += fadeValue * (ctxt.getInput());
-
-        static T lastValue = 0.f;
-        if (std::abs(lastValue - x) > 0.5f) std::cout << "hello\n";
-        lastValue = x;
 
         ctxt.setOutput(x);
 
