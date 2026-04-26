@@ -239,6 +239,14 @@ void PitchTracker::process(const float *const *__restrict in,
                 nsdfTrack_.process(ctxtPitch, nsdfTrackDL_);
 
                 if (nConfirmPitch_ > 0) {
+                    // check if down period has shifted
+                    auto periodDiff = period_ - nsdfTrack_.getPeriod();
+                    if (std::abs(periodDiff) > 0.5f) {
+                        if (periodDiff > 0.f)
+                            nsdfTrack_.shiftUp(ctxtPitch, nsdfTrackDL_);
+                        else
+                            nsdfTrack_.shiftDown(ctxtPitch, nsdfTrackDL_);
+                    }
                     // update voiced probability
                     auto voicedProb = ctxtVoiced.getInput();
                     voicedProb *= downProb_;

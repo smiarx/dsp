@@ -177,8 +177,13 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
 
     void setPeriod(T period)
     {
-        offset_ = static_cast<size_t>(
-            std::round(period - static_cast<float>(N) / T(2)));
+        offset_ =
+            static_cast<size_t>(std::round(period - static_cast<T>(N) / T(2)));
+    }
+
+    T getPeriod() const noexcept
+    {
+        return static_cast<T>(offset_) + static_cast<T>(N) / T(2);
     }
 
     template <class Ctxt, class DL> void process(Ctxt ctxt, DL &delayline)
@@ -255,36 +260,10 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
             return peak;
         }
 
-        size_t newId;
         if (maxId < N / 2) {
-            if (offset_ + kSize + 1 >= MaxLength) {
-                return peak;
-            }
-            offset_ += 1;
-            for (size_t i = N - 1; i > 0; --i) {
-                ac_[i]     = ac_[i - 1];
-                energy_[i] = energy_[i - 1];
-            }
-            newId = 0;
+            shiftUp(ctxt, delayline);
         } else if (maxId > N / 2 + 1) {
-            if (offset_ == 0) {
-                return peak;
-            }
-            offset_ -= 1;
-            for (size_t i = 0; i < N - 1; ++i) {
-                ac_[i]     = ac_[i + 1];
-                energy_[i] = energy_[i + 1];
-            }
-            newId = N - 1;
-        } else {
-            return peak;
-        }
-
-        resetBin(newId, ctxt, delayline);
-
-        if (offset_ + kSize >= MaxLength || offset_ == 0) {
-            peak.y = kMinimumPeakValue;
-            return peak;
+            shiftDown(ctxt, delayline);
         }
 
         assert(!std::isnan(peak.x));
@@ -293,6 +272,31 @@ template <typename T, size_t N = 8, size_t MaxLength = 600> class NSDFTrack
     }
 
     [[nodiscard]] auto getBin(size_t id) const { return ac_[id] / energy_[id]; }
+
+    template <class Ctxt, class DL> void shiftUp(Ctxt ctxt, DL delayline)
+    {
+        if (offset_ + kSize + 1 >= MaxLength) {
+            return;
+        }
+        offset_ += 1;
+        for (size_t i = N - 1; i > 0; --i) {
+            ac_[i]     = ac_[i - 1];
+            energy_[i] = energy_[i - 1];
+        }
+        resetBin(0, ctxt, delayline);
+    }
+    template <class Ctxt, class DL> void shiftDown(Ctxt ctxt, DL delayline)
+    {
+        if (offset_ == 0) {
+            return;
+        }
+        offset_ -= 1;
+        for (size_t i = 0; i < N - 1; ++i) {
+            ac_[i]     = ac_[i + 1];
+            energy_[i] = energy_[i + 1];
+        }
+        resetBin(N - 1, ctxt, delayline);
+    }
 
     template <class Ctxt, class DL>
     void resetBin(size_t newId, Ctxt ctxt, DL delayline)
