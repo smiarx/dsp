@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PitchTracker.hpp"
+#include "Scale.hpp"
 #include <atomic>
 #include <dsp/analysis/ZFF.hpp>
 #include <dsp/generators/GrainGenerator.hpp>
@@ -33,15 +34,22 @@ class VoiceBox
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
-    void update(float shift, float formantShift);
+    void update(float shift, float formantShift, float correctSpeed,
+                float a4Frequency);
     void prepare(float sampleRate);
 
     void setPitchShift(float shift);
     void setFormantShift(float shift);
+    void setCorrectSpeed(float time);
+    void setA4Frequency(float freq);
+    void setScale(Scale scale);
     void setRange(PitchTracker::Range range);
 
     [[nodiscard]] float getPitchShift() const { return shift_; }
     [[nodiscard]] float getFormantShift() const { return formantShift_; }
+    [[nodiscard]] float getCorrectSpeed() const { return correctSpeed_; }
+    [[nodiscard]] float getA4Frequency() const { return a4Frequency_; }
+    [[nodiscard]] Scale getScale() const { return scale_; }
     [[nodiscard]] auto getRange() const { return pitchTracker_.getRange(); }
 
     [[nodiscard]] const std::atomic<float> &getAtomicFreq() const
@@ -50,8 +58,15 @@ class VoiceBox
     }
 
   private:
+    float shift_{1.f};
+    float formantShift_{1.f};
+    float correctSpeed_{0.01f};
+    float a4Frequency_{440.f};
+    Scale scale_{};
+
     bool voiced_{};
     float sampleRate_{};
+    float freqScale_{};
 
     // preprocess
     dsp::IIRFilter<float, 8> dcblocker_{};
@@ -66,8 +81,14 @@ class VoiceBox
     dsp::ZFF<float, kMaxAnalysisMarkers> zffAnalysis_{};
     dsp::DelayLine<1200> analysisDL_{};
 
-    float shift_{1.f};
-    float formantShift_{1.f};
+    // compute pitch shift
+    float computePitchShift(float inFreq);
+    float pitchBias_{};
+    float scalePitches_[13]{};
+    size_t nScalePitches_{};
+    dsp::OnePole<float> correctionFilter_{};
+    decltype(correctionFilter_)::State correctionFilterState_{};
+
     dsp::PSOLA<float, 16> psola_{};
     dsp::DelayLine<10000, nextTo(analysisDL_)> synthDL_{};
     dsp::GrainGenerator<float, 16> grainGenerator_{};

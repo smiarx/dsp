@@ -13,6 +13,8 @@ void VoiceBox::prepare(float sampleRate)
     auto freqScale = 2.f / sampleRate;
 
     sampleRate_ = sampleRate;
+    freqScale_  = freqScale;
+
     zffAnalysis_.setWindowSize(
         static_cast<int>(sampleRate * kAnalysisWindowSize));
 
@@ -28,9 +30,14 @@ void VoiceBox::prepare(float sampleRate)
     grainGenerator_.start();
 
     voicedSmooth_.setRate(0.01f, 1.f / (sampleRate * 0.05f));
+
+    setCorrectSpeed(correctSpeed_);
+    setA4Frequency(a4Frequency_);
+    setScale(scale_);
 }
 
-void VoiceBox::update(float shift, float formantShift)
+void VoiceBox::update(float shift, float formantShift, float correctSpeed,
+                      float a4Frequency)
 {
     if (shift != getPitchShift()) {
         setPitchShift(shift);
@@ -38,13 +45,15 @@ void VoiceBox::update(float shift, float formantShift)
     if (formantShift != getFormantShift()) {
         setFormantShift(formantShift);
     }
+    if (correctSpeed != getCorrectSpeed()) {
+        setCorrectSpeed(correctSpeed);
+    }
+    if (a4Frequency != getA4Frequency()) {
+        setA4Frequency(a4Frequency);
+    }
 }
 
-void VoiceBox::setPitchShift(float shift)
-{
-    shift_ = shift;
-    psola_.setShift(shift);
-}
+void VoiceBox::setPitchShift(float shift) { shift_ = shift; }
 
 void VoiceBox::setFormantShift(float formantShift)
 {
@@ -53,10 +62,70 @@ void VoiceBox::setFormantShift(float formantShift)
     grainGenerator_.setPlayRate(formantShift);
 }
 
+void VoiceBox::setCorrectSpeed(float time)
+{
+    std::cout << time << "\n";
+    correctSpeed_ = time;
+    correctionFilter_.setRate(0.01f, 1.f / (sampleRate_ * time));
+}
+
+void VoiceBox::setA4Frequency(float freq)
+{
+    a4Frequency_ = freq;
+    pitchBias_   = std::log2(freq * freqScale_);
+}
+
+void VoiceBox::setScale(Scale scale)
+{
+    scale_         = scale;
+    nScalePitches_ = 0;
+    for (int n = 0; n < kNumNotes; ++n) {
+        auto note = static_cast<Note>(n);
+        if (scale_ & note) {
+            scalePitches_[nScalePitches_] =
+                static_cast<float>(n) / static_cast<float>(kNumNotes);
+            ++nScalePitches_;
+        }
+    }
+    scalePitches_[nScalePitches_] = scalePitches_[0] + 1.f;
+    ++nScalePitches_;
+
+    for (int i = 0; i < nScalePitches_; ++i) {
+        std::cout << scalePitches_[i] << " - ";
+    }
+    std::cout << "\n";
+}
+
 void VoiceBox::setRange(PitchTracker::Range range)
 {
     pitchTracker_.setRange(range);
 }
+
+float VoiceBox::computePitchShift(float inFreq)
+{
+    auto pitch         = std::log2(inFreq) - pitchBias_;
+    auto octave        = std::floor(pitch);
+    auto pitchInOctave = pitch - octave;
+
+    float minDiff     = std::abs(scalePitches_[0] - pitchInOctave);
+    float chosenPitch = scalePitches_[0];
+    for (size_t i = 1; i < nScalePitches_; ++i) {
+        auto diff = std::abs(scalePitches_[i] - pitchInOctave);
+        if (diff < minDiff) {
+            minDiff     = diff;
+            chosenPitch = scalePitches_[i];
+        }
+    }
+
+    chosenPitch += octave;
+
+    // smooth filter pitch
+    correctionFilter_.process(dsp::Context(&chosenPitch),
+                              correctionFilterState_);
+
+    auto shift = std::exp2(chosenPitch - pitch);
+    return shift;
+};
 
 void VoiceBox::process(const float *const *__restrict in,
                        float *const *__restrict out, int count)
@@ -149,7 +218,11 @@ void VoiceBox::process(const float *const *__restrict in,
             voicedSmooth_.process(dsp::Context(&voiced[n]), voicedSmoothState_);
 
             if (ctxtPitch.getInput() > 1e-6f) {
-                psola_.setFreq(ctxtPitch.getInput());
+                auto inFreq = ctxtPitch.getInput();
+                auto shift  = computePitchShift(inFreq);
+                psola_.setFreq(inFreq);
+                psola_.setShift(shift * shift_);
+                psola_.setPlayRate(shift * formantShift_);
             }
             if (!voiced_ && voiced[n] > kPsolaHysteresisStart) {
                 // set period of last marker
