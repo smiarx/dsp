@@ -86,7 +86,7 @@ class PitchTracker
     dsp::HMM2<float> hmm2_{0.92f};
 
     // track
-    dsp::NSDFTrack<float, 8, 960> nsdfTrack_{};
+    dsp::NSDFTrack<float, 16, 960> nsdfTrack_{};
     decltype(nsdfTrack_)::DL<0> nsdfTrackDL_{};
 
     dsp::va::SVF<float, dsp::va::kLowPass> smoothFreq_{};

@@ -40,6 +40,9 @@ void VoiceBox::prepare(float sampleRate)
           {1.f, 0.f, 0.69134172f, 1.f, 1.82865434f, 1.51789266f},
           {1.f, 0.f, 0.96193977f, 1.f, 1.82865434f, 1.51789266f}}}};
     dcblocker_.fromAnalog(kSosAnalog, 40.f * freqScale);
+
+    grainGenerator_.setFreq(100.f * freqScale);
+    grainGenerator_.start();
 }
 
 void VoiceBox::update(float shift, float formantShift)
@@ -58,6 +61,7 @@ void VoiceBox::setFormantShift(float formantShift)
 {
     formantShift_ = formantShift;
     psola_.setPlayRate(formantShift);
+    grainGenerator_.setPlayRate(formantShift);
     filter_.setWarpOut(barkScale(sampleRate_ / formantShift));
 }
 
@@ -106,7 +110,7 @@ void VoiceBox::process(const float *const *__restrict in,
                 auto freq = ctxtPitch.getInput();
                 assert(marker.period_ >= 0.f);
 
-                if (voiced[n] > 0.4f) {
+                if (voiced[n] > 0.9f) {
                     // ctxt.setOutput(ctxt.getInput()+2.f);
                     auto trackedPeriod = 2.f / freq;
                     while (marker.period_ > 1.1f * trackedPeriod) {
@@ -150,29 +154,14 @@ void VoiceBox::process(const float *const *__restrict in,
         n = 0;
         CTXTRUN2(ctxt, ctxtPitch)
         {
+            static float v = 0.f;
+            voiced[n]      = v += 0.002f * (voiced[n] - v);
             if (ctxtPitch.getInput() > 1e-6f) {
                 psola_.setFreq(ctxtPitch.getInput() * shift_);
                 // psola_.setFreq(atune(ctxtPitch.getInput() * shift_));
                 // psola_.setFreq(400.f/24000.f*shift_);
             }
-            if (!voiced_ && voiced[n] > 0.4f) {
-                //// if there is no marker find one
-                // if (zffAnalysis_.getNumMarkers() == 0) {
-                //     auto period = 2.f / ctxtPitch.getInput();
-                //     // find maximum peak
-                //     float peakVal{};
-                //     int peakId{};
-                //     for (int i = 1; i < static_cast<int>(period); ++i) {
-                //         auto val = analysisDL_.read(ctxt, i);
-                //         if (val > peakVal) {
-                //             peakId  = i;
-                //             peakVal = val;
-                //         }
-                //     }
-                //     zffAnalysis_.addMarker(
-                //         {ctxt.idDiff(static_cast<float>(peakId)), period});
-                // }
-
+            if (!voiced_ && voiced[n] > 0.2f) {
                 // set period of last marker
                 auto period = 2.f / ctxtPitch.getInput();
                 zffAnalysis_.getClosestMarker(ctxt).period_ = period;
@@ -185,6 +174,12 @@ void VoiceBox::process(const float *const *__restrict in,
                 psola_.stop(ctxt);
                 // zffAnalysis_.resetMarkers();
                 voiced_ = false;
+            }
+            if (voiced[n] > 0.99f) {
+                grainGenerator_.stop();
+            }
+            if (voiced[n] < 0.6f) {
+                grainGenerator_.start();
             }
             auto x = ctxt.getInput();
 
@@ -200,12 +195,10 @@ void VoiceBox::process(const float *const *__restrict in,
             // cpyFilter.reconstruct(ctxt, warpRState_);
 
             psola_.process(ctxt, synthDL_, zffAnalysis_);
-            static float v = 0.f;
-            v += 0.001f * (voiced[n] - v);
-            x += (ctxt.getInput() - x) * v;
+            grainGenerator_.process(dsp::BufferContext(&x, 1, ctxt.getBuffer()),
+                                    synthDL_);
+            x += (ctxt.getInput() - x) * voiced[n];
             ctxt.setOutput(x);
-
-            // ctxt.setOutput(noise_.process()*0.2f);
 
             ++n;
         };

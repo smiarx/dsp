@@ -4,6 +4,7 @@
 #include "dsp/generators/Noise.hpp"
 #include <atomic>
 #include <dsp/analysis/ZFF.hpp>
+#include <dsp/generators/GrainGenerator.hpp>
 #include <dsp/pitch/PSOLA.hpp>
 
 namespace processors
@@ -70,6 +71,7 @@ class VoiceBox
     float formantShift_{1.f};
     dsp::PSOLA<float, 16> psola_{};
     dsp::DelayLine<10000, nextTo(analysisDL_)> synthDL_{};
+    dsp::GrainGenerator<float, 16> grainGenerator_{};
 
     dsp::Buffer<float, nextTo(synthDL_) + kMaxBlockSize> buffer_{};
     float bufferData_[decltype(buffer_)::kSize]{};
