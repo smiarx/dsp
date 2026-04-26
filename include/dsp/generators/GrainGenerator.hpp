@@ -1,9 +1,9 @@
 #pragma once
 
-#include "dsp/delay/Delay.hpp"
 #include <cstddef>
 #include <dsp/core/Buffer.hpp>
 #include <dsp/cpu/defines.h>
+#include <dsp/delay/Delay.hpp>
 #include <dsp/resampling/Windows.hpp>
 
 namespace dsp
@@ -31,6 +31,7 @@ class GrainGenerator
         T phase_{};
         T rate_{};
         T delay_{};
+        T delayRate{};
     };
 
     GrainGenerator() = default;
@@ -75,11 +76,12 @@ class GrainGenerator
 
     void newGrain()
     {
-        auto rate  = synthRate_;
-        auto phase = -T(1) + synthPhase_;
-        auto delay = dsp::max(T(0), 2.f * (playRate_ - T(1)) / rate);
+        auto rate      = synthRate_;
+        auto phase     = -T(1) + synthPhase_;
+        auto delay     = dsp::max(T(0), 2.f * (playRate_ - T(1)) / rate);
+        auto delayRate = T(1) - playRate_;
 
-        addGrain({phase, rate, delay});
+        addGrain({phase, rate, delay, delayRate});
     }
 
     void start()
@@ -131,7 +133,7 @@ class GrainGenerator
             x += grainValue * fadeValue;
 
             grain.phase_ += grain.rate_;
-            grain.delay_ += T(1) - playRate_;
+            grain.delay_ += grain.delayRate;
         }
 
         ctxt.setOutput(x);
