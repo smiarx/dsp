@@ -1,7 +1,6 @@
 #pragma once
 
 #include "PitchTracker.hpp"
-#include "dsp/generators/Noise.hpp"
 #include <atomic>
 #include <dsp/analysis/ZFF.hpp>
 #include <dsp/generators/GrainGenerator.hpp>
@@ -19,11 +18,17 @@ class VoiceBox
     static constexpr auto kAnalysisWindowSize = 0.025f;
     static constexpr auto kMaxAnalysisMarkers = kMaxBlockSize;
 
-    VoiceBox()
-    {
-        buffer_.setData(bufferData_);
-        rls_.setForgetFactor(0.9995f);
-    }
+    static constexpr auto kMarkerVoicedProbUpdate       = 0.9f;
+    static constexpr auto kMarkerDetectedPitchRatio     = 0.8f;
+    static constexpr auto kMarkerSimilarPitchLowFactor  = 0.9f;
+    static constexpr auto kMarkerSimilarPitchHighFactor = 1.1f;
+
+    static constexpr auto kPsolaHysteresisStart    = 0.2f;
+    static constexpr auto kPsolaHysteresisStop     = 0.1f;
+    static constexpr auto kGrainGenHysteresisStart = 0.8f;
+    static constexpr auto kGrainGenHysteresisStop  = 0.95f;
+
+    VoiceBox() { buffer_.setData(bufferData_); }
 
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
@@ -55,17 +60,11 @@ class VoiceBox
     // pitch tracking
     PitchTracker pitchTracker_{};
 
+    dsp::OnePole<float> voicedSmooth_{};
+    decltype(voicedSmooth_)::State voicedSmoothState_{};
+
     dsp::ZFF<float, kMaxAnalysisMarkers> zffAnalysis_{};
     dsp::DelayLine<1200> analysisDL_{};
-
-    // RLS
-    static constexpr auto kOrder = 8;
-    dsp::Noise<float> noise_{};
-    dsp::RLS<float, kOrder> rls_{};
-    dsp::WarpedAdaptiveFilter<float, kOrder> filter_{};
-    decltype(filter_)::AnalyzeState warpAState1_{};
-    decltype(filter_)::AnalyzeState warpAState_{};
-    decltype(filter_)::ReconstructState warpRState_{};
 
     float shift_{1.f};
     float formantShift_{1.f};

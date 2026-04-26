@@ -6,20 +6,6 @@ namespace processors
 inline namespace DSP_ARCH_NAMESPACE
 {
 
-static inline float atune(float freq)
-{
-    auto m  = 12.f * std::log2(freq / (440.f / 24000.f));
-    auto im = std::round(m / 3) * 3;
-    return 440.f / 24000.f * std::pow(2.f, (im) / 12.f);
-}
-
-static inline auto barkScale(float freq)
-{
-    return -1.0674f * std::sqrt(2.f / dsp::constants<float>::pi *
-                                std::atan(0.06583f * freq / 1000.f)) +
-           0.1916f;
-}
-
 void VoiceBox::prepare(float sampleRate)
 {
     pitchTracker_.prepare(sampleRate);
@@ -29,9 +15,6 @@ void VoiceBox::prepare(float sampleRate)
     sampleRate_ = sampleRate;
     zffAnalysis_.setWindowSize(
         static_cast<int>(sampleRate * kAnalysisWindowSize));
-
-    filter_.setWarpIn(barkScale(sampleRate));
-    filter_.setWarpOut(barkScale(sampleRate));
 
     /* signal.cheby2(8,80,1,"high", analog=True, output="sos") */
     static constexpr decltype(dcblocker_)::SOS kSosAnalog = {
@@ -43,6 +26,8 @@ void VoiceBox::prepare(float sampleRate)
 
     grainGenerator_.setFreq(100.f * freqScale);
     grainGenerator_.start();
+
+    voicedSmooth_.setRate(0.01f, 1.f / (sampleRate * 0.05f));
 }
 
 void VoiceBox::update(float shift, float formantShift)
@@ -66,7 +51,6 @@ void VoiceBox::setFormantShift(float formantShift)
     formantShift_ = formantShift;
     psola_.setPlayRate(formantShift);
     grainGenerator_.setPlayRate(formantShift);
-    filter_.setWarpOut(barkScale(sampleRate_ / formantShift));
 }
 
 void VoiceBox::setRange(PitchTracker::Range range)
@@ -100,33 +84,34 @@ void VoiceBox::process(const float *const *__restrict in,
         storeFreq      = voiced[blockSize - 1] > 0.95f ? storeFreq : 0.f;
         atomicFreq_.store(storeFreq);
 
-        auto ctxt       = dsp::BufferContext(mout, blockSize, buffer_);
-        auto ctxtPitch  = dsp::Context(pitch, blockSize);
-        auto ctxtVoiced = dsp::Context(voiced, blockSize);
-
-        CTXTRUN(ctxtPitch) { auto p = ctxtPitch.getInput(); };
+        auto ctxt      = dsp::BufferContext(mout, blockSize, buffer_);
+        auto ctxtPitch = dsp::Context(pitch, blockSize);
+        // auto ctxtVoiced = dsp::Context(voiced, blockSize);
 
         int n = 0;
         CTXTRUN2(ctxt, ctxtPitch)
         {
             zffAnalysis_.process(ctxt, analysisDL_, [&, this](auto &marker) {
-                // ctxt.setOutput(ctxt.getInput()-1.f);
                 auto freq = ctxtPitch.getInput();
                 assert(marker.period_ >= 0.f);
 
-                if (voiced[n] > 0.9f) {
-                    // ctxt.setOutput(ctxt.getInput()+2.f);
+                if (voiced[n] > kMarkerVoicedProbUpdate) {
                     auto trackedPeriod = 2.f / freq;
-                    while (marker.period_ > 1.1f * trackedPeriod) {
+                    while (marker.period_ >
+                           kMarkerSimilarPitchHighFactor * trackedPeriod) {
                         auto ratio  = marker.period_ / trackedPeriod;
                         auto iratio = std::round(ratio);
                         float newPeriod;
                         auto lastMarker = zffAnalysis_.getMarker();
-                        if (std::abs(iratio - ratio) > 0.2) {
+
+                        // check if ratio is not integral
+                        constexpr auto kRatioThresh = 0.2f;
+                        if (std::abs(iratio - ratio) > kRatioThresh) {
                             newPeriod = lastMarker.period_;
                         } else {
                             newPeriod = marker.period_ / iratio;
-                            newPeriod += 0.8f * (trackedPeriod - newPeriod);
+                            newPeriod += kMarkerDetectedPitchRatio *
+                                         (trackedPeriod - newPeriod);
                         }
                         std::cout << "oops \t" << trackedPeriod << " \t"
                                   << marker.period_ << " \t" << ratio << " \t"
@@ -137,15 +122,17 @@ void VoiceBox::process(const float *const *__restrict in,
                         zffAnalysis_.addMarker({newPosition, newPeriod});
                         marker.period_ -= trackedPeriod;
                     }
-                    auto lastMarker = zffAnalysis_.getMarker();
-                    if (marker.period_ > 0.9f * trackedPeriod) {
-                        marker.period_ +=
-                            0.8f * (trackedPeriod - marker.period_);
+                    if (marker.period_ >
+                        kMarkerSimilarPitchLowFactor * trackedPeriod) {
+                        // update period
+                        marker.period_ += kMarkerDetectedPitchRatio *
+                                          (trackedPeriod - marker.period_);
+                        // update position
+                        auto lastMarker = zffAnalysis_.getMarker();
                         marker.position_ =
                             ctxt.modAdd(lastMarker.position_, marker.period_);
                         assert(marker.period_ > 0.f);
 
-                        // ctxt.setOutput(ctxt.getInput()+2.f);
                         return true;
                     }
                     return false;
@@ -158,14 +145,13 @@ void VoiceBox::process(const float *const *__restrict in,
         n = 0;
         CTXTRUN2(ctxt, ctxtPitch)
         {
-            static float v = 0.f;
-            voiced[n]      = v += 0.002f * (voiced[n] - v);
+            // smooth voiced enveloppe
+            voicedSmooth_.process(dsp::Context(&voiced[n]), voicedSmoothState_);
+
             if (ctxtPitch.getInput() > 1e-6f) {
                 psola_.setFreq(ctxtPitch.getInput());
-                // psola_.setFreq(atune(ctxtPitch.getInput() * shift_));
-                // psola_.setFreq(400.f/24000.f*shift_);
             }
-            if (!voiced_ && voiced[n] > 0.2f) {
+            if (!voiced_ && voiced[n] > kPsolaHysteresisStart) {
                 // set period of last marker
                 auto period = 2.f / ctxtPitch.getInput();
                 zffAnalysis_.getClosestMarker(ctxt).period_ = period;
@@ -173,34 +159,25 @@ void VoiceBox::process(const float *const *__restrict in,
                 // start psola synthesis
                 psola_.start(ctxt, zffAnalysis_);
                 voiced_ = true;
-            } else if (voiced_ && voiced[n] < 0.2f) {
+            } else if (voiced_ && voiced[n] < kPsolaHysteresisStop) {
                 // stop psola synthesis
                 psola_.stop(ctxt);
-                // zffAnalysis_.resetMarkers();
                 voiced_ = false;
             }
-            if (voiced[n] > 0.99f) {
+            if (voiced[n] > kGrainGenHysteresisStop) {
                 grainGenerator_.stop();
             }
-            if (voiced[n] < 0.6f) {
+            if (voiced[n] < kGrainGenHysteresisStart) {
                 grainGenerator_.start();
             }
             auto x = ctxt.getInput();
 
-            // x += noise_.process()*0.002f;
-            // rls_.process(dsp::Context{&x}, warpAState1_, filter_);
-            // auto cpyFilter = filter_;
-            // cpyFilter.smoothCoeffs(0.92f);
-
-            // cpyFilter.analyze(ctxt, warpAState_);
-            // cpyFilter.compensateResidualAnalyze(ctxt, warpAState_);
-
-            // cpyFilter.compensateResidualReconstruct(ctxt, warpRState_);
-            // cpyFilter.reconstruct(ctxt, warpRState_);
-
+            // psola for voiced parts
             psola_.process(ctxt, synthDL_, zffAnalysis_);
+            // grain generator for unvoiced parts
             grainGenerator_.process(dsp::BufferContext(&x, 1, ctxt.getBuffer()),
                                     synthDL_);
+            // mix psola and grain generator
             x += (ctxt.getInput() - x) * voiced[n];
             ctxt.setOutput(x);
 
