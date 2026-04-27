@@ -30,6 +30,8 @@ set(test_sources
     #Enveloppe.cpp
     RMS.cpp
     FastMath.cpp
+    Units.cpp
+    SampleRate.cpp
 )
 
 add_executable(tests ${test_sources})
