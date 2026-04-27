@@ -138,6 +138,12 @@ class BufferContext : public Context<T, Vec>
         Parent::next(incr);
     }
 
+    void next(int incr, bufferId_t bufferIncr)
+    {
+        buffer_.nextId(bufferIncr);
+        Parent::next(incr);
+    }
+
     void bufferSafeForVectorization() { buffer_.setLimits(); }
 
     [[nodiscard]] auto read(bufferId_t i) const
