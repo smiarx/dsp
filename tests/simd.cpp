@@ -356,6 +356,36 @@ template <typename T, size_t N> class TestSimd
                 }
             }
         }
+        SECTION("floor")
+        {
+            if constexpr (dsp::FloatNumeric<T>) {
+                auto yf = y * T(1.283736);
+                auto f  = dsp::floor(yf);
+                loop(i) { cmp(f[i], std::floor(yf[i])); }
+            }
+        }
+        SECTION("ceil")
+        {
+            if constexpr (dsp::FloatNumeric<T>) {
+                auto yf = y * T(1.283736);
+                auto f  = dsp::ceil(yf);
+                loop(i) { cmp(f[i], std::ceil(yf[i])); }
+            }
+        }
+        SECTION("round")
+        {
+            if constexpr (dsp::FloatNumeric<T>) {
+                auto yf = y * T(1.283736);
+                auto f  = dsp::round(yf);
+                loop(i) { cmp(f[i], std::round(yf[i])); }
+
+                auto vmid       = dsp::multi<T, N>(T(.5));
+                loop(i) vmid[i] = (i & 1) ? -vmid[i] : vmid[i];
+                auto mid        = dsp::load(vmid);
+                auto rmid       = dsp::round(mid);
+                loop(i) { cmp(rmid[i], std::round(mid[i])); }
+            }
+        }
 
         SECTION("blend")
         {

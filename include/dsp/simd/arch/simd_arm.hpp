@@ -147,6 +147,13 @@ template <> struct intrin<float, 2> {
         return vget_lane_u64(vreinterpret_u64_u32(x), 0) == 0xffffffffffffffff;
     }
 
+    // round functions
+#ifdef DSP_AARCH64
+    static constexpr auto trunc = vrnd_f32;
+    static constexpr auto floor = vrndm_f32;
+    static constexpr auto ceil  = vrndp_f32;
+#endif
+
     // convert
     static always_inline type convert(basetype value) { return init(value); }
     static always_inline type convert(int value)
@@ -309,6 +316,13 @@ template <> struct intrin<float, 4> {
                0xffffffffffffffff;
     }
 
+    // round functions
+#ifdef DSP_AARCH64
+    static constexpr auto trunc = vrndq_f32;
+    static constexpr auto floor = vrndmq_f32;
+    static constexpr auto ceil  = vrndpq_f32;
+#endif
+
     // convert
     static always_inline type convert(basetype value) { return init(value); }
     static always_inline type convert(int value)
@@ -439,6 +453,13 @@ template <> struct intrin<double, 2> {
         return vget_lane_u64(vreinterpret_u64_u32(vqmovn_u64(x)), 0) ==
                0xffffffffffffffff;
     }
+
+    // round functions
+#ifdef DSP_AARCH64
+    static constexpr auto trunc = vrndq_f64;
+    static constexpr auto floor = vrndmq_f64;
+    static constexpr auto ceil  = vrndpq_f64;
+#endif
 
     // convert
     static always_inline type convert(basetype value) { return init(value); }

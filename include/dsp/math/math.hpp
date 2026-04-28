@@ -177,6 +177,16 @@ always_inline auto toFloat(simd<int32_t, N> x)
     return x.template toFloat<T>();
 }
 
+///////////////////// rounding ////////////////////
+template <Numeric T> always_inline auto trunc(T x) { return std::trunc(x); }
+template <IsSimd S> always_inline auto trunc(S x) { return x.trunc(); }
+template <Numeric T> always_inline auto round(T x) { return std::round(x); }
+template <IsSimd S> always_inline auto round(S x) { return x.round(); }
+template <Numeric T> always_inline auto floor(T x) { return std::floor(x); }
+template <IsSimd S> always_inline auto floor(S x) { return x.floor(); }
+template <Numeric T> always_inline auto ceil(T x) { return std::ceil(x); }
+template <IsSimd S> always_inline auto ceil(S x) { return x.ceil(); }
+
 /////////////////// Math ////////////////////////////
 
 ////////////////////// exp ////////////////////////

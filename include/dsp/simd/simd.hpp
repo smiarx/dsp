@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <dsp/core/concepts.hpp>
 #include <dsp/cpu/defines.h>
 #include <dsp/simd/arch/simd_arm.hpp>
 #include <dsp/simd/arch/simd_default.hpp>
@@ -491,13 +492,78 @@ template <typename T, size_t N> struct simd {
         return u1.simd;
     }
 
-    always_inline auto vectorcall toInt()
+    always_inline auto vectorcall toInt() const
     {
         return simd<int32_t, N>::convert(*this);
     }
-    template <typename T2> always_inline auto vectorcall toFloat()
+    template <typename T2> always_inline auto vectorcall toFloat() const
     {
         return simd<T2, N>::convert(*this);
+    }
+
+    // rounding functions
+    always_inline simd vectorcall trunc() const noexcept
+    {
+        if constexpr (requires { def::trunc(value_); }) {
+            return def::trunc(value_);
+        } else {
+            return toInt().template toFloat<T>();
+        }
+    }
+    always_inline simd vectorcall round() const noexcept
+    {
+        static_assert(FloatNumeric<T>);
+
+        if constexpr (N == 1) {
+            return std::round(value_);
+        } else {
+            using masktype = typename def::masktype;
+            auto signmask  = std::bit_cast<masktype>(def::init(T(-0.)));
+            auto half      = def::init(T(.5));
+            auto signbits =
+                def::bitAnd(std::bit_cast<masktype>(value_), signmask);
+
+            // +/- 0.5 and truncate
+            auto offset   = def::bitOr(std::bit_cast<masktype>(half), signbits);
+            simd adjusted = def::add(value_, std::bit_cast<type>(offset));
+            return adjusted.trunc();
+        }
+    }
+    always_inline simd vectorcall floor() const noexcept
+    {
+        static_assert(FloatNumeric<T>);
+        if constexpr (requires { def::floor(value_); }) {
+            return def::floor(value_);
+        } else if constexpr (N == 1) {
+            return std::floor(value_);
+        } else {
+            using masktype = typename def::masktype;
+            auto one       = def::init(T(1.));
+            auto signbits  = def::signbit(value_);
+
+            // -1 if number is < 0
+            auto offset = def::bitAnd(std::bit_cast<masktype>(one), signbits);
+            auto xf     = trunc();
+            return xf - std::bit_cast<type>(offset);
+        }
+    }
+    always_inline simd vectorcall ceil() const noexcept
+    {
+        static_assert(FloatNumeric<T>);
+        if constexpr (requires { def::ceil(value_); }) {
+            return def::ceil(value_);
+        } else if constexpr (N == 1) {
+            return std::ceil(value_);
+        } else {
+            using masktype = typename def::masktype;
+            auto one       = def::init(T(1.));
+            auto signbits  = def::signbit(def::neg(value_));
+
+            // + 1 if number > 0
+            auto offset = def::bitAnd(std::bit_cast<masktype>(one), signbits);
+            auto xf     = trunc();
+            return xf + std::bit_cast<type>(offset);
+        }
     }
 
   private:

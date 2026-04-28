@@ -451,6 +451,16 @@ template <> struct intrin<float, 4> {
 #endif
     }
 
+    // round
+#if defined(__SSE4_1__)
+    static always_inline type trunc(type x)
+    {
+        return _mm_round_ps(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    }
+    static always_inline type floor(type x) { return _mm_floor_ps(x); }
+    static always_inline type ceil(type x) { return _mm_ceil_ps(x); }
+#endif
+
     // convert
     static always_inline type convert(float value) { return init(value); }
     static always_inline type convert(floatx2_t value)
@@ -654,6 +664,13 @@ template <> struct intrin<float, 2> {
     {
         return (any(m) & 0x0003) == 0x0003;
     }
+
+    // round
+#if defined(__SSE4_1__)
+    static always_inline type trunc(type x) { return base::trunc(x); }
+    static always_inline type floor(type x) { return base::floor(x); }
+    static always_inline type ceil(type x) { return base::ceil(x); }
+#endif
 
     // convert
     static always_inline type vectorcall convert(float x) { return init(x); }
@@ -979,6 +996,16 @@ template <> struct intrin<double, 2> {
         return any(m) == 0x0003;
 #endif
     }
+
+    // round
+#if defined(__SSE4_1__)
+    static always_inline type trunc(type x)
+    {
+        return _mm_round_pd(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    }
+    static always_inline type floor(type x) { return _mm_floor_pd(x); }
+    static always_inline type ceil(type x) { return _mm_ceil_pd(x); }
+#endif
 
     // convert
     static always_inline type convert(float value)
@@ -1517,6 +1544,14 @@ template <> struct intrin<float, 8> {
         return any(m) == 0x00ff;
     }
 
+    // round
+    static always_inline type trunc(type x)
+    {
+        return _mm256_round_ps(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    }
+    static always_inline type floor(type x) { return _mm256_floor_ps(x); }
+    static always_inline type ceil(type x) { return _mm256_ceil_ps(x); }
+
     // convert
     static always_inline type convert(float value) { return init(value); }
     static always_inline type convert(double value)
@@ -1739,6 +1774,14 @@ template <> struct intrin<double, 4> {
     {
         return any(m) == 0x000f;
     }
+
+    // round
+    static always_inline type trunc(type x)
+    {
+        return _mm256_round_pd(x, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    }
+    static always_inline type floor(type x) { return _mm256_floor_pd(x); }
+    static always_inline type ceil(type x) { return _mm256_ceil_pd(x); }
 
     // convert
     static always_inline type convert(float value)
