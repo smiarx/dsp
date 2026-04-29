@@ -1,6 +1,6 @@
 VoiceBox : UGen {
-	*ar { arg in = 0.0, shift=1.0, formantShift=1.0, correctSpeed=0.02, a4=440, scale=(0..11), mul=1.0, add=0.0;
-		^this.multiNew('audio', in, shift, formantShift, correctSpeed, a4, (1<<(scale%12)).reduce('|')).madd(mul, add)
+	*ar { arg in = 0.0, shift=1.0, formantShift=1.0, quantizeSpeed=0.02, quantizeConfirmTime=0.002, a4=440, scale=(0..11), mul=1.0, add=0.0;
+		^this.multiNew('audio', in, shift, formantShift, quantizeSpeed, quantizeConfirmTime, a4, (1<<(scale%12)).reduce('|')).madd(mul, add)
 	}
 }
 

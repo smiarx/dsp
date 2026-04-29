@@ -1,7 +1,7 @@
 #pragma once
 
+#include "PitchQuantizer.h"
 #include "PitchTracker.hpp"
-#include "dsp/music/Pitch.hpp"
 #include <atomic>
 #include <dsp/analysis/ZFF.hpp>
 #include <dsp/core/SampleRate.hpp>
@@ -42,20 +42,28 @@ class VoiceBox
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
-    void update(float shift, float formantShift, seconds correctSpeed,
-                Hz a4Frequency);
+    void update(float shift, float formantShift, seconds quantizeSpeed,
+                seconds quantizeConfirmTime, Hz a4Frequency);
     void prepare(Hz sampleRate);
 
     void setPitchShift(float shift);
     void setFormantShift(float shift);
-    void setCorrectSpeed(seconds time);
+    void setQuantizeSpeed(seconds time);
+    void setQuantizeConfirmTime(seconds time);
     void setA4Frequency(Hz freq);
     void setScale(dsp::Scale scale);
     void setRange(PitchTracker::Range range);
 
     [[nodiscard]] float getPitchShift() const { return shift_; }
     [[nodiscard]] float getFormantShift() const { return formantShift_; }
-    [[nodiscard]] float getCorrectSpeed() const { return correctSpeed_.get(); }
+    [[nodiscard]] float getQuantizeSpeed() const
+    {
+        return quantizeSpeed_.get();
+    }
+    [[nodiscard]] float getQuantizeConfirmTime() const
+    {
+        return quantizeConfirmTime_.get();
+    }
     [[nodiscard]] float getA4Frequency() const { return a4Frequency_.get(); }
     [[nodiscard]] auto getScale() const { return scale_; }
     [[nodiscard]] auto getRange() const { return pitchTracker_.getRange(); }
@@ -64,11 +72,16 @@ class VoiceBox
     {
         return atomicFreq_;
     }
+    [[nodiscard]] const std::atomic<float> &getAtomicShift() const
+    {
+        return atomicShift_;
+    }
 
   private:
     float shift_{1.f};
     float formantShift_{1.f};
-    seconds correctSpeed_{0.01_sf};
+    seconds quantizeSpeed_{10._msf};
+    seconds quantizeConfirmTime_{2._msf};
     Hz a4Frequency_{440._Hzf};
     dsp::Scale scale_{dsp::scales::chromatic};
 
@@ -89,13 +102,10 @@ class VoiceBox
     dsp::ZFF<float, kMaxAnalysisMarkers> zffAnalysis_{};
     dsp::DelayLine<1200> analysisDL_{};
 
-    // compute pitch shift
-    float computePitchShift(dsp::freq::NyquistRatio<float> inFreq);
+    // pitch A4 reference
     dsp::PitchReference<dsp::freq::NyquistRatio<float>> pitchRef_{};
-    std::array<dsp::Pitch<float>, dsp::Scale::kNumNotes + 1> scalePitches_{};
-    size_t nScalePitches_{};
-    dsp::OnePole<float> correctionFilter_{};
-    decltype(correctionFilter_)::State correctionFilterState_{};
+    // pitch quantize
+    PitchQuantizer quantizer_{};
 
     dsp::PSOLA<float, 16> psola_{};
     dsp::DelayLine<10000, nextTo(analysisDL_)> synthDL_{};
@@ -107,6 +117,7 @@ class VoiceBox
     float pitchBuffer_[kMaxBlockSize]{};
     float voicedBuffer_[kMaxBlockSize]{};
     std::atomic<float> atomicFreq_;
+    std::atomic<float> atomicShift_;
 };
 } // namespace DSP_ARCH_NAMESPACE
 } // namespace processors

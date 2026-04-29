@@ -29,13 +29,14 @@ void VoiceBox::prepare(Hz sampleRate)
 
     voicedSmooth_.setConvergenceTime(0.01f, sampleRate_.secsToSamples(0.05_sf));
 
-    setCorrectSpeed(correctSpeed_);
+    setQuantizeSpeed(quantizeSpeed_);
+    setQuantizeConfirmTime(quantizeConfirmTime_);
     setA4Frequency(a4Frequency_);
     setScale(scale_);
 }
 
-void VoiceBox::update(float shift, float formantShift, seconds correctSpeed,
-                      Hz a4Frequency)
+void VoiceBox::update(float shift, float formantShift, seconds quantizeSpeed,
+                      seconds quantizeConfirmTime, Hz a4Frequency)
 {
     if (shift != getPitchShift()) {
         setPitchShift(shift);
@@ -43,8 +44,11 @@ void VoiceBox::update(float shift, float formantShift, seconds correctSpeed,
     if (formantShift != getFormantShift()) {
         setFormantShift(formantShift);
     }
-    if (correctSpeed != correctSpeed_) {
-        setCorrectSpeed(correctSpeed);
+    if (quantizeSpeed != quantizeSpeed_) {
+        setQuantizeSpeed(quantizeSpeed);
+    }
+    if (quantizeConfirmTime != quantizeConfirmTime_) {
+        setQuantizeConfirmTime(quantizeConfirmTime);
     }
     if (a4Frequency != a4Frequency_) {
         setA4Frequency(a4Frequency);
@@ -60,61 +64,35 @@ void VoiceBox::setFormantShift(float formantShift)
     grainGenerator_.setPlayRate(formantShift);
 }
 
-void VoiceBox::setCorrectSpeed(seconds time)
+void VoiceBox::setQuantizeSpeed(seconds time)
 {
-    correctSpeed_ = time;
-    correctionFilter_.setConvergenceTime(0.01f,
-                                         sampleRate_.secsToSamples(time));
+    quantizeSpeed_ = time;
+    quantizer_.setQuantizeSpeed(sampleRate_.secsToSamples(time));
+}
+
+void VoiceBox::setQuantizeConfirmTime(seconds time)
+{
+    quantizeConfirmTime_ = time;
+    quantizer_.setQuantizeConfirmTime(sampleRate_.secsToSamples(time));
 }
 
 void VoiceBox::setA4Frequency(Hz freq)
 {
-    a4Frequency_ = freq;
-    pitchRef_    = sampleRate_.hzToNyquistRatio(freq);
+    a4Frequency_      = freq;
+    auto nyquistRatio = sampleRate_.hzToNyquistRatio(freq);
+    pitchRef_         = dsp::PitchReference{nyquistRatio};
 }
 
 void VoiceBox::setScale(dsp::Scale scale)
 {
-    scale_         = scale;
-    nScalePitches_ = 0;
-    scale_.forEachNote([this](dsp::Note note) {
-        scalePitches_[nScalePitches_] = dsp::Pitch<float>{note};
-        ++nScalePitches_;
-    });
-    scalePitches_[nScalePitches_] =
-        scalePitches_[0] + dsp::Pitch<float>::octaveUnit();
-    ++nScalePitches_;
+    scale_ = scale;
+    quantizer_.setScale(scale);
 }
 
 void VoiceBox::setRange(PitchTracker::Range range)
 {
     pitchTracker_.setRange(range);
 }
-
-float VoiceBox::computePitchShift(dsp::freq::NyquistRatio<float> inFreq)
-{
-    auto pitch         = pitchRef_.toPitch(inFreq);
-    auto octave        = pitch.octave();
-    auto pitchInOctave = pitch - octave;
-
-    auto scalePitches = scalePitches_ | std::views::take(nScalePitches_);
-    // chose pitch closest to our input pitch
-    auto chosenPitch = *std::ranges::min_element(
-        scalePitches, {}, [pitchInOctave](auto pitch) {
-            return dsp::abs(pitch - pitchInOctave);
-        });
-
-    chosenPitch += octave;
-
-    // smooth filter pitch
-    auto chosenPitchValue = chosenPitch.get();
-    correctionFilter_.process(dsp::Context(&chosenPitchValue),
-                              correctionFilterState_);
-    chosenPitch = chosenPitchValue;
-
-    auto shift = (chosenPitch - pitch).toRatio();
-    return shift;
-};
 
 void VoiceBox::process(const float *const *__restrict in,
                        float *const *__restrict out, int count)
@@ -216,6 +194,7 @@ void VoiceBox::process(const float *const *__restrict in,
 
                 // start psola synthesis
                 psola_.start(ctxt, zffAnalysis_);
+                quantizer_.reset();
                 voiced_ = true;
             } else if (voiced_ && voiced[n] < kPsolaHysteresisStop) {
                 // stop psola synthesis
@@ -230,10 +209,12 @@ void VoiceBox::process(const float *const *__restrict in,
             }
             if (ctxtPitch.getInput() > 1e-6f) {
                 auto inFreq = dsp::freq::NyquistRatio(ctxtPitch.getInput());
-                auto shift  = computePitchShift(inFreq);
+                auto pitch  = pitchRef_.toPitch(inFreq);
+                auto quantizedPitch = quantizer_.process(pitch);
+                auto pitchShift     = quantizedPitch - pitch;
                 psola_.setFreq(inFreq.get());
-                psola_.setShift(shift * shift_);
-                // psola_.setPlayRate(shift * formantShift_);
+                psola_.setShift(pitchShift.toRatio() * shift_);
+                psola_.setPlayRate(formantShift_);
             }
             auto x = ctxt.getInput();
 
@@ -248,6 +229,8 @@ void VoiceBox::process(const float *const *__restrict in,
 
             ++n;
         };
+
+        atomicShift_.store(psola_.getShift());
 
         count -= blockSize;
         buffer_.nextBlock(ctxt);

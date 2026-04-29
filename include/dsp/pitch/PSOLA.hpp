@@ -41,6 +41,7 @@ class PSOLA
     }
 
     void setShift(T shift) { shift_ = shift; }
+    T getShift() const { return shift_; }
 
     void setPlayRate(T rate)
     {
