@@ -43,6 +43,7 @@ set(test_sources
     Notch.cpp
     Amplitude.cpp
     Scale.cpp
+    Pitch.cpp
 )
 
 add_executable(tests ${test_sources})
