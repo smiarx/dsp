@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
 #include <dsp/simd/multi.hpp>
 
@@ -71,6 +72,83 @@ template <typename F> static constexpr auto zerothOrderBessel(F x)
     }
 
     return bessel;
+}
+
+///////////////////////////////////////////////////////////////
+
+template <typename T> T fastexp2(T x)
+{
+    using bT                 = baseType<T>;
+    constexpr bool kIsDouble = std::is_same_v<double, bT>;
+    constexpr auto kFPMinExpo =
+        bT(kIsDouble ? -1022 : -126); // exponent of minimum binary32 normal
+    constexpr auto kFPExpoBias =
+        bT(kIsDouble ? 1023 : 127); // binary32 exponent bias
+    constexpr int kFPMantBits =
+        kIsDouble ? 52 : 23; // number of stored mantissa (significand) bits
+    constexpr auto kFPMult = bT((1ll << kFPMantBits));
+
+    x = blend(x < kFPMinExpo, T(kFPMinExpo), x); // clamp
+                                                 //
+    /* 2**p = 2**(w+z), with w an integer and z in [0, 1) */
+    auto w = floor(x); // integral part
+    auto z = x - w;    // fractional part
+    /* approximate 2**z-1 for z in [0, 1) */
+
+    T approx;
+    if constexpr (kIsDouble) {
+        approx = T(-0x1.6e75d58p+2) +
+                 T(0x1.bba7414p+4) / (T(0x1.35eccbap+2) - z) -
+                 T(0x1.f5e53c2p-2) * z;
+    } else {
+        approx = T(-0x1.6e7592p+2f) +
+                 T(0x1.bba764p+4f) / (T(0x1.35ed00p+2f) - z) -
+                 T(0x1.f5e546p-2f) * z;
+    }
+
+    /* assemble the exponent and mantissa components into final result */
+    auto res = kFPMult * (w + kFPExpoBias + approx);
+
+    if constexpr (kIsDouble) {
+        // no double simd right now...
+        auto ires = static_cast<int64_t>(res);
+        return std::bit_cast<T>(ires);
+    } else {
+        auto ires = toInt(res);
+        return std::bit_cast<T>(ires);
+    }
+}
+
+template <typename T> T fastlog2(T x)
+{
+    assert(all(x > T(0)));
+
+    using bT                 = baseType<T>;
+    constexpr bool kIsDouble = std::is_same_v<double, bT>;
+    using iT = std::conditional_t<kIsDouble, int64_t, intType<T>>;
+    constexpr auto kFPExpoBias = kIsDouble ? 1023l : 127l; // exponent bias
+    constexpr int kFPMantBits =
+        kIsDouble ? 52 : 23; // number of stored mantissa (significand) bits
+    constexpr auto kFPMantMask = (1l << kFPMantBits) - 1;
+
+    auto ix = std::bit_cast<iT>(x);
+
+    // no need to mask sign bit, negative values should crash
+    auto exp = (ix >> kFPMantBits) - iT(kFPExpoBias);
+
+    // change exponent so that value is in [1,2[
+    ix = iT(kFPExpoBias << kFPMantBits) | (iT(kFPMantMask) & ix);
+    x  = std::bit_cast<T>(ix);
+
+    auto approx = T(0x1.c8dfbep+0f) -
+                  T(0x1.bd56d4p+1f) / (x + T(0x1.6bc5c6p-1f)) +
+                  x * T(0x1.ff08a2p-3f);
+
+    if constexpr (kIsDouble) {
+        return static_cast<double>(exp) + approx;
+    } else {
+        return toFloat<bT>(exp) + approx;
+    }
 }
 
 } // namespace DSP_ARCH_NAMESPACE
