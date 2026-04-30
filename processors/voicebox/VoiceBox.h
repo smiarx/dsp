@@ -42,12 +42,15 @@ class VoiceBox
     void process(const float *const *__restrict in,
                  float *const *__restrict out, int count);
 
-    void update(float shift, float formantShift, seconds quantizeSpeed,
+    void update(float shift, float formantShift, float quantizeAmount,
+                float quantizeFormantAmount, seconds quantizeSpeed,
                 seconds quantizeConfirmTime, Hz a4Frequency);
     void prepare(Hz sampleRate);
 
     void setPitchShift(float shift);
     void setFormantShift(float shift);
+    void setQuantizeAmount(float amount);
+    void setQuantizeFormantAmount(float amount);
     void setQuantizeSpeed(seconds time);
     void setQuantizeConfirmTime(seconds time);
     void setA4Frequency(Hz freq);
@@ -56,6 +59,11 @@ class VoiceBox
 
     [[nodiscard]] float getPitchShift() const { return shift_; }
     [[nodiscard]] float getFormantShift() const { return formantShift_; }
+    [[nodiscard]] float getQuantizeAmount() const { return quantizeAmount_; }
+    [[nodiscard]] float getQuantizeFormantAmount() const
+    {
+        return quantizeFormantAmount_;
+    }
     [[nodiscard]] float getQuantizeSpeed() const
     {
         return quantizeSpeed_.get();
@@ -80,6 +88,8 @@ class VoiceBox
   private:
     float shift_{1.f};
     float formantShift_{1.f};
+    float quantizeAmount_{};
+    float quantizeFormantAmount_{};
     seconds quantizeSpeed_{10._msf};
     seconds quantizeConfirmTime_{2._msf};
     Hz a4Frequency_{440._Hzf};

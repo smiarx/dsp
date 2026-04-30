@@ -35,7 +35,8 @@ void VoiceBox::prepare(Hz sampleRate)
     setScale(scale_);
 }
 
-void VoiceBox::update(float shift, float formantShift, seconds quantizeSpeed,
+void VoiceBox::update(float shift, float formantShift, float quantizeAmount,
+                      float quantizeFormantAmount, seconds quantizeSpeed,
                       seconds quantizeConfirmTime, Hz a4Frequency)
 {
     if (shift != getPitchShift()) {
@@ -43,6 +44,12 @@ void VoiceBox::update(float shift, float formantShift, seconds quantizeSpeed,
     }
     if (formantShift != getFormantShift()) {
         setFormantShift(formantShift);
+    }
+    if (quantizeAmount != quantizeAmount_) {
+        setQuantizeAmount(quantizeAmount);
+    }
+    if (quantizeFormantAmount != quantizeFormantAmount_) {
+        setQuantizeFormantAmount(quantizeFormantAmount);
     }
     if (quantizeSpeed != quantizeSpeed_) {
         setQuantizeSpeed(quantizeSpeed);
@@ -62,6 +69,13 @@ void VoiceBox::setFormantShift(float formantShift)
     formantShift_ = formantShift;
     psola_.setPlayRate(formantShift);
     grainGenerator_.setPlayRate(formantShift);
+}
+
+void VoiceBox::setQuantizeAmount(float amount) { quantizeAmount_ = amount; }
+
+void VoiceBox::setQuantizeFormantAmount(float amount)
+{
+    quantizeFormantAmount_ = amount;
 }
 
 void VoiceBox::setQuantizeSpeed(seconds time)
@@ -212,9 +226,12 @@ void VoiceBox::process(const float *const *__restrict in,
                 auto pitch  = pitchRef_.toPitch(inFreq);
                 auto quantizedPitch = quantizer_.process(pitch);
                 auto pitchShift     = quantizedPitch - pitch;
+                pitchShift *= quantizeAmount_;
                 psola_.setFreq(inFreq.get());
                 psola_.setShift(pitchShift.toRatio() * shift_);
-                psola_.setPlayRate(formantShift_);
+                psola_.setPlayRate(
+                    (pitchShift * quantizeFormantAmount_).toRatio() *
+                    formantShift_);
             }
             auto x = ctxt.getInput();
 
