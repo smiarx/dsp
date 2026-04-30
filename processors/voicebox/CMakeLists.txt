@@ -16,6 +16,9 @@ target_link_libraries(dsp_voicebox_processor
     PUBLIC dsp_include
     PRIVATE dsp_compile_options
 )
+set_target_properties(dsp_voicebox_processor PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+)
 
 if(BUILD_SC)
 target_sources(SCProcessors PRIVATE

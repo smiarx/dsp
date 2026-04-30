@@ -37,6 +37,10 @@ target_link_libraries(dsp_tapedelay_generic
     PUBLIC  dsp_tapedelay_base
     PRIVATE dsp_compile_options
 )
+set_target_properties(dsp_tapedelay_generic PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+)
+
 target_link_libraries(dsp_tapedelay_processor
     INTERFACE dsp_tapedelay_generic)
 

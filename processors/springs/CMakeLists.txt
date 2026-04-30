@@ -41,6 +41,10 @@ target_link_libraries(dsp_springs_generic
     PUBLIC  dsp_springs_base
     PRIVATE dsp_compile_options
 )
+set_target_properties(dsp_springs_generic PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+)
+
 target_link_libraries(dsp_springs_processor
     INTERFACE dsp_springs_generic)
 
