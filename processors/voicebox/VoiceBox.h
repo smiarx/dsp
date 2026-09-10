@@ -44,7 +44,8 @@ class VoiceBox
 
     void update(float shift, float formantShift, float quantizeAmount,
                 float quantizeFormantAmount, seconds quantizeSpeed,
-                seconds quantizeConfirmTime, Hz a4Frequency);
+                float quantizeVariation, seconds quantizeConfirmTime,
+                Hz a4Frequency);
     void prepare(Hz sampleRate);
 
     void setPitchShift(float shift);
@@ -52,6 +53,10 @@ class VoiceBox
     void setQuantizeAmount(float amount);
     void setQuantizeFormantAmount(float amount);
     void setQuantizeSpeed(seconds time);
+    void setQuantizeVariation(float variation)
+    {
+        quantizer_.setVariationAmount(variation);
+    }
     void setQuantizeConfirmTime(seconds time);
     void setA4Frequency(Hz freq);
     void setScale(dsp::Scale scale);
@@ -67,6 +72,10 @@ class VoiceBox
     [[nodiscard]] float getQuantizeSpeed() const
     {
         return quantizeSpeed_.get();
+    }
+    [[nodiscard]] float getQuantizeVariation() const
+    {
+        return quantizer_.getVariationAmount();
     }
     [[nodiscard]] float getQuantizeConfirmTime() const
     {

@@ -48,6 +48,10 @@ dsp::Pitch<float> PitchQuantizer::process(dsp::Pitch<float> pitch) noexcept
         chosenPitch = chosenPitchValue;
     }
 
+    auto variation = (pitch - chosenPitch).get();
+    hpfilter_.process(dsp::Context(&variation), hpfilterState_);
+    chosenPitch += dsp::Pitch<float>{variation} * variationAmount_;
+
     return chosenPitch;
 };
 

@@ -29,6 +29,10 @@ void VoiceBox::prepare(Hz sampleRate)
 
     voicedSmooth_.setConvergenceTime(0.01f, sampleRate_.secsToSamples(0.05_sf));
 
+    constexpr auto kQuantizerVariationHpCutoff = 10._Hzf;
+    quantizer_.setVariationHpCutoff(
+        sampleRate_.hzToNyquistRatio(kQuantizerVariationHpCutoff));
+
     setQuantizeSpeed(quantizeSpeed_);
     setQuantizeConfirmTime(quantizeConfirmTime_);
     setA4Frequency(a4Frequency_);
@@ -37,7 +41,8 @@ void VoiceBox::prepare(Hz sampleRate)
 
 void VoiceBox::update(float shift, float formantShift, float quantizeAmount,
                       float quantizeFormantAmount, seconds quantizeSpeed,
-                      seconds quantizeConfirmTime, Hz a4Frequency)
+                      float quantizeVariation, seconds quantizeConfirmTime,
+                      Hz a4Frequency)
 {
     if (shift != getPitchShift()) {
         setPitchShift(shift);
@@ -53,6 +58,9 @@ void VoiceBox::update(float shift, float formantShift, float quantizeAmount,
     }
     if (quantizeSpeed != quantizeSpeed_) {
         setQuantizeSpeed(quantizeSpeed);
+    }
+    if (quantizeVariation != getQuantizeVariation()) {
+        setQuantizeVariation(quantizeVariation);
     }
     if (quantizeConfirmTime != quantizeConfirmTime_) {
         setQuantizeConfirmTime(quantizeConfirmTime);

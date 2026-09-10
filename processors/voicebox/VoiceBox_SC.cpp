@@ -16,7 +16,7 @@ static void voiceBoxCtor(VoiceBoxUnit *unit)
     unit->voicebox_ = voicebox;
     unit->voicebox_->prepare(static_cast<float>(SAMPLERATE));
 
-    unit->voicebox_->setScale(dsp::Scale{static_cast<uint32_t>(IN0(8))});
+    unit->voicebox_->setScale(dsp::Scale{static_cast<uint32_t>(IN0(9))});
 
     ClearUnitIfMemFailed(voicebox);
     ZOUT0(0) = 0.f;
@@ -30,7 +30,7 @@ static void voiceBoxDtor(VoiceBoxUnit *unit)
 void voiceBoxNext(VoiceBoxUnit *unit, int inNumSamples)
 {
     unit->voicebox_->update(IN0(1), IN0(2), IN0(3), IN0(4), IN0(5), IN0(6),
-                            IN0(7));
+                            IN0(7), IN0(8));
     unit->voicebox_->process(&IN(0), &OUT(0), inNumSamples);
 }
 
