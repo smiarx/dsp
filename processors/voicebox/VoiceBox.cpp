@@ -135,7 +135,7 @@ void VoiceBox::process(const float *const *__restrict in,
         auto blockSize = std::min(kMaxBlockSize, count);
 
         float *pitchTrackOut[] = {pitch, voiced};
-        pitchTracker_.process(in, pitchTrackOut, blockSize);
+        pitchTracker_.process(&mout, pitchTrackOut, blockSize);
 
         // set pitch atomic value to last pitch computed
         auto lastFreq  = dsp::freq::NyquistRatio(pitch[blockSize - 1]);
